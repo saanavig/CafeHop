@@ -12,6 +12,7 @@ interface ForYouCardProps {
   postedBy: string;
   tags: string[];
   index?: number;
+  onClick?: () => void;
 }
 
 const ForYouCard = ({

@@ -90,7 +90,7 @@ const CustomerOnboarding = () => {
         <Button
           className="w-full"
           disabled={!locationAllowed}
-          onClick={() => navigate("/explore")}
+          onClick={() => navigate("/home")}
         >
           Finish onboarding
         </Button>
