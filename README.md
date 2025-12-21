@@ -1,73 +1,66 @@
-# Welcome to your Lovable project
+# CAFÉHOP
 
-## Project info
+CAFÉHOP is a web application connecting local cafés with café hoppers. Customers can browse posts from cafés, like and comment on posts, and discover new spots. Café owners have a dedicated dashboard to manage their café profile, upload posts, and view detailed analytics.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+---
 
-## How can I edit this code?
+## Project URL
 
-There are several ways of editing your application.
+To be updated!
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Features
 
-Changes made via Lovable will be committed automatically to this repo.
+### Customer Features
+- Browse posts from cafés with images, captions, likes, and comments.
+- Search posts by keywords or tags.
+- Like posts and add comments.
+- Upload posts with optional images (for demo/testing purposes).
+- View trending posts, popular cafés, and latte art.
 
-**Use your preferred IDE**
+### Café Owner Features
+- Edit café profile information (name, description, photos).
+- Upload posts directly from the café dashboard.
+- View detailed analytics:
+  - Weekly visits
+  - Followers
+  - Post engagement trends
+  - Top visiting times
+  - Popular items or posts
+  - Pie charts and bar charts for performance metrics
+- Track historical trends and visualize café performance.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+---
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Technologies Used
+- **Vite** – Frontend build tool
+- **TypeScript** – Type-safe JavaScript
+- **React** – UI library
+- **Tailwind CSS** – Styling
+- **shadcn-ui** – UI components
+- **Framer Motion** – Animations
+- **Recharts** – Charts and data visualization
+- **Lucide React** – Icons
+- **React Router (optional)** – Routing
 
-Follow these steps:
+---
 
+## Getting Started
+
+### Prerequisites
+- Node.js & npm installed (https://nodejs.org/)
+
+### Installation
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Clone the repository
+git clone https://github.com/saanavig/CafeHop.git
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to the project directory
+cd CafeHop
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
