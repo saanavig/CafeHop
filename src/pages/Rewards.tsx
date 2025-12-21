@@ -83,6 +83,11 @@ const Rewards = ({ role }: { role: "customer" | "cafe" }) => {
               status="EXPLORER"
               nextReward={2000}
               description="Earn points and unlock perks"
+              role={role}
+              onScan={() => {
+                if (role === "customer") setShowModal("scan");
+                else setShowModal("allRewards"); // or some other modal for cafes
+              }}
             />
           ) : (
             <RewardsCard
@@ -91,6 +96,7 @@ const Rewards = ({ role }: { role: "customer" | "cafe" }) => {
               nextReward={1000}
               description="Earn points and upgrade your café tier"
               themeColor="gold"
+              role={role}
             />
 
           )}
@@ -215,7 +221,7 @@ const Rewards = ({ role }: { role: "customer" | "cafe" }) => {
         </div>
       )}
 
-      <BottomNav />
+      <BottomNav role={role} />
     </div>
   );
 };

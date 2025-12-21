@@ -1,4 +1,4 @@
-import { Wifi, Plug, Coffee, Star, MapPin } from "lucide-react";
+import { Wifi, Plug, Coffee, Star, MapPin, WifiOff} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 
@@ -14,10 +14,10 @@ interface CafeCardProps {
   onClick?: () => void;
 }
 
-const amenityIcons: Record<string, React.ElementType> = {
-  wifi: Wifi,
-  outlets: Plug,
-  coffee: Coffee,
+const amenityIcons: Record<string, { icon: React.ElementType; unavailable?: React.ElementType }> = {
+  wifi: { icon: Wifi, unavailable: WifiOff },
+  outlets: { icon: Plug },
+  coffee: { icon: Coffee },
 };
 
 const CafeCard = ({
@@ -29,6 +29,7 @@ const CafeCard = ({
   vibes,
   isOpen = true,
   index = 0,
+  onClick,
 }: CafeCardProps) => {
   return (
     <motion.div
@@ -37,6 +38,7 @@ const CafeCard = ({
       transition={{ delay: index * 0.1, duration: 0.4 }}
       whileHover={{ y: -4 }}
       className="group cursor-pointer"
+      onClick={onClick} // <-- trigger modal when card is clicked
     >
       <div className="bg-card rounded-2xl overflow-hidden shadow-soft hover:shadow-card transition-all duration-300 border border-border/50">
         {/* Image */}
@@ -71,14 +73,16 @@ const CafeCard = ({
 
           {/* Amenities */}
           <div className="flex items-center gap-2 mb-3">
-            {amenities.map((amenity) => {
-              const Icon = amenityIcons[amenity.toLowerCase()] || Coffee;
+            {Object.keys(amenityIcons).map((amenityKey) => {
+              const amenityAvailable = amenities.includes(amenityKey);
+              const Icon = amenityAvailable
+                ? amenityIcons[amenityKey].icon
+                : amenityIcons[amenityKey].unavailable || Coffee; // fallback
               return (
-                <div
-                  key={amenity}
-                  className="flex items-center gap-1 text-muted-foreground"
-                >
-                  <Icon className="h-3.5 w-3.5" />
+                <div key={amenityKey} className="flex items-center gap-1">
+                  <Icon
+                    className={`h-4 w-4 ${amenityAvailable ? "text-foreground" : "text-muted-foreground/50"}`}
+                  />
                 </div>
               );
             })}

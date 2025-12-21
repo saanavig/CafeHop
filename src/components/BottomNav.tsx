@@ -1,7 +1,7 @@
 import { Home, Compass, Gift, Clock, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { useLocation, useNavigate } from "react-router-dom";
+import { NavLink } from "@/components/NavLink";
+import { cn } from "@/lib/utils";
 
 interface NavItem {
   icon: React.ElementType;
@@ -9,7 +9,11 @@ interface NavItem {
   path: string;
 }
 
-const navItems: NavItem[] = [
+interface BottomNavProps {
+  role?: "customer" | "cafe";
+}
+
+const allNavItems: NavItem[] = [
   { icon: Home, label: "Home", path: "/" },
   { icon: Compass, label: "Explore", path: "/explore" },
   { icon: Gift, label: "Rewards", path: "/rewards" },
@@ -17,9 +21,11 @@ const navItems: NavItem[] = [
   { icon: User, label: "Account", path: "/account" },
 ];
 
-const BottomNav = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
+const BottomNav = ({ role = "customer" }: BottomNavProps) => {
+  const navItems =
+    role === "cafe"
+      ? allNavItems.filter((item) => item.label !== "Explore")
+      : allNavItems;
 
   return (
     <motion.nav
@@ -29,25 +35,18 @@ const BottomNav = () => {
       className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border px-2 pb-safe"
     >
       <div className="flex items-center justify-around py-2 max-w-lg mx-auto">
-        {navItems.map((item, index) => {
-          const isActive = location.pathname === item.path;
+        {navItems.map((item) => {
+          const Icon = item.icon;
           return (
-            <motion.div
+            <NavLink
               key={item.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
+              to={item.path}
+              className="flex flex-col items-center gap-1 py-3 px-5 rounded-full transition-colors bg-card text-muted-foreground"
+              activeClassName="bg-caramel text-white"
             >
-              <Button
-                variant={isActive ? "navActive" : "nav"}
-                size="icon"
-                className="flex-col h-auto py-2 px-4 gap-1"
-                onClick={() => navigate(item.path)}
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="text-xs font-medium">{item.label}</span>
-              </Button>
-            </motion.div>
+              <Icon className="h-5 w-5" />
+              <span className="text-xs font-medium">{item.label}</span>
+            </NavLink>
           );
         })}
       </div>

@@ -96,7 +96,7 @@ const Index = ({ role }: IndexProps) => {
 
         {/* Rewards Card */}
         <section className="py-2">
-          <RewardsCard points={1250} status="EXPLORER" nextReward={2000} />
+          <RewardsCard points={1250} status="EXPLORER" nextReward={2000} role="customer" />
         </section>
 
         {/* Nearby Cafés */}

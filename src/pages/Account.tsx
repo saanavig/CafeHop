@@ -141,7 +141,7 @@ const Account = ({ role }: AccountProps) => {
         </motion.p>
       </main>
 
-      <BottomNav />
+      <BottomNav role={role} />
     </div>
   );
 };

@@ -7,7 +7,9 @@ interface RewardsCardProps {
   status: string;
   nextReward: number;
   description?: string; 
-  themeColor?: "caramel" | "gold"; // new prop for cafes
+  themeColor?: "caramel" | "gold"; 
+  role: "customer" | "cafe";
+  onScan?: () => void; // callback for Scan QR / View Rewards
 }
 
 const RewardsCard = ({
@@ -16,20 +18,20 @@ const RewardsCard = ({
   nextReward,
   description,
   themeColor = "caramel",
+  role,
+  onScan,
 }: RewardsCardProps) => {
   const progress = (points / nextReward) * 100;
-
-  // Set colors based on theme
   const isGold = themeColor === "gold";
 
   const gradient = isGold
-    ? "bg-gradient-to-br from-yellow-100 to-yellow-300" // gold matte
-    : "bg-gradient-to-br from-primary to-espresso"; // bronze
+    ? "bg-gradient-to-br from-yellow-100 to-yellow-300"
+    : "bg-gradient-to-br from-primary to-espresso";
   const iconBg = isGold ? "bg-yellow-100/30" : "bg-caramel/20";
   const iconColor = isGold ? "text-yellow-400" : "text-caramel";
-  const textColor = isGold ? "text-black" : "text-white"; // dynamic text color
+  const textColor = isGold ? "text-black" : "text-white";
   const textColorSecondary = isGold ? "text-black/70" : "text-white/70"; 
-  const progressColor = isGold ? "bg-yellow-400" : "bg-caramel"; // subtle progress
+  const progressColor = isGold ? "bg-yellow-400" : "bg-caramel";
   const decoTopRight = isGold ? "bg-yellow-100/20" : "bg-caramel/20";
   const decoBottomLeft = isGold ? "bg-yellow-100/15" : "bg-caramel/10";
   const ctaBg = isGold
@@ -86,16 +88,20 @@ const RewardsCard = ({
         </div>
 
         {/* CTA */}
-        <Button
-          variant="warm"
-          className={`w-full justify-between group ${ctaBg}`}
-        >
-          <span className="flex items-center gap-2">
-            <Star className={`h-4 w-4 ${ctaIcon}`} />
-            View Rewards
-          </span>
-          <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-        </Button>
+        {role === "customer" && (
+          <Button
+            variant="warm"
+            className={`w-full justify-between group ${ctaBg}`}
+            onClick={onScan} // call parent callback
+          >
+            <span className="flex items-center gap-2">
+              <Star className={`h-4 w-4 ${ctaIcon}`} />
+              Scan QR
+            </span>
+            <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+          </Button>
+        )}
+
       </div>
     </motion.div>
   );

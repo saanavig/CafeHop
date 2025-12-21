@@ -295,7 +295,7 @@ const History = ({ role }: HistoryProps) => {
         </div>
       )}
 
-      <BottomNav />
+      <BottomNav role={role} />
     </div>
   );
 };
