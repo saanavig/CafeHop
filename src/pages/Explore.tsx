@@ -25,11 +25,16 @@ interface ExploreProps {
   role: "customer" | "cafe";
 }
 
+
 const Explore = ({ role }: ExploreProps) => {
   const navigate = useNavigate();
   const [selectedCafe, setSelectedCafe] = useState<typeof allCafes[0] | null>(null);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"info" | "rewards" | "community">("info");
+  
+  const [mapExpanded, setMapExpanded] = useState(false);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+
 
   const filteredCafes = allCafes.filter(cafe =>
     cafe.name.toLowerCase().includes(search.toLowerCase())
@@ -108,7 +113,7 @@ const Explore = ({ role }: ExploreProps) => {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Button variant="caramel" size="icon" className="rounded-xl shrink-0">
+            <Button variant="caramel" size="icon" onClick={() => setFilterModalOpen(true)}>
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
           </div>
@@ -117,7 +122,15 @@ const Explore = ({ role }: ExploreProps) => {
 
       {/* Map */}
       <section className="pb-6 px-4 max-w-lg mx-auto">
-        <motion.div className="relative w-full h-64 rounded-2xl bg-muted overflow-hidden flex items-center justify-center text-muted-foreground">
+      <motion.div
+        className={`relative w-full rounded-2xl bg-muted overflow-hidden flex flex-col items-center justify-center text-muted-foreground cursor-pointer`}
+        style={{ height: mapExpanded ? "400px" : "256px" }} // expands when clicked
+        layout
+        onClick={() => setMapExpanded((prev) => !prev)}
+      >
+
+        {/* Map content */}
+        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
           Map Demo
           {filteredCafes.map((cafe, idx) => (
             <button
@@ -127,7 +140,9 @@ const Explore = ({ role }: ExploreProps) => {
               onClick={() => handleCafeClick(cafe)}
             />
           ))}
-        </motion.div>
+        </div>
+      </motion.div>
+
       </section>
 
       {/* Cafe List */}
@@ -284,7 +299,46 @@ const Explore = ({ role }: ExploreProps) => {
         </motion.div>
       </div>
     )}
+  
+    {filterModalOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          className="bg-card w-11/12 max-w-md rounded-3xl p-6 shadow-2xl relative flex flex-col items-center"
+        >
+          {/* Close Button */}
+          <button
+            onClick={() => setFilterModalOpen(false)}
+            className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition"
+          >
+            <X className="h-6 w-6" />
+          </button>
 
+          {/* Modal Title */}
+          <h3 className="text-2xl font-bold mb-4">Filter Cafés</h3>
+
+          {/* Filter Pills */}
+          <div className="w-full mb-6">
+            <FilterPills />
+          </div>
+
+          {/* Optional Extra Aura/Info */}
+          <p className="text-sm text-muted-foreground text-center mb-4">
+            Use filters to find cafés with Wi-Fi, outlets, quiet vibes, or great coffee.
+          </p>
+
+          <Button
+            variant="caramel"
+            className="w-full"
+            onClick={() => setFilterModalOpen(false)}
+          >
+            Apply Filters
+          </Button>
+        </motion.div>
+      </div>
+    )}
 
       <BottomNav role={role} />
     </div>

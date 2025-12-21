@@ -18,6 +18,7 @@ const filters: Filter[] = [
   { icon: Coffee, label: "Great Coffee", id: "coffee" },
 ];
 
+
 const FilterPills = () => {
   const [activeFilters, setActiveFilters] = useState<string[]>(["open"]);
 
