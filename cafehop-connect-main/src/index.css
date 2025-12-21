@@ -1,0 +1,173 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* CafeHop Design System - Warm café aesthetic */
+
+@layer base {
+  :root {
+    /* Warm cream/beige backgrounds */
+    --background: 34 33% 96%;
+    --foreground: 20 40% 16%;
+
+    /* Cards with slightly warmer cream */
+    --card: 36 38% 94%;
+    --card-foreground: 20 40% 16%;
+
+    --popover: 36 38% 94%;
+    --popover-foreground: 20 40% 16%;
+
+    /* Coffee brown primary */
+    --primary: 20 40% 16%;
+    --primary-foreground: 34 33% 96%;
+
+    /* Warm tan secondary */
+    --secondary: 30 30% 85%;
+    --secondary-foreground: 20 40% 16%;
+
+    /* Muted beige */
+    --muted: 32 25% 88%;
+    --muted-foreground: 20 20% 40%;
+
+    /* Caramel accent */
+    --accent: 28 60% 50%;
+    --accent-foreground: 34 33% 96%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 30 20% 82%;
+    --input: 30 20% 82%;
+    --ring: 28 60% 50%;
+
+    --radius: 1rem;
+
+    /* Custom CafeHop tokens */
+    --coffee: 20 40% 16%;
+    --cream: 36 38% 94%;
+    --beige: 34 33% 91%;
+    --caramel: 28 60% 50%;
+    --latte: 30 30% 78%;
+    --espresso: 20 50% 12%;
+
+    /* Gradients */
+    --gradient-warm: linear-gradient(135deg, hsl(34 33% 96%) 0%, hsl(30 30% 88%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(36 38% 96%) 0%, hsl(34 33% 92%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(34 33% 94%) 0%, hsl(30 25% 88%) 100%);
+
+    /* Shadows */
+    --shadow-soft: 0 4px 20px -4px hsl(20 40% 16% / 0.08);
+    --shadow-card: 0 8px 32px -8px hsl(20 40% 16% / 0.12);
+    --shadow-elevated: 0 16px 48px -12px hsl(20 40% 16% / 0.18);
+
+    --sidebar-background: 34 33% 96%;
+    --sidebar-foreground: 20 40% 16%;
+    --sidebar-primary: 28 60% 50%;
+    --sidebar-primary-foreground: 34 33% 96%;
+    --sidebar-accent: 30 30% 85%;
+    --sidebar-accent-foreground: 20 40% 16%;
+    --sidebar-border: 30 20% 82%;
+    --sidebar-ring: 28 60% 50%;
+  }
+
+  .dark {
+    --background: 20 30% 8%;
+    --foreground: 34 33% 94%;
+
+    --card: 20 25% 12%;
+    --card-foreground: 34 33% 94%;
+
+    --popover: 20 25% 12%;
+    --popover-foreground: 34 33% 94%;
+
+    --primary: 34 33% 94%;
+    --primary-foreground: 20 30% 8%;
+
+    --secondary: 20 20% 18%;
+    --secondary-foreground: 34 33% 94%;
+
+    --muted: 20 20% 18%;
+    --muted-foreground: 30 15% 60%;
+
+    --accent: 28 60% 55%;
+    --accent-foreground: 20 30% 8%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 20 20% 20%;
+    --input: 20 20% 20%;
+    --ring: 28 60% 55%;
+
+    --coffee: 34 33% 94%;
+    --cream: 20 25% 12%;
+    --beige: 20 20% 16%;
+    --caramel: 28 60% 55%;
+    --latte: 20 15% 25%;
+    --espresso: 34 33% 94%;
+
+    --sidebar-background: 20 30% 8%;
+    --sidebar-foreground: 34 33% 94%;
+    --sidebar-primary: 28 60% 55%;
+    --sidebar-primary-foreground: 20 30% 8%;
+    --sidebar-accent: 20 20% 18%;
+    --sidebar-accent-foreground: 34 33% 94%;
+    --sidebar-border: 20 20% 20%;
+    --sidebar-ring: 28 60% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Playfair Display', serif;
+  }
+
+  .font-sans {
+    font-family: 'Inter', sans-serif;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--coffee)) 0%, hsl(var(--caramel)) 100%);
+  }
+
+  .bg-warm-gradient {
+    background: var(--gradient-warm);
+  }
+
+  .bg-card-gradient {
+    background: var(--gradient-card);
+  }
+
+  .bg-hero-gradient {
+    background: var(--gradient-hero);
+  }
+
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+}
