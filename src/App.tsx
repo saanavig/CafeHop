@@ -73,7 +73,7 @@ const App = () => {
             {/* Account sub-pages */}
             <Route path="/notifications" element={<Notifications role={role} />} />
             <Route path="/payments" element={<PaymentMethods role={role} />} />
-            <Route path="/favorites" element={<Favorites role={role} />} />
+            <Route path="/favorites" element={<Favorites />} />
             <Route path="/settings" element={<Settings role={role} />} />
             <Route path="/help" element={<Help role={role} />} />
 
