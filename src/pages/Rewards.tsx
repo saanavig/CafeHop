@@ -157,7 +157,7 @@ const Rewards = ({ role }: { role: "customer" | "cafe" }) => {
             {/* Customer scan / redeem */}
             {showModal === "scan" && role === "customer" && (
               <div className="space-y-4">
-                <h2 className="font-semibold text-lg">Scan QR</h2>
+                <h2 className="font-semibold text-lg">Scan Receipt</h2>
                 <p>Scan the café QR code to earn points.</p>
                 <Button className="w-full" onClick={() => setShowModal("redeem")}>Simulate Scan</Button>
               </div>

@@ -1,18 +1,18 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Info, Mail, ChevronDown, ChevronUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
+
 type HelpProps = {
-  role: "customer" | "cafe"; // determines which FAQ to show
+  role: "customer" | "cafe";
 };
 
 const Help = ({ role }: HelpProps) => {
   const navigate = useNavigate();
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
 
-  // Customer FAQs (unchanged)
   const customerFAQs = [
     {
       question: "How do I earn points?",
@@ -46,7 +46,6 @@ const Help = ({ role }: HelpProps) => {
     },
   ];
 
-  // Cafe-specific FAQs (completely separate)
   const cafeFAQs = [
     {
       question: "How do I update my cafe profile?",
@@ -97,7 +96,7 @@ const Help = ({ role }: HelpProps) => {
       <main className="max-w-lg mx-auto space-y-6">
         {/* FAQ */}
         <section>
-          <p className="text-sm font-medium mb-2">Frequently Asked Questions</p>
+          <p className="text-md font-semibold mb-2 ">Frequently Asked Questions</p>
 
           <div className="bg-card rounded-2xl border border-border overflow-hidden">
             {faqs.map((faq, index) => (
@@ -116,16 +115,21 @@ const Help = ({ role }: HelpProps) => {
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   )}
                 </button>
-                {openFAQ === index && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="px-4 pb-4 text-sm text-muted-foreground"
-                  >
-                    {faq.answer}
-                  </motion.div>
-                )}
+                <AnimatePresence initial={false}>
+                  {openFAQ === index && (
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="px-4 pt-2 pb-4 text-base text-muted-foreground"
+                    >
+                      {faq.answer}
+                    </motion.div>
+
+                  )}
+                </AnimatePresence>
               </div>
             ))}
           </div>
@@ -133,12 +137,12 @@ const Help = ({ role }: HelpProps) => {
 
         {/* Contact */}
         <section>
-          <p className="text-sm font-medium mb-2">Contact Us</p>
+          <p className="text-md font-semibold mb-2">Contact Us</p>
 
           <div className="bg-card rounded-2xl border border-border overflow-hidden">
             <Button
               variant="outline"
-              className="w-full flex items-center gap-3 justify-center"
+              className="w-full flex items-center gap-3 text-base font-semibold justify-center"
             >
               <Mail className="h-4 w-4" />
               Email Support
