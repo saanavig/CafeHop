@@ -13,7 +13,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 cafe_bp = Blueprint("cafe_bp", __name__)
 
-
+# cafe registration for cafe owners
 @cafe_bp.route("cafe/register", methods=["POST"])
 @require_auth
 @require_role("cafe_owner")
@@ -73,4 +73,53 @@ def register_cafe():
 
     except Exception as e:
         print("Cafe registration error:", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
+# get cafes and info about them
+@cafe_bp.route("/cafe/my-cafes", methods=["GET"])
+@require_auth
+@require_role("cafe_owner")
+def get_my_cafes():
+    owner_id = g.user["id"]
+
+    try:
+        # cafes from the owner
+        cafes_response = supabase.table("cafes") \
+            .select("*") \
+            .eq("owner_id", owner_id) \
+            .execute()
+
+        cafes = cafes_response.data or []
+
+        structured_response = []
+
+        for cafe in cafes:
+            cafe_id = cafe["id"]
+
+            # get hours
+            hours_response = supabase.table("cafe_hours") \
+                .select("day_of_week, open_time, close_time") \
+                .eq("cafe_id", cafe_id) \
+                .execute()
+
+            hours = hours_response.data or []
+
+            # get rewards
+            rewards_response = supabase.table("rewards") \
+                .select("id, title, description, points_required, active") \
+                .eq("cafe_id", cafe_id) \
+                .execute()
+
+            rewards = rewards_response.data or []
+
+            structured_response.append({
+                **cafe,
+                "hours": hours,
+                "rewards": rewards
+            })
+
+        return jsonify(structured_response), 200
+
+    except Exception as e:
+        print("Error fetching cafes:", str(e))
         return jsonify({"error": "Internal server error"}), 500
