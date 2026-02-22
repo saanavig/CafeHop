@@ -14,7 +14,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { useMode } from "@/context/Mode"; // ← import the mode hook
+import { useMode } from "@/context/Mode";
 
 type SettingsProps = {
   role: "customer" | "cafe";
@@ -22,21 +22,22 @@ type SettingsProps = {
 
 const Settings = ({ role }: SettingsProps) => {
   const navigate = useNavigate();
-  const { darkMode, toggleDarkMode } = useMode(); // ← use global dark mode
+  const { darkMode, toggleDarkMode } = useMode();
 
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showEditCafePreferences, setShowEditCafePreferences] = useState(false);
 
-  // Shared profile state
   const [profile, setProfile] = useState({
     name: "Cafe Hopper",
     email: "cafe.hopper@email.com",
     profilePic: null as File | null,
   });
 
-  // Cafe-specific state
   const [cafeInfo, setCafeInfo] = useState({
     about: "We serve the best coffee in town!",
+    timings: "Mon-Sun 8am-8pm",
+    tags: ["Cozy", "Specialty Coffee"],
     preferences: {
       wifi: true,
       quiet: false,
@@ -53,7 +54,6 @@ const Settings = ({ role }: SettingsProps) => {
     },
   });
 
-  // Privacy state (same for all)
   const [privacy, setPrivacy] = useState({
     privateAccount: false,
     twoFactorAuth: false,
@@ -126,8 +126,7 @@ const Settings = ({ role }: SettingsProps) => {
               <Switch />
             </div>
 
-            {/* Dark Mode toggle using global context */}
-            <div className="flex items-center justify-between p-4">
+            <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-3">
                 <Moon className="h-5 w-5 text-caramel" />
                 <div>
@@ -137,6 +136,20 @@ const Settings = ({ role }: SettingsProps) => {
               </div>
               <Switch checked={darkMode} onCheckedChange={toggleDarkMode} />
             </div>
+
+            {/* Cafe preferences for both roles */}
+            <button
+              className="w-full flex items-center justify-between p-4 hover:bg-muted transition"
+              onClick={() => setShowEditCafePreferences(true)}
+            >
+              <div className="flex items-center gap-3">
+                <Bell className="h-5 w-5 text-caramel" />
+                <p className="font-medium">
+                  {role === "cafe" ? "Edit Cafe Info & Preferences" : "View Cafe Preferences"}
+                </p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </button>
           </div>
         </section>
 
@@ -248,7 +261,6 @@ const Settings = ({ role }: SettingsProps) => {
               onChange={(e) => setProfile({ ...profile, email: e.target.value })}
             />
 
-            {/* Cafe-only fields */}
             {role === "cafe" && (
               <>
                 <textarea
@@ -260,40 +272,88 @@ const Settings = ({ role }: SettingsProps) => {
                   }
                   rows={3}
                 />
-
-                <div className="space-y-4 mt-2">
-                  {cafePreferenceCategories.map((cat) => (
-                    <div key={cat.title}>
-                      <p className="font-semibold text-sm mb-2">{cat.title}</p>
-                      <div className="space-y-1">
-                        {cat.options.map((opt) => (
-                          <label key={opt.key} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={cafeInfo.preferences[opt.key]}
-                              onChange={() =>
-                                setCafeInfo({
-                                  ...cafeInfo,
-                                  preferences: {
-                                    ...cafeInfo.preferences,
-                                    [opt.key]: !cafeInfo.preferences[opt.key],
-                                  },
-                                })
-                              }
-                            />
-                            {opt.label}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <input
+                  className="w-full mb-2 p-2 border rounded"
+                  placeholder="Timings"
+                  value={cafeInfo.timings}
+                  onChange={(e) =>
+                    setCafeInfo({ ...cafeInfo, timings: e.target.value })
+                  }
+                />
+                <input
+                  className="w-full mb-2 p-2 border rounded"
+                  placeholder="Tags (comma-separated)"
+                  value={cafeInfo.tags.join(", ")}
+                  onChange={(e) =>
+                    setCafeInfo({
+                      ...cafeInfo,
+                      tags: e.target.value.split(",").map((t) => t.trim()),
+                    })
+                  }
+                />
               </>
             )}
 
             <Button
               className="w-full mt-4"
               onClick={() => setShowEditProfile(false)}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Cafe Preferences Modal */}
+      {showEditCafePreferences && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-card p-6 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto relative">
+            <button
+              onClick={() => setShowEditCafePreferences(false)}
+              className="absolute top-3 right-3 p-1 rounded-full hover:bg-muted transition"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <h2 className="font-semibold text-lg mb-4">
+              {role === "cafe"
+                ? "Edit Cafe Preferences"
+                : "Cafe Preferences"}
+            </h2>
+
+            <div className="space-y-4">
+              {cafePreferenceCategories.map((cat) => (
+                <div key={cat.title}>
+                  <p className="font-semibold text-sm mb-2">{cat.title}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {cat.options.map((opt) => (
+                      <button
+                        key={opt.key}
+                        onClick={() =>
+                          setCafeInfo({
+                            ...cafeInfo,
+                            preferences: {
+                              ...cafeInfo.preferences,
+                              [opt.key]: !cafeInfo.preferences[opt.key],
+                            },
+                          })
+                        }
+                        className={`px-3 py-1 rounded-full text-sm border ${
+                          cafeInfo.preferences[opt.key]
+                            ? "bg-caramel text-white border-caramel"
+                            : "bg-muted text-muted-foreground border-border"
+                        } transition`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              className="w-full mt-4"
+              onClick={() => setShowEditCafePreferences(false)}
             >
               Save
             </Button>

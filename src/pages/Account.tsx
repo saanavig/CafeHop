@@ -25,7 +25,7 @@ const Account = ({ role }: AccountProps) => {
   // Menu items differ slightly depending on role
   const customerMenu = [
     { icon: Bell, label: "Notifications", desc: "Manage alerts", path: "/notifications" },
-    { icon: CreditCard, label: "Payment Methods", desc: "Cards & wallets", path: "/payments" },
+    // { icon: CreditCard, label: "Payment Methods", desc: "Cards & wallets", path: "/payments" },
     { icon: Star, label: "Favorites", desc: "Saved cafés", path: "/favorites" },
     { icon: Settings, label: "Settings", desc: "App preferences", path: "/settings" },
     { icon: HelpCircle, label: "Help & Support", desc: "FAQs & contact", path: "/help" },
