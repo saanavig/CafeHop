@@ -73,7 +73,7 @@ const CafeOnboarding = () => {
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
   };
-
+  const [finishedSetup, setFinishedSetup] = useState(false);
 
   const next = () => setStep((prev) => (prev < 6 ? ((prev + 1) as Step) : prev));
   const back = () => setStep((prev) => (prev > 1 ? ((prev - 1) as Step) : prev));
@@ -257,7 +257,6 @@ const CafeOnboarding = () => {
         )}
 
 {/* ---------------- STEP 6 — Manual Loyalty ---------------- */}
-{/* ---------------- STEP 6 — Manual Loyalty ---------------- */}
 {step === 6 && (
   <div className="space-y-5">
     <p className="text-sm text-muted-foreground">
@@ -359,14 +358,6 @@ const CafeOnboarding = () => {
     </div>
   </div>
 )}
-
-        {/* ---------------- OPTIONAL FINAL STEP / CONFIRMATION ---------------- */}
-        {step === 6 && posType && rewardName && (
-          <motion.div className="text-center mt-6">
-            <CheckCircle className="h-12 w-12 text-caramel mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">You're all set! Your café profile is ready.</p>
-          </motion.div>
-        )}
       </motion.div>
     </div>
   );
