@@ -14,13 +14,15 @@ import {
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { useMode } from "@/context/Mode"; // ← import the mode hook
 
 type SettingsProps = {
-  role: "customer" | "cafe"; // add role
+  role: "customer" | "cafe";
 };
 
 const Settings = ({ role }: SettingsProps) => {
   const navigate = useNavigate();
+  const { darkMode, toggleDarkMode } = useMode(); // ← use global dark mode
 
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -123,6 +125,8 @@ const Settings = ({ role }: SettingsProps) => {
               </div>
               <Switch />
             </div>
+
+            {/* Dark Mode toggle using global context */}
             <div className="flex items-center justify-between p-4">
               <div className="flex items-center gap-3">
                 <Moon className="h-5 w-5 text-caramel" />
@@ -131,7 +135,7 @@ const Settings = ({ role }: SettingsProps) => {
                   <p className="text-xs text-muted-foreground">System appearance</p>
                 </div>
               </div>
-              <Switch />
+              <Switch checked={darkMode} onCheckedChange={toggleDarkMode} />
             </div>
           </div>
         </section>
@@ -247,7 +251,6 @@ const Settings = ({ role }: SettingsProps) => {
             {/* Cafe-only fields */}
             {role === "cafe" && (
               <>
-                {/* About */}
                 <textarea
                   className="w-full mb-2 p-2 border rounded"
                   placeholder="About your cafe"
@@ -258,7 +261,6 @@ const Settings = ({ role }: SettingsProps) => {
                   rows={3}
                 />
 
-                {/* Preferences */}
                 <div className="space-y-4 mt-2">
                   {cafePreferenceCategories.map((cat) => (
                     <div key={cat.title}>
