@@ -4,6 +4,8 @@ from flask_cors import CORS
 from flask import jsonify, request
 from database.supabase_client import supabase
 from database.auth_middleware import require_auth
+from routes.auth import require_auth
+from flask import g
 
 app = Flask(__name__)
 CORS(app)
@@ -26,11 +28,14 @@ def error(message, status=400):
 def home():
     return "Testing CafeHop"
 
-# testing supabase
-# @app.route("/test-db")
-# def test_db():
-#     response = supabase.table("cafes").select("*").execute()
-#     return success(response.data)
+# testing jwt for supabase
+@app.route("/protected")
+@require_auth
+def protected():
+    return {
+        "message": "Authenticated",
+        "user_id": g.user["id"]
+    }
 
 if __name__ == "__main__":
     app.run(debug=True)
