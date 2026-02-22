@@ -4,7 +4,7 @@ from flask_cors import CORS
 from flask import jsonify, request
 from database.supabase_client import supabase
 from database.auth_middleware import require_auth
-from routes.auth import require_auth
+from routes.auth import require_auth, require_role
 from flask import g
 
 app = Flask(__name__)
@@ -34,7 +34,19 @@ def home():
 def protected():
     return {
         "message": "Authenticated",
-        "user_id": g.user["id"]
+        "user_id": g.user["id"],
+        "role": g.user["role"]
+    }
+
+# cafe owner perms
+@app.route("/cafes")
+@require_auth
+@require_role("cafe_owner")
+def cafe_only():
+    return {
+        "message": "Welcome cafe owner",
+        "user_id": g.user["id"],
+        "role": g.user["role"]
     }
 
 if __name__ == "__main__":

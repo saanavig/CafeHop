@@ -4,11 +4,19 @@ import os
 from flask import request, jsonify, g
 from functools import wraps
 from dotenv import load_dotenv
+from supabase import create_client
+
 
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 
+
+#call supabase 
+supabase = create_client(
+    os.getenv("SUPABASE_URL"),
+    os.getenv("SUPABASE_SERVICE_KEY")
+)
 
 def get_jwks():
     url = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
@@ -65,11 +73,42 @@ def require_auth(f):
         if not decoded:
             return jsonify({"error": "Invalid or expired token"}), 401
 
+        user_id = decoded.get("sub")
+        role = get_user_role(user_id)
+
+        if not role:
+            return jsonify({"error": "User profile not found"}), 403
+
         g.user = {
-            "id": decoded.get("sub"),
-            "email": decoded.get("email")
+            "id": user_id,
+            "email": decoded.get("email"),
+            "role": role
         }
 
         return f(*args, **kwargs)
 
     return decorated
+
+# user roles
+def get_user_role(user_id):
+    response = supabase.table("profiles") \
+        .select("role") \
+        .eq("id", user_id) \
+        .single() \
+        .execute()
+
+    if not response.data:
+        return None
+
+    return response.data["role"]
+
+# cafe owner role
+def require_role(required_role):
+    def wrapper(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            if g.user.get("role") != required_role:
+                return jsonify({"error": "Forbidden"}), 403
+            return f(*args, **kwargs)
+        return decorated
+    return wrapper
