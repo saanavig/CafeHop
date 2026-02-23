@@ -12,6 +12,7 @@ import Rewards from "./pages/Rewards";
 import History from "./pages/History";
 import Account from "./pages/Account";
 import Profile from "./pages/Profile";
+import CafeDashboard from "./pages/CafeDashboard";
 
 import Notifications from "./pages/Notifications";
 import PaymentMethods from "./pages/PaymentMethods";
@@ -75,6 +76,7 @@ const App = () => {
               <Route path="/account" element={<Account role={role} />} />
               <Route path="/preferences" element={<Preferences role={role} />} />
               <Route path="/profile" element={<Profile role={role} />} />
+              <Route path="/cafedashboard" element={<CafeDashboard />} />
 
               {/* Account sub-pages */}
               <Route path="/notifications" element={<Notifications role={role} />} />

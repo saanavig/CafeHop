@@ -1,7 +1,6 @@
 import { Home, Compass, Gift, Settings, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { NavLink } from "@/components/NavLink";
-import { cn } from "@/lib/utils";
 
 interface NavItem {
   icon: React.ElementType;
@@ -13,19 +12,19 @@ interface BottomNavProps {
   role?: "customer" | "cafe";
 }
 
-const allNavItems: NavItem[] = [
-  { icon: Home, label: "Home", path: "/" },
-  { icon: Compass, label: "Explore", path: "/explore" },
-  { icon: Gift, label: "Rewards", path: "/rewards" },
-  { icon: User, label: "Profile", path: "/profile" },
-  { icon: Settings, label: "Settings", path: "/settings" },
-];
-
 const BottomNav = ({ role = "customer" }: BottomNavProps) => {
-  const navItems =
-    role === "cafe"
-      ? allNavItems.filter((item) => item.label !== "Explore")
-      : allNavItems;
+  // Define nav items, adjusting "Home" path if role is cafe
+  const navItems: NavItem[] = [
+    {
+      icon: Home,
+      label: "Home",
+      path: role === "cafe" ? "/cafedashboard" : "/", // <-- redirect cafes to dashboard
+    },
+    { icon: Compass, label: "Explore", path: "/explore" },
+    { icon: Gift, label: "Rewards", path: "/rewards" },
+    { icon: User, label: "Profile", path: "/profile" },
+    { icon: Settings, label: "Settings", path: "/settings" },
+  ].filter((item) => !(role === "cafe" && item.label === "Explore")); // remove Explore for cafes
 
   return (
     <motion.nav

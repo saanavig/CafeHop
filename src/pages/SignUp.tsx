@@ -9,6 +9,7 @@ const SignUp = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [username, setUsername] = useState(""); 
 
   const handleContinue = () => {
     if (password !== confirmPassword) {
@@ -38,6 +39,18 @@ const SignUp = () => {
             placeholder="you@email.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+
+        {/* Username */}
+        <div className="space-y-1">
+          <Label htmlFor="username">Username</Label>
+          <Input
+            id="username"
+            type="text"
+            placeholder="Your username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
           />
         </div>
 
