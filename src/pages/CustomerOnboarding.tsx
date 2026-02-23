@@ -35,7 +35,7 @@ const preferenceCategories = [
   },
   {
     title: "Work-Friendly",
-    items: [
+    items: [ 
       { label: "WiFi", icon: Wifi },
       { label: "Power outlets", icon: Plug },
       { label: "Study-friendly", icon: Laptop },

@@ -18,8 +18,8 @@ import Favorites from "./pages/Favorites";
 import Settings from "./pages/Settings";
 import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
+import Preferences from "./pages/Preferences";
 
-// 🌱 Auth / onboarding
 import Splash from "./pages/Splash";
 import Login from "./pages/Login";
 import Signup from "./pages/SignUp";
@@ -28,7 +28,6 @@ import OnboardingRole from "./pages/OnboardingRole";
 import CustomerOnboarding from "./pages/CustomerOnboarding";
 import CafeOnboarding from "./pages/CafeOnboarding";
 
-// 🌙 Dark Mode Provider
 import { ModeProvider } from "./context/Mode";
 
 const queryClient = new QueryClient();
@@ -73,6 +72,7 @@ const App = () => {
               <Route path="/rewards" element={<Rewards role={role} />} />
               <Route path="/history" element={<History role={role} />} />
               <Route path="/account" element={<Account role={role} />} />
+              <Route path="/preferences" element={<Preferences role={role} />} />
 
               {/* Account sub-pages */}
               <Route path="/notifications" element={<Notifications role={role} />} />

@@ -1,419 +1,151 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  ArrowLeft,
-  Bell,
-  Lock,
-  User,
-  Moon,
-  LogOut,
+import BottomNav from "@/components/BottomNav";
+import { Button } from "@/components/ui/button";
+import { 
+  User, 
+  Settings, 
+  Bell, 
+  CreditCard, 
+  HelpCircle, 
+  LogOut, 
   ChevronRight,
-  X,
-  Camera,
+  Star,
+  Coffee,
+  Store,
+  History
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
-import { useMode } from "@/context/Mode";
 
-type SettingsProps = {
+type AccountProps = {
   role: "customer" | "cafe";
 };
 
-const Settings = ({ role }: SettingsProps) => {
+const Account = ({ role }: AccountProps) => {
   const navigate = useNavigate();
-  const { darkMode, toggleDarkMode } = useMode();
 
-  const [showEditProfile, setShowEditProfile] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
-  const [showEditCafePreferences, setShowEditCafePreferences] = useState(false);
-
-  const [profile, setProfile] = useState({
-    name: "Cafe Hopper",
-    email: "cafe.hopper@email.com",
-    profilePic: null as File | null,
-  });
-
-  const [cafeInfo, setCafeInfo] = useState({
-    about: "We serve the best coffee in town!",
-    timings: "Mon-Sun 8am-8pm",
-    tags: ["Cozy", "Specialty Coffee"],
-    preferences: {
-      wifi: true,
-      quiet: false,
-      outdoorSeating: true,
-      liveMusic: false,
-      petFriendly: false,
-      veganOptions: true,
-      glutenFree: false,
-      specialtyCoffee: true,
-      groupSeating: false,
-      wheelchairAccessible: true,
-      liveSports: false,
-      boardGames: true,
-    },
-  });
-
-  const [privacy, setPrivacy] = useState({
-    privateAccount: false,
-    twoFactorAuth: false,
-    emailNotifications: true,
-  });
-
-  const cafePreferenceCategories = [
-    {
-      title: "Ambience",
-      options: [
-        { key: "wifi", label: "Free WiFi" },
-        { key: "quiet", label: "Quiet Atmosphere" },
-        { key: "outdoorSeating", label: "Outdoor Seating" },
-        { key: "liveMusic", label: "Live Music" },
-        { key: "petFriendly", label: "Pet-Friendly" },
-      ],
-    },
-    {
-      title: "Food & Drink",
-      options: [
-        { key: "veganOptions", label: "Vegan Options" },
-        { key: "glutenFree", label: "Gluten-Free Options" },
-        { key: "specialtyCoffee", label: "Specialty Coffee" },
-      ],
-    },
-    {
-      title: "Seating & Accessibility",
-      options: [
-        { key: "groupSeating", label: "Group Seating" },
-        { key: "wheelchairAccessible", label: "Wheelchair Accessible" },
-      ],
-    },
-    {
-      title: "Other",
-      options: [
-        { key: "liveSports", label: "Live Sports" },
-        { key: "boardGames", label: "Board Games" },
-      ],
-    },
+  // Menu items differ slightly depending on role
+  const customerMenu = [
+    { icon: Bell, label: "Notifications", desc: "Manage alerts", path: "/notifications" },
+    { icon: History, label: "Visit History", desc: "Your past café visits", path: "/history" },
+    // { icon: CreditCard, label: "Payment Methods", desc: "Cards & wallets", path: "/payments" },
+    { icon: Star, label: "Favorites", desc: "Saved cafés", path: "/favorites" },
+    { icon: Settings, label: "Account Settings", desc: "App preferences", path: "/preferences" },
+    { icon: HelpCircle, label: "Help & Support", desc: "FAQs & contact", path: "/help" },
   ];
 
+  const cafeMenu = [
+    { icon: Bell, label: "Customer Visits", desc: "Track visits & points", path: "/notifications" },
+    { icon: CreditCard, label: "POS Systems", desc: "Manage cafe transactions", path: "/payments" },
+    { icon: Settings, label: "Cafe Settings", desc: "Update info & preferences", path: "/preferences" },
+    { icon: HelpCircle, label: "Support", desc: "FAQs & contact", path: "/help" },
+  ];
+
+  const menuItems = role === "customer" ? customerMenu : cafeMenu;
+
   return (
-    <div className="min-h-screen bg-background px-4">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <header className="flex items-center gap-3 py-4">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 rounded-xl hover:bg-muted transition"
+      <header className="bg-hero-gradient px-4 pt-8 pb-8">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-lg mx-auto text-center"
         >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <h1 className="text-xl font-semibold">Settings</h1>
+          {/* Profile Avatar */}
+          <motion.div
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.1 }}
+            className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-caramel to-primary flex items-center justify-center shadow-elevated"
+          >
+            {role === "customer" ? (
+              <User className="h-10 w-10 text-primary-foreground" />
+            ) : (
+              <Store className="h-10 w-10 text-primary-foreground" />
+            )}
+          </motion.div>
+          
+          <h1 className="font-display text-2xl font-bold mb-1">
+            {role === "customer" ? "Welcome back!" : "Cafe Dashboard"}
+          </h1>
+          <p className="text-sm text-muted-foreground mb-2">
+            {role === "customer" ? "cafe.hopper@email.com" : "The Roastery"}
+          </p>
+          
+          <div className="inline-flex items-center gap-2 bg-card/80 backdrop-blur-sm px-4 py-2 rounded-full border border-border">
+            {role === "customer" ? (
+              <>
+                <Coffee className="h-4 w-4 text-caramel" />
+                <span className="text-sm font-medium">Explorer Status</span>
+                <span className="text-sm text-caramel font-bold">1,250 pts</span>
+              </>
+            ) : (
+              <>
+                <Store className="h-4 w-4 text-caramel" />
+                <span className="text-sm font-medium">Cafe Tier</span>
+                <span className="text-sm text-caramel font-bold">Gold</span>
+              </>
+            )}
+          </div>
+        </motion.div>
       </header>
 
-      <main className="max-w-lg mx-auto space-y-6">
-        {/* Preferences */}
-        <section>
-          <p className="text-sm font-medium mb-2">Preferences</p>
+      {/* Content */}
+      <main className="px-4 max-w-lg mx-auto -mt-2">
+        {/* Menu */}
+        <section className="py-4">
           <div className="bg-card rounded-2xl border border-border overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <div className="flex items-center gap-3">
-                <Bell className="h-5 w-5 text-caramel" />
-                <div>
-                  <p className="font-medium">Notifications</p>
-                  <p className="text-xs text-muted-foreground">
-                    Rewards, visits, and updates
-                  </p>
+            {menuItems.map((item, index) => (
+              <motion.button
+                key={item.label}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors border-b border-border last:border-b-0"
+                onClick={() => navigate(item.path)}
+              >
+                <div className="p-2 bg-muted rounded-xl">
+                  <item.icon className="h-5 w-5 text-caramel" />
                 </div>
-              </div>
-              <Switch />
-            </div>
-
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <div className="flex items-center gap-3">
-                <Moon className="h-5 w-5 text-caramel" />
-                <div>
-                  <p className="font-medium">Dark Mode</p>
-                  <p className="text-xs text-muted-foreground">System appearance</p>
+                <div className="flex-1 text-left">
+                  <p className="font-medium">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
                 </div>
-              </div>
-              <Switch checked={darkMode} onCheckedChange={toggleDarkMode} />
-            </div>
-
-            {/* Cafe preferences for both roles */}
-            <button
-              className="w-full flex items-center justify-between p-4 hover:bg-muted transition"
-              onClick={() => setShowEditCafePreferences(true)}
-            >
-              <div className="flex items-center gap-3">
-                <Bell className="h-5 w-5 text-caramel" />
-                <p className="font-medium">
-                  {role === "cafe" ? "Edit Cafe Info & Preferences" : "View Cafe Preferences"}
-                </p>
-              </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </button>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </motion.button>
+            ))}
           </div>
         </section>
 
-        {/* Account */}
-        <section>
-          <p className="text-sm font-medium mb-2">Account</p>
-          <div className="bg-card rounded-2xl border border-border overflow-hidden">
-            <button
-              className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-muted transition"
-              onClick={() => setShowEditProfile(true)}
-            >
-              <div className="flex items-center gap-3">
-                <User className="h-5 w-5 text-caramel" />
-                <p className="font-medium">Edit Profile</p>
-              </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </button>
-
-            <button
-              className="w-full flex items-center justify-between p-4 hover:bg-muted transition"
-              onClick={() => setShowPrivacy(true)}
-            >
-              <div className="flex items-center gap-3">
-                <Lock className="h-5 w-5 text-caramel" />
-                <p className="font-medium">Privacy & Security</p>
-              </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </button>
-          </div>
-        </section>
-
-        {/* Sign out */}
-        <section>
+        {/* Logout */}
+        <section className="py-4">
           <Button
             variant="outline"
-            className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive flex items-center gap-2 justify-center"
+            className="w-full justify-center gap-2 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => {
+              // later: clear auth token / user state
+              navigate("/splash");
+            }}
           >
             <LogOut className="h-4 w-4" />
             Sign Out
           </Button>
         </section>
 
+        {/* App Info */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="text-center text-xs text-muted-foreground"
+          transition={{ delay: 0.5 }}
+          className="text-center text-xs text-muted-foreground py-4"
         >
-          CafeHop v1.0.0
+          CafeHop v1.0.0 • Made with ☕
         </motion.p>
       </main>
 
-      {/* Edit Profile Modal */}
-      {showEditProfile && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card p-6 rounded-2xl w-full max-w-sm relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setShowEditProfile(false)}
-              className="absolute top-3 right-3 p-1 rounded-full hover:bg-muted transition"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <h2 className="font-semibold text-lg mb-4">
-              {role === "cafe" ? "Edit Cafe Profile" : "Edit Profile"}
-            </h2>
-
-            {/* Profile picture */}
-            <div className="relative w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-caramel to-primary flex items-center justify-center shadow-elevated cursor-pointer">
-              {profile.profilePic ? (
-                <img
-                  src={URL.createObjectURL(profile.profilePic)}
-                  alt="Profile"
-                  className="w-full h-full rounded-full object-cover"
-                />
-              ) : (
-                <User className="h-12 w-12 text-primary-foreground" />
-              )}
-              <label
-                htmlFor="profilePicInput"
-                className="absolute bottom-0 right-0 h-6 w-6 bg-caramel rounded-full flex items-center justify-center cursor-pointer"
-              >
-                <Camera className="h-4 w-4 text-white" />
-              </label>
-              <input
-                id="profilePicInput"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) =>
-                  e.target.files?.[0] &&
-                  setProfile({ ...profile, profilePic: e.target.files[0] })
-                }
-              />
-            </div>
-
-            {/* Name & Email */}
-            <input
-              type="text"
-              className="w-full mb-2 p-2 border rounded"
-              placeholder="Name"
-              value={profile.name}
-              onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-            />
-            <input
-              type="email"
-              className="w-full mb-2 p-2 border rounded"
-              placeholder="Email"
-              value={profile.email}
-              onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-            />
-
-            {role === "cafe" && (
-              <>
-                <textarea
-                  className="w-full mb-2 p-2 border rounded"
-                  placeholder="About your cafe"
-                  value={cafeInfo.about}
-                  onChange={(e) =>
-                    setCafeInfo({ ...cafeInfo, about: e.target.value })
-                  }
-                  rows={3}
-                />
-                <input
-                  className="w-full mb-2 p-2 border rounded"
-                  placeholder="Timings"
-                  value={cafeInfo.timings}
-                  onChange={(e) =>
-                    setCafeInfo({ ...cafeInfo, timings: e.target.value })
-                  }
-                />
-                <input
-                  className="w-full mb-2 p-2 border rounded"
-                  placeholder="Tags (comma-separated)"
-                  value={cafeInfo.tags.join(", ")}
-                  onChange={(e) =>
-                    setCafeInfo({
-                      ...cafeInfo,
-                      tags: e.target.value.split(",").map((t) => t.trim()),
-                    })
-                  }
-                />
-              </>
-            )}
-
-            <Button
-              className="w-full mt-4"
-              onClick={() => setShowEditProfile(false)}
-            >
-              Save
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Cafe Preferences Modal */}
-      {showEditCafePreferences && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-card p-6 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto relative">
-            <button
-              onClick={() => setShowEditCafePreferences(false)}
-              className="absolute top-3 right-3 p-1 rounded-full hover:bg-muted transition"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <h2 className="font-semibold text-lg mb-4">
-              {role === "cafe"
-                ? "Edit Cafe Preferences"
-                : "Cafe Preferences"}
-            </h2>
-
-            <div className="space-y-4">
-              {cafePreferenceCategories.map((cat) => (
-                <div key={cat.title}>
-                  <p className="font-semibold text-sm mb-2">{cat.title}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {cat.options.map((opt) => (
-                      <button
-                        key={opt.key}
-                        onClick={() =>
-                          setCafeInfo({
-                            ...cafeInfo,
-                            preferences: {
-                              ...cafeInfo.preferences,
-                              [opt.key]: !cafeInfo.preferences[opt.key],
-                            },
-                          })
-                        }
-                        className={`px-3 py-1 rounded-full text-sm border ${
-                          cafeInfo.preferences[opt.key]
-                            ? "bg-caramel text-white border-caramel"
-                            : "bg-muted text-muted-foreground border-border"
-                        } transition`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <Button
-              className="w-full mt-4"
-              onClick={() => setShowEditCafePreferences(false)}
-            >
-              Save
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Privacy & Security Modal */}
-      {showPrivacy && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card p-6 rounded-2xl w-full max-w-sm relative">
-            <button
-              onClick={() => setShowPrivacy(false)}
-              className="absolute top-3 right-3 p-1 rounded-full hover:bg-muted transition"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <h2 className="font-semibold text-lg mb-4">Privacy & Security</h2>
-
-            <div className="space-y-2">
-              <label className="flex items-center justify-between">
-                <span>Private Account</span>
-                <Switch
-                  checked={privacy.privateAccount}
-                  onCheckedChange={(val) =>
-                    setPrivacy({ ...privacy, privateAccount: val })
-                  }
-                />
-              </label>
-              <label className="flex items-center justify-between">
-                <span>Two-Factor Auth</span>
-                <Switch
-                  checked={privacy.twoFactorAuth}
-                  onCheckedChange={(val) =>
-                    setPrivacy({ ...privacy, twoFactorAuth: val })
-                  }
-                />
-              </label>
-              <label className="flex items-center justify-between">
-                <span>Email Notifications</span>
-                <Switch
-                  checked={privacy.emailNotifications}
-                  onCheckedChange={(val) =>
-                    setPrivacy({ ...privacy, emailNotifications: val })
-                  }
-                />
-              </label>
-            </div>
-
-            <Button
-              className="w-full mt-4"
-              onClick={() => setShowPrivacy(false)}
-            >
-              Save
-            </Button>
-          </div>
-        </div>
-      )}
+      <BottomNav role={role} />
     </div>
   );
 };
 
-export default Settings;
+export default Account;

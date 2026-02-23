@@ -87,51 +87,53 @@ const Notifications = ({ role }: NotificationsProps) => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="flex gap-3 p-4 bg-card rounded-2xl border border-border"
+                  className="flex items-start gap-4 p-4 bg-card rounded-2xl border border-border hover:shadow-md transition-shadow"
                 >
-                  <div className="p-2 rounded-xl bg-muted">
-                    <notif.icon className="h-5 w-5 text-caramel" />
+                  <div className="flex-shrink-0 p-3 rounded-xl bg-muted flex items-center justify-center">
+                    <notif.icon className="h-6 w-6 text-caramel" />
                   </div>
 
                   <div className="flex-1">
-                    <p className="font-medium">{notif.title}</p>
-                    <p className="text-sm text-muted-foreground">{notif.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{notif.time}</p>
+                    <div className="flex justify-between items-start">
+                      <p className="font-medium text-foreground">{notif.title}</p>
+                      <span className="text-xs text-muted-foreground">{notif.time}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">{notif.message}</p>
                   </div>
                 </motion.div>
               ))}
             </div>
           )
+        ) : cafeVisits.length === 0 ? (
+          <p className="text-center text-muted-foreground mt-12">
+            No recent customer visits
+          </p>
         ) : (
-          cafeVisits.length === 0 ? (
-            <p className="text-center text-muted-foreground mt-12">
-              No recent customer visits
-            </p>
-          ) : (
-            <div className="space-y-3 max-h-[70vh] overflow-y-auto pb-4">
-              {cafeVisits.map((visit, index) => (
-                <motion.div
-                  key={visit.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="flex gap-3 p-4 bg-card rounded-2xl border border-border"
-                >
-                  <div className="p-2 rounded-xl bg-muted">
-                    <Store className="h-5 w-5 text-caramel" />
-                  </div>
+          <div className="space-y-3 max-h-[70vh] overflow-y-auto pb-4">
+            {cafeVisits.map((visit, index) => (
+              <motion.div
+                key={visit.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="flex items-center gap-4 p-4 bg-card rounded-2xl border border-border hover:shadow-md transition-shadow"
+              >
+                <div className="flex-shrink-0 p-3 rounded-xl bg-muted flex items-center justify-center">
+                  <Store className="h-6 w-6 text-caramel" />
+                </div>
 
-                  <div className="flex-1">
-                    <p className="font-medium">{visit.customer} visited</p>
-                    <p className="text-sm text-muted-foreground">
-                      {visit.cafe} • +{visit.points} points
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">{visit.time}</p>
+                <div className="flex-1">
+                  <div className="flex justify-between items-center">
+                    <p className="font-medium text-foreground">{visit.customer} visited</p>
+                    <span className="text-xs text-muted-foreground">{visit.time}</span>
                   </div>
-                </motion.div>
-              ))}
-            </div>
-          )
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {visit.cafe} • <span className="font-semibold text-caramel">+{visit.points} pts</span>
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
         )}
       </main>
     </div>

@@ -340,7 +340,7 @@ const Explore = ({ role }: ExploreProps) => {
       </div>
     )}
 
-      <BottomNav role={role} />
+      <BottomNav role={role} />x
     </div>
   );
 };

@@ -11,7 +11,8 @@ import {
   ChevronRight,
   Star,
   Coffee,
-  Store
+  Store,
+  History
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -25,6 +26,7 @@ const Account = ({ role }: AccountProps) => {
   // Menu items differ slightly depending on role
   const customerMenu = [
     { icon: Bell, label: "Notifications", desc: "Manage alerts", path: "/notifications" },
+    { icon: History, label: "Visit History", desc: "Your past café visits", path: "/history" },
     // { icon: CreditCard, label: "Payment Methods", desc: "Cards & wallets", path: "/payments" },
     { icon: Star, label: "Favorites", desc: "Saved cafés", path: "/favorites" },
     { icon: Settings, label: "Settings", desc: "App preferences", path: "/settings" },

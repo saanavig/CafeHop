@@ -35,8 +35,9 @@ const PaymentMethods = ({ role }: PaymentMethodsProps) => {
 
   // Cafe state (POS systems)
   const [posSystems, setPosSystems] = useState<POS[]>([
-    { id: 1, name: "Square", connected: true },
+    { id: 1, name: "Square", connected: false },
     { id: 2, name: "Clover", connected: false },
+    { id: 3, name: "Manual", connected: true },
   ]);
 
   // Cafe modals

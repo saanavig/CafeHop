@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import BottomNav from "@/components/BottomNav";
-import { Clock, Coffee, Gift, X, User } from "lucide-react";
+import { ArrowLeft, Clock, Coffee, Gift, X, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -9,8 +9,8 @@ import cafe1 from "@/assets/cafe-1.jpg";
 import cafe2 from "@/assets/cafe-2.jpg";
 import cafe3 from "@/assets/cafe-3.jpg";
 import latteArt from "@/assets/latte-art.jpg";
+import { useNavigate } from "react-router-dom";
 
-// CUSTOMER DATA (unchanged)
 const customerVisitHistory = [
   { id: 1, cafe: "The Roastery", image: cafe1, date: "Today, 2:30 PM", pointsEarned: 50, spent: "$8.50" },
   { id: 2, cafe: "Bean & Leaf", image: cafe2, date: "Yesterday, 10:15 AM", pointsEarned: 45, spent: "$6.75" },
@@ -26,7 +26,6 @@ const customerRewardsHistory = [
   { id: 4, title: "Cappuccino Discount", cafe: "Brew Culture", points: 200, image: cafe3 },
 ];
 
-// CAFE DATA (new)
 const cafeVisitHistory = [
   { id: 1, customer: "Alice", date: "Today, 2:30 PM", spent: "$8.50", pointsRedeemed: 50 },
   { id: 2, customer: "Bob", date: "Yesterday, 10:15 AM", spent: "$6.75", pointsRedeemed: 45 },
@@ -49,6 +48,7 @@ type HistoryProps = {
 const History = ({ role }: HistoryProps) => {
   const [showModal, setShowModal] = useState<null | "visits" | "rewards">(null);
   const [search, setSearch] = useState("");
+  const navigate = useNavigate();
 
   // Select data based on role
   const visitHistory = role === "cafe" ? cafeVisitHistory : customerVisitHistory;
@@ -83,20 +83,16 @@ const History = ({ role }: HistoryProps) => {
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <header className="bg-hero-gradient px-4 pt-8 pb-6">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="max-w-lg mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2.5 bg-caramel/20 rounded-xl">
-              <Clock className="h-6 w-6 text-caramel" />
-            </div>
-            <div>
-              <h1 className="font-display text-2xl font-bold">History</h1>
-              <p className="text-sm text-muted-foreground">
-                {role === "cafe" ? "Customer activity at your café" : "Your café activity"}
-              </p>
-            </div>
-          </div>
-        </motion.div>
+      <header className="flex items-center gap-3 py-4 px-4">
+        <button
+          onClick={() => navigate(-1)}
+          className="p-2 rounded-xl hover:bg-muted transition"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <h1 className="text-xl font-semibold">
+          {role === "customer" ? "History" : "Customer Visits"}
+        </h1>
       </header>
 
       <main className="px-4 max-w-lg mx-auto">

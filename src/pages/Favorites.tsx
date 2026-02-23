@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 const Favorites = () => {
   const navigate = useNavigate();
 
-  // Placeholder favorite cafes
   const favoriteCafes = [
     { name: "Daily Grind", location: "Brooklyn, NY" },
     { name: "Bean There", location: "Queens, NY" },
@@ -25,28 +24,33 @@ const Favorites = () => {
         <h1 className="text-xl font-semibold">Favorites</h1>
       </header>
 
+      {/* Favorites List */}
       <main className="max-w-lg mx-auto space-y-6">
         <section>
           <p className="text-sm font-medium mb-2">Your Favorite Cafés</p>
 
-          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="space-y-2">
             {favoriteCafes.map((cafe, idx) => (
-              <div
+              <motion.div
                 key={idx}
-                className="flex items-center justify-between p-4 border-b border-border last:border-b-0 hover:bg-muted transition"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                className="flex items-center gap-4 p-4 bg-card rounded-2xl border border-border hover:shadow-md transition-shadow"
               >
-                <div className="flex items-center gap-3">
-                  <Star className="h-5 w-5 text-caramel" />
-                  <div>
-                    <p className="font-medium">{cafe.name}</p>
-                    <p className="text-xs text-muted-foreground">{cafe.location}</p>
-                  </div>
+                <div className="flex-shrink-0 p-3 bg-muted rounded-xl flex items-center justify-center">
+                  <Star className="h-6 w-6 text-caramel" />
                 </div>
-              </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground truncate">{cafe.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{cafe.location}</p>
+                </div>
+              </motion.div>
             ))}
           </div>
         </section>
 
+        {/* Footer */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

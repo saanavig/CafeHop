@@ -1,4 +1,4 @@
-import { Home, Compass, Gift, Clock, User } from "lucide-react";
+import { Home, Compass, Gift, Settings, User } from "lucide-react";
 import { motion } from "framer-motion";
 import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
@@ -17,8 +17,8 @@ const allNavItems: NavItem[] = [
   { icon: Home, label: "Home", path: "/" },
   { icon: Compass, label: "Explore", path: "/explore" },
   { icon: Gift, label: "Rewards", path: "/rewards" },
-  { icon: Clock, label: "History", path: "/history" },
-  { icon: User, label: "Account", path: "/account" },
+  { icon: User, label: "Profile", path: "/profile" },
+  { icon: Settings, label: "Settings", path: "/settings" },
 ];
 
 const BottomNav = ({ role = "customer" }: BottomNavProps) => {
