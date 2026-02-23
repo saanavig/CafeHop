@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+
 type AccountProps = {
   role: "customer" | "cafe";
 };
@@ -28,7 +29,7 @@ const Account = ({ role }: AccountProps) => {
     { icon: Bell, label: "Notifications", desc: "Manage alerts", path: "/notifications" },
     { icon: History, label: "Visit History", desc: "Your past café visits", path: "/history" },
     // { icon: CreditCard, label: "Payment Methods", desc: "Cards & wallets", path: "/payments" },
-    { icon: Star, label: "Favorites", desc: "Saved cafés", path: "/favorites" },
+    // { icon: Star, label: "Favorites", desc: "Saved cafés", path: "/favorites" },
     { icon: Settings, label: "Account Settings", desc: "App preferences", path: "/preferences" },
     { icon: HelpCircle, label: "Help & Support", desc: "FAQs & contact", path: "/help" },
   ];

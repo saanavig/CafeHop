@@ -11,6 +11,7 @@ import Explore from "./pages/Explore";
 import Rewards from "./pages/Rewards";
 import History from "./pages/History";
 import Account from "./pages/Account";
+import Profile from "./pages/Profile";
 
 import Notifications from "./pages/Notifications";
 import PaymentMethods from "./pages/PaymentMethods";
@@ -73,6 +74,7 @@ const App = () => {
               <Route path="/history" element={<History role={role} />} />
               <Route path="/account" element={<Account role={role} />} />
               <Route path="/preferences" element={<Preferences role={role} />} />
+              <Route path="/profile" element={<Profile role={role} />} />
 
               {/* Account sub-pages */}
               <Route path="/notifications" element={<Notifications role={role} />} />
