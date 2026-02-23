@@ -64,6 +64,20 @@ def submit_purchase():
         if abs(now - receipt_time) > timedelta(minutes=60):
             return jsonify({"error": "Receipt older than 60 minutes"}), 400
 
+        # max 2 reciepts per hour per user
+        one_hour_ago = now - timedelta(hours=1)
+
+        rate_limit_response = supabase.table("purchases") \
+            .select("id") \
+            .eq("user_id", user_id) \
+            .eq("status", "approved") \
+            .gte("created_at", one_hour_ago.isoformat()) \
+            .execute()
+
+        if len(rate_limit_response.data) >= 2:
+            return jsonify({"error": "Rate limit exceeded (2 receipts per hour)"}), 400
+
+
         supabase.table("purchases").insert({
             "user_id": user_id,
             "cafe_id": cafe_id,
@@ -96,3 +110,61 @@ def submit_purchase():
     except Exception as e:
         print("Purchase error:", str(e))
         return jsonify({"error": "Submission failed"}), 500
+
+# redeem points
+@purchase_bp.route("/redeem", methods=["POST"])
+@require_auth
+def redeem_points():
+    data = request.get_json()
+
+    user_id = g.user["id"]
+    cafe_id = data["cafe_id"]
+    points_to_redeem = int(data["points"])
+
+    try:
+        # check min points
+        if points_to_redeem <= 0:
+            return jsonify({"error": "Invalid redemption amount"}), 400
+
+        # chec user balance
+        balance_response = supabase.table("user_points") \
+            .select("total_points") \
+            .eq("user_id", user_id) \
+            .execute()
+
+        if not balance_response.data:
+            return jsonify({"error": "User points record not found"}), 400
+
+        current_points = balance_response.data[0]["total_points"]
+
+        if current_points < points_to_redeem:
+            return jsonify({"error": "Insufficient points"}), 400
+
+        # check user has visited this cafe at least once
+        visit_response = supabase.table("purchases") \
+            .select("id") \
+            .eq("user_id", user_id) \
+            .eq("cafe_id", cafe_id) \
+            .eq("status", "approved") \
+            .limit(1) \
+            .execute()
+
+        if not visit_response.data:
+            return jsonify({"error": "Must visit cafe before redeeming"}), 400
+
+        # remove redeemed points
+        new_balance = current_points - points_to_redeem
+
+        supabase.table("user_points").update({
+            "total_points": new_balance
+        }).eq("user_id", user_id).execute()
+
+        return jsonify({
+            "message": "Redemption successful",
+            "points_redeemed": points_to_redeem,
+            "remaining_points": new_balance
+        }), 200
+
+    except Exception as e:
+        print("Redemption error:", str(e))
+        return jsonify({"error": "Redemption failed"}), 500
