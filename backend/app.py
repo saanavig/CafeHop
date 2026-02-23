@@ -5,14 +5,16 @@ from flask import jsonify, request
 from database.supabase_client import supabase
 from database.auth_middleware import require_auth
 from routes.auth import require_auth, require_role
+from routes.purchases import purchase_bp
 from routes.cafes import cafe_bp
 from flask import g
 
 app = Flask(__name__)
 CORS(app)
 
-# add cafe blueprint
+# add blueprints
 app.register_blueprint(cafe_bp, url_prefix="/api")
+app.register_blueprint(purchase_bp, url_prefix="/api")
 
 #response headers
 def success(data=None, status=200):
