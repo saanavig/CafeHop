@@ -216,7 +216,7 @@ const Profile = ({ role }: ProfileProps) => {
               {profile.location}
             </div>
 
-            {!isCafe && (
+            {/*!isCafe && (
               <div className="flex items-center gap-3 mt-3 text-xs">
                 <div className="flex items-center gap-1 bg-muted px-3 py-1 rounded-full">
                   <Coffee className="h-3 w-3 text-caramel" />
@@ -227,7 +227,7 @@ const Profile = ({ role }: ProfileProps) => {
                   {profile.stats.streak} Day Streak
                 </div>
               </div>
-            )}
+            )*/}
           </div>
 
           {/* Buttons */}
