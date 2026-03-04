@@ -1,5 +1,5 @@
 from typing import Optional
-from config import supabase
+from database.supabase_client import supabase_anon as supabase
 
 def insert_purchase(
     *,
