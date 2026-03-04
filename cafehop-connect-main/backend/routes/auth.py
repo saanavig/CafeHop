@@ -4,19 +4,9 @@ import os
 from flask import request, jsonify, g
 from functools import wraps
 from dotenv import load_dotenv
-from supabase import create_client
+from database.supabase_client import supabase_anon as supabase
 
 
-load_dotenv()
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-
-
-#call supabase 
-supabase = create_client(
-    os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_SERVICE_KEY")
-)
 
 def get_jwks():
     url = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"

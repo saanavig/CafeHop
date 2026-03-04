@@ -1,7 +1,7 @@
 from typing import Optional
 from rapidfuzz import fuzz
-from config import supabase
 from utils.text_utils import normalize_address
+from database.supabase_client import supabase_anon as supabase
 
 def lookup_cafe_id(name: Optional[str], address: Optional[str]) -> Optional[str]:
     if not name:

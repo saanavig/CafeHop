@@ -1,76 +1,115 @@
 import json
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g as flask_g
 from flask_cors import CORS
 from pydantic import ValidationError
-
 from services.ocr_services import ocr_image
 from services.gemini_services import parse_purchase_from_ocr
 from services.cafe_matcher import lookup_cafe_id
 from services.purchase_repo import insert_purchase
 from services.receipt_validator import validate_receipt_submission
-from utils.auth_utils import get_user_id
-
+from database.auth_middleware import require_auth
+from routes.auth import require_role  
 
 app = Flask(__name__)
 CORS(app)
 
-@app.post("/api/receipt")
-def receipt_upload():
-    # 1) Auth
-    user_id = get_user_id()
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
+def success(data=None, status=200):
+    return jsonify({"success": True, "data": data}), status
 
-    # 2) Required: file
+def error(message, status=400, extra=None):
+    payload = {"success": False, "error": message}
+    if extra is not None:
+        payload["details"] = extra
+    return jsonify(payload), status
+
+@app.get("/")
+def home():
+    return "Testing CafeHop", 200
+
+@app.get("/protected")
+@require_auth
+def protected():
+    return jsonify({
+        "message": "Authenticated",
+        "user_id": flask_g.user["id"],
+        "role": flask_g.user["role"],
+    }), 200
+
+@app.get("/cafes")
+@require_auth
+@require_role("cafe_owner")
+def cafe_only():
+    return jsonify({
+        "message": "Welcome cafe owner",
+        "user_id": flask_g.user["id"],
+        "role": flask_g.user["role"],
+    }), 200
+
+
+@app.post("/api/receipt")
+@require_auth
+def receipt_upload():
+    # 1) Auth (middleware sets flask_g.user)
+    user_id = flask_g.user["id"]
+
+    # 2) Required file
     if "file" not in request.files:
-        return jsonify({"error": "Missing file field 'file'"}), 400
+        return error("Missing file field 'file'", 400)
 
     file = request.files["file"]
     if not file or file.filename == "":
-        return jsonify({"error": "Empty filename"}), 400
+        return error("Empty filename", 400)
 
-    # 3) Required: user location for 2-mile validation
-    lat_str = 40.743
-    lon_str = -73.985
-    if lat_str is None or lon_str is None:
-        return jsonify({"error": "Missing latitude/longitude"}), 400
+    lat_str = "40.743"
+    lon_str = "-74.032"
 
     try:
         latitude = float(lat_str)
         longitude = float(lon_str)
     except ValueError:
-        return jsonify({"error": "latitude/longitude must be numbers"}), 400
+        return error("latitude/longitude must be numbers", 400)
 
     # 4) OCR
     ocr_text = ocr_image(file.stream)
     if not ocr_text:
-        return jsonify({"error": "No text found"}), 422
+        return error("No text found", 422)
 
-    # 5) Gemini parse (with safety)
+    # 5) Gemini parse
     try:
-        g, raw = parse_purchase_from_ocr(ocr_text)
+        gemini_purchase, raw = parse_purchase_from_ocr(ocr_text)
     except json.JSONDecodeError:
-        return jsonify({"error": "Gemini returned non-JSON"}), 500
+        return error("Gemini returned non-JSON", 500, extra={"raw": raw if "raw" in locals() else None})
     except ValidationError as ve:
-        return jsonify({"error": "Gemini schema validation failed", "details": ve.errors()}), 422
+        return error("Gemini schema validation failed", 422, extra=ve.errors())
 
-    if g.amount is None:
-        return jsonify({
-            "error": "Could not extract total amount from receipt",
-            "ocrText": ocr_text,
-            "gemini_raw": raw
-        }), 422
+    if gemini_purchase.amount is None:
+        return error(
+            "Could not extract total amount from receipt",
+            422,
+            extra={"ocrText": ocr_text, "gemini_raw": raw},
+        )
 
-    # 6) Cafe match (name + address)
-    cafe_id = lookup_cafe_id(g.merchant_name, g.merchant_address)
+    # 6) Cafe match
+    cafe_id = lookup_cafe_id(gemini_purchase.merchant_name, gemini_purchase.merchant_address)
     if not cafe_id:
-        return jsonify({"error": "Could not match cafe", "merchant_name": g.merchant_name}), 422
+        return error(
+            "Could not match cafe",
+            422,
+            extra={
+                "merchant_name": gemini_purchase.merchant_name,
+                "merchant_address": gemini_purchase.merchant_address,
+            },
+        )
 
-    # 7) Required fields for DB + validation
-    submission_token = g.receipt_number 
-    receipt_timestamp = g.receipt_timestamp  # must exist for "printed within last hour" rule
+    submission_token = gemini_purchase.receipt_number
+    receipt_timestamp = gemini_purchase.receipt_timestamp 
 
-    # 8) Validate receipt rules BEFORE insert
+    if not submission_token:
+        return error("Missing receipt_number (needed as submission_token)", 422)
+
+    if not receipt_timestamp:
+        return error("Missing receipt_timestamp (needed for time-window validation)", 422)
+
     validation = validate_receipt_submission(
         user_id=user_id,
         cafe_id=cafe_id,
@@ -80,21 +119,16 @@ def receipt_upload():
     )
 
     if not validation.ok:
-        return jsonify({
-            "error": "Invalid receipt",
-            "reason": validation.reason,
-            "details": validation.details,
-        }), 422
+        return error(
+            "Invalid receipt",
+            422,
+            extra={"reason": validation.reason, "details": validation.details},
+        )
 
-    # If receipt timestamp is missing, you can either reject (current behavior) or fallback to now_iso()
-    # Here we set it after validation so DB insert always has a value.
-    receipt_timestamp = receipt_timestamp
-
-    # 9) Insert
     result, purchase_row = insert_purchase(
         user_id=user_id,
         cafe_id=cafe_id,
-        amount=g.amount,
+        amount=gemini_purchase.amount,
         status="Approved",
         latitude=latitude,
         longitude=longitude,
@@ -104,12 +138,12 @@ def receipt_upload():
 
     saved = result.data[0] if getattr(result, "data", None) else None
 
-    return jsonify({
+    return success({
         "ocrText": ocr_text,
-        "gemini": g.model_dump(),
+        "gemini": gemini_purchase.model_dump(),
         "purchase_insert": purchase_row,
         "saved": saved,
-    }), 200
+    }, status=200)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=3001, debug=True)
