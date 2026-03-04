@@ -9,6 +9,7 @@ import Rewards from "./pages/Rewards";
 import History from "./pages/History";
 import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
+import OCRTest from "./ocr/OCRTest";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/history" element={<History />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/ocr-test" element={<OCRTest />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
