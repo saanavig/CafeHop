@@ -8,7 +8,10 @@ from services.cafe_matcher import lookup_cafe_id
 from services.purchase_repo import insert_purchase
 from services.receipt_validator import validate_receipt_submission
 from database.auth_middleware import require_auth
-from routes.auth import require_role  
+from routes.auth import require_role
+from routes.tags import spot_bp
+from routes.preferences import preferences_bp
+  
 
 app = Flask(__name__)
 CORS(app)
@@ -35,6 +38,8 @@ def protected():
         "role": flask_g.user["role"],
     }), 200
 
+app.register_blueprint(spot_bp)
+app.register_blueprint(preferences_bp)
 @app.get("/cafes")
 @require_auth
 @require_role("cafe_owner")
@@ -144,6 +149,7 @@ def receipt_upload():
         "purchase_insert": purchase_row,
         "saved": saved,
     }, status=200)
+print(app.url_map)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=3001, debug=True)
