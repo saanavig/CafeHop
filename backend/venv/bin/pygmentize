@@ -1,5 +1,5 @@
 #!/bin/sh
-'''exec' "/Users/saanavigoyal/Desktop/Spring 2026 Classes/CSc 59866/CafeHop/backend/venv/bin/python" "$0" "$@"
+'''exec' "/Users/saanavigoyal/Desktop/Spring 2026 Classes/CSc 59866/CafeHop/cafehop-connect-main/backend/venv/bin/python" "$0" "$@"
 ' '''
 # -*- coding: utf-8 -*-
 import re

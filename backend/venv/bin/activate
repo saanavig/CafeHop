@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/Users/saanavigoyal/Desktop/Spring 2026 Classes/CSc 59866/CafeHop/backend/venv"
+VIRTUAL_ENV="/Users/saanavigoyal/Desktop/Spring 2026 Classes/CSc 59866/CafeHop/cafehop-connect-main/backend/venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
