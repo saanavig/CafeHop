@@ -3,13 +3,14 @@ from routes.auth import require_auth, require_role
 from supabase import create_client
 import os
 from dotenv import load_dotenv
+from database.supabase_client import supabase 
 
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+# SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
-supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+# supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 cafe_bp = Blueprint("cafe_bp", __name__)
 

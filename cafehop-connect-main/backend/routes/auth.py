@@ -4,7 +4,7 @@ import os
 from flask import request, jsonify, g
 from functools import wraps
 from dotenv import load_dotenv
-from database.supabase_client import supabase_anon as supabase
+from database.supabase_client import supabase
 
 
 

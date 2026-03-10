@@ -10,11 +10,19 @@ from services.receipt_validator import validate_receipt_submission
 from database.auth_middleware import require_auth
 from routes.auth import require_role
 from routes.tags import spot_bp
+from routes.videos import videos_bp
+from routes.purchases import purchase_bp
+from routes.cafes import cafe_bp
 from routes.preferences import preferences_bp
-  
 
 app = Flask(__name__)
 CORS(app)
+
+app.register_blueprint(cafe_bp, url_prefix="/api")
+app.register_blueprint(purchase_bp, url_prefix="/api")
+app.register_blueprint(spot_bp, url_prefix="/api")
+app.register_blueprint(videos_bp, url_prefix="/api")
+app.register_blueprint(preferences_bp, url_prefix="/api")
 
 def success(data=None, status=200):
     return jsonify({"success": True, "data": data}), status
@@ -38,8 +46,6 @@ def protected():
         "role": flask_g.user["role"],
     }), 200
 
-app.register_blueprint(spot_bp)
-app.register_blueprint(preferences_bp)
 @app.get("/cafes")
 @require_auth
 @require_role("cafe_owner")
@@ -49,7 +55,6 @@ def cafe_only():
         "user_id": flask_g.user["id"],
         "role": flask_g.user["role"],
     }), 200
-
 
 @app.post("/api/receipt")
 @require_auth
@@ -150,6 +155,7 @@ def receipt_upload():
         "saved": saved,
     }, status=200)
 print(app.url_map)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=3001, debug=True)

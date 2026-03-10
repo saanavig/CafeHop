@@ -1,4 +1,5 @@
-from database.supabase_client import supabase_anon as supabase
+from database.supabase_client import supabase 
+
 
 
 def get_user_preferences(user_id: str):

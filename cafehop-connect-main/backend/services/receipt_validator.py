@@ -6,7 +6,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, Tuple, Dict, Any
 import math
 
-from database.supabase_client import supabase_anon as supabase
+from database.supabase_client import supabase
 
 
 TWO_MILES_METERS = 2 * 1609.344

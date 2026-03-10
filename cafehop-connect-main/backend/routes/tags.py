@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from services.tag_service import get_all_tags, get_cafe_tags, replace_cafe_tags
 from database.auth_middleware import require_auth
 
-spot_bp = Blueprint("spot", __name__)
+spot_bp = Blueprint("spot_bp", __name__)
 
 @spot_bp.route("/tags", methods=["GET"])
 def list_tags():
