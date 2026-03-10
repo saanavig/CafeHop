@@ -29,7 +29,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV "/Users/saanavigoyal/Desktop/Spring 2026 Classes/CSc 59866/CafeHop/backend/venv"
+set -gx VIRTUAL_ENV "/Users/saanavigoyal/Desktop/Spring 2026 Classes/CSc 59866/CafeHop/cafehop-connect-main/backend/venv"
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/bin" $PATH
