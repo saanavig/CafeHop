@@ -16,6 +16,8 @@ def require_auth(fn):
         if not token:
             return jsonify({"error": "Invalid token", "details": "Empty token"}), 401
 
+        g.access_token = token
+
         # Validate token with Supabase and fetch user
         r = requests.get(
             f"{SUPABASE_URL}/auth/v1/user",

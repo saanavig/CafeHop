@@ -154,7 +154,6 @@ def receipt_upload():
         "purchase_insert": purchase_row,
         "saved": saved,
     }, status=200)
-print(app.url_map)
 
 
 if __name__ == "__main__":
