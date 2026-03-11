@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, g
 from services.video_service import create_video, get_feed_videos, get_cafe_videos
 from database.auth_middleware import require_auth
 
@@ -10,15 +10,17 @@ videos_bp = Blueprint("videos", __name__)
 def upload_video():
     body = request.get_json(silent=True) or {}
 
-    user_id = body.get("user_id")
+    user_id = g.user["id"]
     cafe_id = body.get("cafe_id")
     video_url = body.get("video_url")
     caption = body.get("caption", "")
 
-    if not user_id or not cafe_id or not video_url:
+    if not cafe_id or not video_url:
         return jsonify({"error": "Missing required fields"}), 400
 
-    video = create_video(user_id, cafe_id, video_url, caption)
+    access_token = g.access_token
+    video = create_video(access_token, user_id, cafe_id, video_url, caption)
+    print("JWT USER:", g.user["id"])
 
     return jsonify({"message": "Video created", "data": video}), 201
 

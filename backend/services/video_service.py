@@ -1,7 +1,9 @@
 from database.supabase_client import supabase
+from database.supabase_client import supabase_for_user
 
-# make a video
-def create_video(user_id, cafe_id, video_url, caption=""):
+def create_video(access_token, user_id, cafe_id, video_url, caption):
+    supabase = supabase_for_user(access_token)
+
     response = supabase.table("videos").insert({
         "user_id": user_id,
         "cafe_id": cafe_id,
