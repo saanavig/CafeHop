@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, g
-from services.video_service import create_video, get_feed_videos, get_cafe_videos
+from services.video_service import create_video, get_feed_videos, get_cafe_videos, upload_video_file
 from database.auth_middleware import require_auth
 
 videos_bp = Blueprint("videos", __name__)
@@ -8,19 +8,20 @@ videos_bp = Blueprint("videos", __name__)
 @videos_bp.route("/videos", methods=["POST"])
 @require_auth
 def upload_video():
-    body = request.get_json(silent=True) or {}
 
     user_id = g.user["id"]
-    cafe_id = body.get("cafe_id")
-    video_url = body.get("video_url")
-    caption = body.get("caption", "")
+    access_token = g.access_token
 
-    if not cafe_id or not video_url:
+    video_file = request.files.get("video")
+    cafe_id = request.form.get("cafe_id")
+    caption = request.form.get("caption", "")
+
+    if not video_file or not cafe_id:
         return jsonify({"error": "Missing required fields"}), 400
 
-    access_token = g.access_token
+    # upload to Supabase Storage
+    video_url = upload_video_file(access_token, video_file)
     video = create_video(access_token, user_id, cafe_id, video_url, caption)
-    print("JWT USER:", g.user["id"])
 
     return jsonify({"message": "Video created", "data": video}), 201
 
