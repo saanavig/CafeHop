@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, g
 from routes.auth import require_auth
-from database.supabase_client import supabase
+from database.supabase_client import supabase_admin as supabase
+from services.purchase_repo import get_user_points
 from datetime import datetime, timedelta
 from datetime import timezone
 import math
@@ -34,8 +35,8 @@ def submit_purchase():
     user_lon = float(data["longitude"])
     submission_token = data["submission_token"]
     receipt_time = datetime.fromisoformat(
-        data["receipt_timestamp"]
-    ).replace(tzinfo=timezone.utc)
+    data["receipt_timestamp"].replace("Z", "+00:00")
+).astimezone(timezone.utc)
 
     now = datetime.now(timezone.utc)
 
@@ -61,7 +62,12 @@ def submit_purchase():
         if distance > 2:
             return jsonify({"error": "Outside 2-mile radius"}), 400
 
-        if abs(now - receipt_time) > timedelta(minutes=60):
+        # receipt cannot be in the future
+        if receipt_time > now:
+            return jsonify({"error": "Receipt timestamp is in the future"}), 400
+
+        # receipt must be within last 60 minutes
+        if now - receipt_time > timedelta(minutes=60):
             return jsonify({"error": "Receipt older than 60 minutes"}), 400
 
         # max 2 reciepts per hour per user
@@ -77,6 +83,15 @@ def submit_purchase():
         if len(rate_limit_response.data) >= 2:
             return jsonify({"error": "Rate limit exceeded (2 receipts per hour)"}), 400
 
+        # prevent duplicate receipt submissions
+        duplicate = supabase.table("purchases") \
+            .select("id") \
+            .eq("submission_token", submission_token) \
+            .eq("user_id", user_id) \
+            .execute()
+
+        if duplicate.data:
+            return jsonify({"error": "Receipt already submitted"}), 400
 
         supabase.table("purchases").insert({
             "user_id": user_id,
@@ -91,20 +106,32 @@ def submit_purchase():
 
         # calculate points and update it
         points_earned = int(amount)
+
         current = supabase.table("user_points") \
             .select("total_points") \
             .eq("user_id", user_id) \
             .execute()
 
-        current_points = current.data[0]["total_points"]
+        if not current.data:
+            # first purchase → create points row
+            supabase.table("user_points").insert({
+                "user_id": user_id,
+                "total_points": points_earned
+            }).execute()
 
-        supabase.table("user_points").update({
-            "total_points": current_points + points_earned
-        }).eq("user_id", user_id).execute()
+            new_total = points_earned
+        else:
+            current_points = current.data[0]["total_points"]
+            new_total = current_points + points_earned
+
+            supabase.table("user_points").update({
+                "total_points": new_total
+            }).eq("user_id", user_id).execute()
 
         return jsonify({
             "message": "Purchase approved",
-            "points_earned": points_earned
+            "points_earned": points_earned,
+            "total_points": new_total
         }), 200
 
     except Exception as e:
@@ -168,3 +195,15 @@ def redeem_points():
     except Exception as e:
         print("Redemption error:", str(e))
         return jsonify({"error": "Redemption failed"}), 500
+
+# purchase to loyalty points
+@purchase_bp.route("/users/me/points", methods=["GET"])
+@require_auth
+def get_points():
+    user_id = g.user["id"]
+
+    total_points = get_user_points(user_id)
+
+    return jsonify({
+        "points": total_points
+    }), 200

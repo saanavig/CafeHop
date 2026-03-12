@@ -4,7 +4,6 @@ import uuid
 from config import SUPABASE_URL
 
 def create_video(access_token, user_id, cafe_id, video_url, caption):
-
     supabase = supabase_for_user(access_token)
 
     response = supabase.table("videos").insert({

@@ -5,8 +5,7 @@ from flask import request, jsonify, g
 from functools import wraps
 from dotenv import load_dotenv
 from database.supabase_client import supabase
-
-
+from config import SUPABASE_URL
 
 def get_jwks():
     url = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
@@ -84,13 +83,13 @@ def get_user_role(user_id):
     response = supabase.table("profiles") \
         .select("role") \
         .eq("id", user_id) \
-        .single() \
+        .maybe_single() \
         .execute()
 
-    if not response.data:
-        return None
+    if not response or not response.data:
+        return "user"
 
-    return response.data["role"]
+    return response.data.get("role", "user")
 
 # cafe owner role
 def require_role(required_role):
