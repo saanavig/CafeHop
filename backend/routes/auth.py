@@ -4,7 +4,7 @@ import os
 from flask import request, jsonify, g
 from functools import wraps
 from dotenv import load_dotenv
-from database.supabase_client import supabase
+from database.supabase_client import supabase_admin as supabase
 from config import SUPABASE_URL
 
 def get_jwks():
@@ -96,8 +96,11 @@ def require_role(required_role):
     def wrapper(f):
         @wraps(f)
         def decorated(*args, **kwargs):
+
             if g.user.get("role") != required_role:
                 return jsonify({"error": "Forbidden"}), 403
+
             return f(*args, **kwargs)
+
         return decorated
     return wrapper
