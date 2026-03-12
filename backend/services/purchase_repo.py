@@ -1,5 +1,5 @@
 from typing import Optional
-from database.supabase_client import supabase
+from database.supabase_client import supabase_admin as supabase
 
 def calculate_points(amount: float) -> int:
     # loyalty rule: $1 = 10 points
@@ -44,11 +44,27 @@ def get_user_points(user_id: str) -> int:
 
     return sum(p["points_earned"] for p in res.data)
 
-# get user points history
-def get_user_points(supabase, user_id):
-    res = supabase.table("users").select("points").eq("id", user_id).single().execute()
+# points history
+def get_user_points_history(user_id: str):
+
+    res = supabase.table("purchases") \
+        .select("amount, points_earned, created_at, status, cafes(name)") \
+        .eq("user_id", user_id) \
+        .order("created_at", desc=True) \
+        .execute()
 
     if not res.data:
-        return None
+        return []
 
-    return res.data["points"]
+    history = []
+
+    for p in res.data:
+        history.append({
+            "cafe_name": p["cafes"]["name"] if p.get("cafes") else None,
+            "amount": p["amount"],
+            "points_earned": p["points_earned"],
+            "date": p["created_at"],
+            "status": p["status"]
+        })
+
+    return history

@@ -17,11 +17,7 @@ from routes.preferences import preferences_bp
 from routes.rewards import rewards_bp
 
 app = Flask(__name__)
-CORS(
-    app,
-    resources={r"/api/*": {"origins": "*"}},
-    supports_credentials=True
-)
+CORS(app)
 
 app.register_blueprint(cafe_bp, url_prefix="/api")
 app.register_blueprint(purchase_bp, url_prefix="/api")
