@@ -5,7 +5,6 @@ def calculate_points(amount: float) -> int:
     # loyalty rule: $1 = 10 points
     return int(amount * 10)
 
-
 def insert_purchase(
     *,
     user_id: Optional[str],
@@ -44,3 +43,12 @@ def get_user_points(user_id: str) -> int:
         return 0
 
     return sum(p["points_earned"] for p in res.data)
+
+# get user points history
+def get_user_points(supabase, user_id):
+    res = supabase.table("users").select("points").eq("id", user_id).single().execute()
+
+    if not res.data:
+        return None
+
+    return res.data["points"]
