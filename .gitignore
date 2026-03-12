@@ -58,6 +58,7 @@ profile_default/
 ipython_config.py
 
 # Virtual environments
+backend/.env
 .env
 .envrc
 .venv
