@@ -3,7 +3,7 @@ from routes.auth import require_auth, require_role
 from supabase import create_client
 import os
 from dotenv import load_dotenv
-from database.supabase_client import supabase 
+from database.supabase_client import supabase_admin as supabase
 
 load_dotenv()
 
@@ -15,13 +15,38 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 cafe_bp = Blueprint("cafe_bp", __name__)
 
 # cafe registration for cafe owners
-@cafe_bp.route("cafe/register", methods=["POST"])
+@cafe_bp.route("/cafe/register", methods=["POST"])
 @require_auth
-@require_role("cafe_owner")
+# @require_role("cafe_owner")
 def register_cafe():
     data = request.get_json()
 
+    if not data or "name" not in data:
+        return jsonify({"error": "Cafe name is required"}), 400
+
     owner_id = g.user["id"]
+
+    # upgrade user to cafe_owner if not already
+    profile = supabase.table("profiles") \
+        .select("role") \
+        .eq("id", owner_id) \
+        .execute()
+
+    role = profile.data[0]["role"] if profile.data else None
+
+    if role is None:
+        # profile doesn't exist yet
+        supabase.table("profiles").insert({
+            "id": owner_id,
+            "role": "cafe_owner"
+        }).execute()
+
+    elif role != "cafe_owner":
+        # upgrade role
+        supabase.table("profiles") \
+            .update({"role": "cafe_owner"}) \
+            .eq("id", owner_id) \
+            .execute()
 
     try:
         # cafe onboarding
@@ -73,8 +98,8 @@ def register_cafe():
         }), 201
 
     except Exception as e:
-        print("Cafe registration error:", str(e))
-        return jsonify({"error": "Internal server error"}), 500
+        print("Cafe registration error:", e)
+        return jsonify({"error": str(e)}), 500
 
 # get cafes and info about them
 @cafe_bp.route("/cafe/my-cafes", methods=["GET"])

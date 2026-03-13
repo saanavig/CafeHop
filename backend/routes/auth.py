@@ -67,7 +67,7 @@ def require_auth(f):
 
         if not role:
             return jsonify({"error": "User profile not found"}), 403
-        print("AUTH ROLE:", role)
+        # print("AUTH ROLE:", role)
 
         g.user = {
             "id": user_id,
