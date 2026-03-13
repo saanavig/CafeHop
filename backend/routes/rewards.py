@@ -41,6 +41,15 @@ def create_reward(cafe_id):
         return jsonify({"error": "title and points_required required"}), 400
 
     try:
+        cafe = supabase.table("cafes") \
+            .select("owner_id") \
+            .eq("id", cafe_id) \
+            .execute()
+
+        if not cafe.data or cafe.data[0]["owner_id"] != g.user["id"]:
+            return jsonify({"error": "Forbidden"}), 403
+
+        # create reward
         response = supabase.table("rewards").insert({
             "cafe_id": cafe_id,
             "title": data["title"],
