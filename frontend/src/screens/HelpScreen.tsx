@@ -1,0 +1,280 @@
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Pressable,
+  Dimensions,
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { useRole } from "../context/RoleContext";
+import { ArrowLeft, Info, Mail, ChevronDown, ChevronUp } from "lucide-react-native";
+import BottomNav from "../components/ui/BottomNav";
+import Button from "../components/ui/Button";
+
+const customerFAQs = [
+  {
+    question: "How do I earn points?",
+    answer:
+      "You earn points by visiting cafés, making purchases, and participating in events. Each visit can add points to your CafeHop wallet.",
+  },
+  {
+    question: "How do I redeem rewards?",
+    answer:
+      "Redeem rewards by going to the Rewards tab, selecting a reward, and confirming redemption at the café. Points will be deducted from your balance.",
+  },
+  {
+    question: "Troubleshooting & support",
+    answer:
+      "If you encounter issues, try restarting the app or checking your internet connection. For further help, contact support.",
+  },
+  {
+    question: "Can I transfer points to friends?",
+    answer:
+      "Currently, points cannot be transferred to other users, but you can redeem rewards for friends at participating cafés.",
+  },
+  {
+    question: "How do I update my account info?",
+    answer:
+      "Go to the Settings tab and select Edit Profile. You can update your name, email, and cafe preferences there.",
+  },
+  {
+    question: "What if I lose my phone?",
+    answer:
+      "Log in to your account on another device. Make sure you have two-factor authentication enabled for extra security.",
+  },
+];
+
+const cafeFAQs = [
+  {
+    question: "How do I update my cafe profile?",
+    answer:
+      "Go to Settings → Edit Profile. You can update your cafe name, description, profile picture, and offered amenities.",
+  },
+  {
+    question: "How do I manage cafe offerings?",
+    answer:
+      "Within Edit Profile, toggle options like WiFi availability, quiet atmosphere, vegan or gluten-free offerings, seating types, and other amenities.",
+  },
+  {
+    question: "Can I highlight special promotions?",
+    answer:
+      "Yes! You can update your cafe's 'About' section or contact support to feature promotions in the app.",
+  },
+  {
+    question: "How do I respond to customer feedback?",
+    answer:
+      "Customer feedback will appear in your dashboard. Reply directly to messages or update your cafe info to address common requests.",
+  },
+  {
+    question: "Troubleshooting & support",
+    answer:
+      "If you experience issues with your cafe profile or the app, try refreshing or checking your internet connection. Contact support for further assistance.",
+  },
+];
+
+const HelpScreen = () => {
+  const navigation = useNavigation<any>();
+  const { role } = useRole();
+
+  const { width } = Dimensions.get("window");
+  const contentWidth = Math.min(width * 0.9, 480);
+
+  const [openFAQ, setOpenFAQ] = useState<number | null>(null);
+  const faqs = role === "cafe" ? cafeFAQs : customerFAQs;
+
+  const toggleFAQ = (index: number) => {
+    setOpenFAQ(openFAQ === index ? null : index);
+  };
+
+  return (
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { alignItems: "flex-start" }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <ArrowLeft size={24} color="#333" />
+          </Pressable>
+          <Text style={styles.headerTitle}>Help</Text>
+        </View>
+
+        {/* Content */}
+        <View style={[styles.content, { width: contentWidth }]}>
+          {/* FAQ Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
+            <View style={styles.faqContainer}>
+              {faqs.map((faq, index) => (
+                <View key={index}>
+                  <Pressable
+                    style={styles.faqButton}
+                    onPress={() => toggleFAQ(index)}
+                  >
+                    <View style={styles.faqLeft}>
+                      <View style={styles.iconBg}>
+                        <Info size={16} color="#D4A373" />
+                      </View>
+                      <Text style={styles.faqQuestion}>{faq.question}</Text>
+                    </View>
+                    {openFAQ === index ? (
+                      <ChevronUp size={20} color="#888" />
+                    ) : (
+                      <ChevronDown size={20} color="#888" />
+                    )}
+                  </Pressable>
+
+                  {openFAQ === index && (
+                    <View style={styles.faqAnswer}>
+                      <Text style={styles.faqAnswerText}>{faq.answer}</Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Contact Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Contact Us</Text>
+            <Button
+              variant="caramel"
+              onPress={() => {
+                /* Handle email support */
+              }}
+              style={styles.emailButton}
+            >
+              <Mail size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.emailButtonText}>Email Support</Text>
+            </Button>
+          </View>
+
+          {/* Footer */}
+          <Text style={styles.footer}>CafeHop v1.0.0</Text>
+        </View>
+      </ScrollView>
+
+      {/* Bottom Nav */}
+      <BottomNav />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F7F3F0",
+  },
+  scrollContent: {
+    paddingTop: 16,
+    paddingBottom: 100,
+    alignItems: "center",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 12,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    fontFamily: "PlayfairDisplay_700Bold",
+    marginLeft: 8,
+    color: "#1A1A1A",
+  },
+  content: {
+    alignSelf: "center",
+    paddingHorizontal: 16,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    marginBottom: 12,
+  },
+  faqContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E8DFD5",
+    overflow: "hidden",
+  },
+  faqButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E8DFD5",
+  },
+  faqLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  iconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: "#F7F3F0",
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 0,
+  },
+  faqQuestion: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    flex: 1,
+  },
+  faqAnswer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "rgba(247, 243, 240, 0.5)",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E8DFD5",
+  },
+  faqAnswerText: {
+    fontSize: 13,
+    color: "#666",
+    lineHeight: 18,
+  },
+  emailButton: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#D4A373",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  emailButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  footer: {
+    textAlign: "center",
+    fontSize: 12,
+    color: "#888",
+    marginTop: 24,
+  },
+});
+
+export default HelpScreen;
