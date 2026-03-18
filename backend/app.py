@@ -15,16 +15,21 @@ from routes.purchases import purchase_bp
 from routes.cafes import cafe_bp
 from routes.preferences import preferences_bp
 from routes.rewards import rewards_bp
+from routes.reviews import reviews_bp
+from routes.recommendation import recommendations_bp
+
 
 app = Flask(__name__)
 CORS(app)
 
+app.register_blueprint(reviews_bp, url_prefix="/api")
 app.register_blueprint(cafe_bp, url_prefix="/api")
 app.register_blueprint(purchase_bp, url_prefix="/api")
 app.register_blueprint(spot_bp, url_prefix="/api")
 app.register_blueprint(videos_bp, url_prefix="/api")
 app.register_blueprint(preferences_bp, url_prefix="/api")
 app.register_blueprint(rewards_bp, url_prefix="/api")
+app.register_blueprint(recommendations_bp, url_prefix="/api")
 
 def success(data=None, status=200):
     return jsonify({"success": True, "data": data}), status
