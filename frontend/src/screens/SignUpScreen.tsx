@@ -1,14 +1,17 @@
-import React, { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  Pressable,
   Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import React, { useState } from "react";
+
 import Button from "../components/ui/Button";
+import { apiFetch } from "../api/client";
+import { supabase } from "../api/supabaseClient";
+import { useNavigation } from "@react-navigation/native";
 
 export default function SignUpScreen() {
   const navigation = useNavigation<any>();
@@ -22,7 +25,6 @@ export default function SignUpScreen() {
 
   const [passwordError, setPasswordError] = useState("");
 
-  // Password validation logic
   const validatePassword = (password: string) => {
     const minLength = password.length >= 8;
     const hasNumber = /\d/.test(password);
@@ -36,7 +38,7 @@ export default function SignUpScreen() {
     };
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const validation = validatePassword(password);
 
     if (!validation.valid) {
@@ -53,82 +55,88 @@ export default function SignUpScreen() {
 
     setPasswordError("");
     navigation.navigate("Onboarding");
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        Alert.alert("Signup Error", error.message);
+        return;
+      }
+
+      console.log("Signup success:", data);
+
+      if (data.session) {
+        await apiFetch("/users/me", {
+          method: "POST",
+        });
+      }
+
+      navigation.navigate("Onboarding");
+
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", "Something went wrong");
+    }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        {/* Header */}
-        <Text style={styles.title}>Create an Account</Text>
-        <Text style={styles.subtitle}>
-          Sign up to start discovering cafés
-        </Text>
+        <Text style={styles.title}>Create Account</Text>
+        <Text style={styles.subtitle}>Sign up to get started</Text>
 
-        {/* Email */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Email</Text>
           <TextInput
-            style={[styles.input, { color: "#333" }]}
+            style={styles.input}
             value={email}
             onChangeText={setEmail}
-            placeholder="you@email.com"
-            placeholderTextColor="#999"
-            keyboardType="email-address"
             autoCapitalize="none"
+            keyboardType="email-address"
           />
         </View>
 
-        {/* Password */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Password</Text>
-
           <View style={styles.passwordContainer}>
             <TextInput
-              style={[styles.input, styles.passwordInput, { color: "#333" }]}
+              style={[styles.input, styles.passwordInput]}
               value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                setPasswordError(""); // clears error while typing
-              }}
-              placeholder="••••••••"
-              placeholderTextColor="#999"
+              onChangeText={setPassword}
               secureTextEntry={!showPassword}
             />
-
             <Pressable
-              onPress={() => setShowPassword((prev) => !prev)}
               style={styles.eyeButton}
+              onPress={() => setShowPassword(!showPassword)}
             >
               <Text style={styles.eyeText}>
                 {showPassword ? "Hide" : "Show"}
               </Text>
             </Pressable>
           </View>
-
           {passwordError ? (
             <Text style={styles.errorText}>{passwordError}</Text>
           ) : null}
         </View>
 
-        {/* Confirm Password */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Confirm Password</Text>
-
           <View style={styles.passwordContainer}>
             <TextInput
-              style={[styles.input, styles.passwordInput, { color: "#333" }]}
+              style={[styles.input, styles.passwordInput]}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              placeholder="••••••••"
-              placeholderTextColor="#999"
               secureTextEntry={!showConfirmPassword}
             />
-
             <Pressable
-              onPress={() =>
-                setShowConfirmPassword((prev) => !prev)
-              }
               style={styles.eyeButton}
+              onPress={() =>
+                setShowConfirmPassword(!showConfirmPassword)
+              }
             >
               <Text style={styles.eyeText}>
                 {showConfirmPassword ? "Hide" : "Show"}
@@ -137,10 +145,8 @@ export default function SignUpScreen() {
           </View>
         </View>
 
-        {/* Continue button */}
         <Button title="Continue" onPress={handleContinue} />
 
-        {/* Already have account */}
         <Text style={styles.loginText}>
           Already have an account?{" "}
           <Text

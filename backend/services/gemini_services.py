@@ -3,7 +3,7 @@ from pydantic import BaseModel, ValidationError, Field
 from config import gemini_model
 from models.gemini_purchase import GeminiPurchase
 from utils.text_utils import extract_json
-
+from typing import Optional, List, Tuple
 
 def build_purchase_prompt(ocr_text: str) -> str:
     return f"""
@@ -49,11 +49,10 @@ def parse_purchase_from_ocr(ocr_text: str) -> tuple[GeminiPurchase, str]:
 
 
 class CafeReviewSummary(BaseModel):
-    vibe_summary: str | None = None
-    positives: list[str] = Field(default_factory=list)
-    negatives: list[str] = Field(default_factory=list)
-    best_for: list[str] = Field(default_factory=list)
-
+    vibe_summary: Optional[str] = None
+    positives: List[str] = Field(default_factory=list)
+    negatives: List[str] = Field(default_factory=list)
+    best_for: List[str] = Field(default_factory=list)
 
 class CafeRecommendationExplanation(BaseModel):
     cafe_id: str
@@ -82,7 +81,7 @@ Return exactly:
 """.strip()
 
 
-def summarize_cafe_reviews_with_gemini(cafe_name: str, review_rows: list[dict]) -> dict | None:
+def summarize_cafe_reviews_with_gemini(cafe_name: str, review_rows: Optional[List[dict]]) -> Optional[dict]:
     if not review_rows:
         return None
 
