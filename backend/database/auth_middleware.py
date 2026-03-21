@@ -7,6 +7,10 @@ from config import SUPABASE_URL, SUPABASE_ANON_KEY
 def require_auth(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
+
+        if request.method == "OPTIONS":
+            return "", 200
+
         auth = request.headers.get("Authorization", "")
 
         if not auth.startswith("Bearer "):
