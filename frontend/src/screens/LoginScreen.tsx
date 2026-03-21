@@ -1,32 +1,75 @@
+import {
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 // frontend/src/screens/LoginScreen.tsx
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  Pressable,
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
+
 import Button from "../components/ui/Button";
+import { LinearGradient } from "expo-linear-gradient";
+import { supabase } from "../api/supabaseClient";
+import { useNavigation } from "@react-navigation/native";
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState("");
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setLoginError("Please fill in all fields");
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        let message = "Something went wrong";
+
+        if (error.message.toLowerCase().includes("invalid login")) {
+          message = "Incorrect email or password";
+        } else if (error.message.toLowerCase().includes("email not confirmed")) {
+          message = "Please verify your email before logging in";
+        }
+
+        setLoginError(message);
+        return;
+      }
+
+      console.log("Login success:", data);
+
+      // ✅ Clear error
+      setLoginError("");
+
+      // TODO: later replace with role-based routing
+      navigation.navigate("Home", { role: "customer" });
+
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", "Something went wrong");
+    }
+  };
 
   return (
-    <LinearGradient
-      colors={["#F7F3F0", "#F0EDE8"]}
-      style={styles.gradient}
-    >
+    <LinearGradient colors={["#F7F3F0", "#F0EDE8"]} style={styles.gradient}>
       <View style={styles.container}>
         <View style={styles.card}>
           {/* Header */}
           <Text style={styles.title}>Welcome back ☕</Text>
-          <Text style={styles.subtitle}>Log in to continue exploring cafés</Text>
+          <Text style={styles.subtitle}>
+            Log in to continue exploring cafés
+          </Text>
 
           {/* Email */}
           <View style={styles.inputContainer}>
@@ -34,7 +77,10 @@ export default function LoginScreen() {
             <TextInput
               style={[styles.input, { color: "#333" }]}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                setLoginError(""); // clear error while typing
+              }}
               placeholder="you@email.com"
               placeholderTextColor="#999"
               keyboardType="email-address"
@@ -50,14 +96,17 @@ export default function LoginScreen() {
               <TextInput
                 style={[styles.input, styles.passwordInput, { color: "#333" }]}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  setLoginError(""); 
+                }}
                 placeholder="••••••••"
                 placeholderTextColor="#999"
                 secureTextEntry={!showPassword}
               />
 
               <Pressable
-                onPress={() => setShowPassword(prev => !prev)}
+                onPress={() => setShowPassword((prev) => !prev)}
                 style={styles.eyeButton}
               >
                 <Text style={{ color: "#D4A373", fontWeight: "500" }}>
@@ -65,17 +114,20 @@ export default function LoginScreen() {
                 </Text>
               </Pressable>
             </View>
+
+            {loginError ? (
+              <Text style={styles.errorText}>{loginError}</Text>
+            ) : null}
           </View>
 
-          {/* Forgot password */}
-          <Pressable onPress={() => alert("Password reset link sent! (demo)")}>
+          <Pressable
+            onPress={() => alert("Password reset link sent! (demo)")}
+          >
             <Text style={styles.linkText}>Forgot password?</Text>
           </Pressable>
 
-          {/* Login button */}
-          <Button title="Log In" onPress={() => navigation.navigate("Home", { role: "customer" })} />
+          <Button title="Log In" onPress={handleLogin} />
 
-          {/* Sign up link */}
           <Text style={styles.signUpText}>
             Don’t have an account?{" "}
             <Text
@@ -93,7 +145,8 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
-  container: { 
+
+  container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
@@ -171,5 +224,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 12,
     color: "#666",
+  },
+
+  errorText: {
+    color: "#d9534f",
+    fontSize: 12,
+    marginTop: 4,
   },
 });
