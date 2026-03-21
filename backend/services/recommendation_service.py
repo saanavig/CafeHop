@@ -2,7 +2,7 @@ from math import radians, sin, cos, sqrt, atan2
 
 from database.supabase_client import supabase
 from services.gemini_services import generate_recommendation_explanations_with_gemini
-from services.review_services import (
+from services.review_service import (
     get_user_reviews,
     get_cafe_review_stats,
     get_cafe_review_text_map,
