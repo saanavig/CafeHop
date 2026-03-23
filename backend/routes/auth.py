@@ -96,8 +96,11 @@ def require_role(required_role):
     def wrapper(f):
         @wraps(f)
         def decorated(*args, **kwargs):
+
             if g.user.get("role") != required_role:
                 return jsonify({"error": "Forbidden"}), 403
+
             return f(*args, **kwargs)
+
         return decorated
     return wrapper

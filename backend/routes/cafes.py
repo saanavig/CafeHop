@@ -73,13 +73,28 @@ def register_cafe():
         cafe_id = cafe["id"]
 
         # cafe hours
-        hours = data.get("hours", [])
-        for h in hours:
+        hours = data.get("hours", {})
+
+        DAY_MAP = {
+            "Sunday": 0,
+            "Monday": 1,
+            "Tuesday": 2,
+            "Wednesday": 3,
+            "Thursday": 4,
+            "Friday": 5,
+            "Saturday": 6,
+        }
+
+        for day, val in hours.items():
+            # skip closed days
+            if not val.get("open"):
+                continue
+
             supabase.table("cafe_hours").insert({
                 "cafe_id": cafe_id,
-                "day_of_week": h["day_of_week"],
-                "open_time": h["open_time"],
-                "close_time": h["close_time"]
+                "day_of_week": DAY_MAP.get(day),
+                "open_time": val.get("start"),
+                "close_time": val.get("end"),
             }).execute()
 
         # cafe reward system
