@@ -14,7 +14,7 @@ def _get_user_id_from_request():
     return flask_g.user["id"]
 
 
-@preferences_bp.route("/users/me/preferences", methods=["GET"])
+@preferences_bp.route("/users/preferences", methods=["GET"])
 @require_auth
 def fetch_my_preferences():
     user_id = _get_user_id_from_request()
@@ -22,7 +22,7 @@ def fetch_my_preferences():
     return jsonify({"preferences": prefs}), 200
 
 
-@preferences_bp.route("/users/me/preferences", methods=["PUT"])
+@preferences_bp.route("/users/preferences", methods=["PUT"])
 @require_auth
 def update_my_preferences():
     user_id = _get_user_id_from_request()
@@ -35,7 +35,7 @@ def update_my_preferences():
     }), 200
 
 
-@preferences_bp.route("/users/me/preference-tags", methods=["GET"])
+@preferences_bp.route("/users/preference-tags", methods=["GET"])
 @require_auth
 def fetch_my_preference_tags():
     user_id = _get_user_id_from_request()
@@ -43,7 +43,7 @@ def fetch_my_preference_tags():
     return jsonify({"tags": tags}), 200
 
 
-@preferences_bp.route("/users/me/preference-tags", methods=["PUT"])
+@preferences_bp.route("/users/preference-tags", methods=["PUT"])
 @require_auth
 def update_my_preference_tags():
     user_id = _get_user_id_from_request()
