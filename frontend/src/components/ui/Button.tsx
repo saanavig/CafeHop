@@ -1,6 +1,7 @@
 // components/ui/Button.tsx
 import React from "react";
 import { Pressable, Text, StyleSheet, ViewStyle, TextStyle } from "react-native";
+import { scale, moderateScale } from "../../utils/responsive";
 
 type ButtonProps = {
   title?: string;                // optional text
@@ -24,8 +25,8 @@ export default function Button({
   textStyle,
 }: ButtonProps) {
   // size styles
-  const padding = size === "sm" ? 8 : size === "icon" ? 6 : 12;
-  const fontSize = size === "sm" ? 14 : 16;
+  const padding = size === "sm" ? scale(8) : size === "icon" ? scale(6) : scale(12);
+  const fontSize = size === "sm" ? moderateScale(14) : moderateScale(16);
 
   return (
     <Pressable
@@ -60,10 +61,10 @@ export default function Button({
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 12,
+    borderRadius: scale(12),
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   caramel: {
     backgroundColor: "#D4A373",

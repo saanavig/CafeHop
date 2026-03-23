@@ -24,6 +24,7 @@ import HelpScreen from "./src/screens/HelpScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import RewardsScreen from "./src/screens/RewardsScreen";
 import AnalyticsScreen from "./src/screens/AnalyticsScreen";
+import CafeEditScreen from "./src/screens/CafeEditScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -61,6 +62,7 @@ export default function App() {
           <Stack.Screen name="Favorites" component={FavoritesScreen} />
           <Stack.Screen name="Rewards" component={RewardsScreen} />
           <Stack.Screen name="Analytics" component={AnalyticsScreen} />
+          <Stack.Screen name="CafeEdit" component={CafeEditScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </RoleProvider>

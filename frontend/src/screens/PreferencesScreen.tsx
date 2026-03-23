@@ -12,6 +12,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { ArrowLeft, Bell, Moon, Lock } from "lucide-react-native";
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
+import { scale, moderateScale } from "../utils/responsive";
 
 const PreferencesScreen = () => {
   const navigation = useNavigation<any>();
@@ -182,45 +183,45 @@ const styles = StyleSheet.create({
     backgroundColor: "#F7F3F0",
   },
   scrollContent: {
-    paddingTop: 16,
-    paddingBottom: 100,
+    paddingTop: scale(16),
+    paddingBottom: scale(100),
     alignItems: "center",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    marginBottom: 24,
+    paddingHorizontal: scale(16),
+    marginBottom: scale(24),
   },
   backButton: {
-    padding: 8,
-    marginRight: 12,
+    padding: scale(8),
+    marginRight: scale(12),
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: moderateScale(20),
     fontWeight: "600",
     fontFamily: "PlayfairDisplay_700Bold",
-    marginLeft: 8,
+    marginLeft: scale(8),
     color: "#1A1A1A",
   },
   content: {
     alignSelf: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: scale(16),
   },
   section: {
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
   sectionLabel: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
     fontWeight: "600",
     color: "#888",
     textTransform: "uppercase",
-    marginBottom: 12,
+    marginBottom: scale(12),
     letterSpacing: 0.5,
   },
   settingsContainer: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: scale(16),
     borderWidth: 1,
     borderColor: "#E8DFD5",
     overflow: "hidden",
@@ -229,40 +230,40 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(14),
     borderBottomWidth: 1,
     borderBottomColor: "#E8DFD5",
   },
   settingLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: scale(12),
     flex: 1,
   },
   iconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(10),
     backgroundColor: "#F7F3F0",
     justifyContent: "center",
     alignItems: "center",
   },
   settingTitle: {
-    fontSize: 14,
+    fontSize: moderateScale(14),
     fontWeight: "600",
     color: "#1A1A1A",
-    marginBottom: 2,
+    marginBottom: scale(2),
   },
   settingDesc: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
     color: "#888",
   },
   footer: {
     textAlign: "center",
-    fontSize: 12,
+    fontSize: moderateScale(12),
     color: "#888",
-    marginTop: 24,
+    marginTop: scale(24),
   },
 });
 

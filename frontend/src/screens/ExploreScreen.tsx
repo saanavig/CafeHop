@@ -5,6 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   Image,
   StyleSheet,
   Dimensions,
@@ -16,16 +17,30 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
 import BottomNav from "../components/ui/BottomNav";
-import { Search, Star, Wifi, Zap, Coffee, Clock, X, Navigation, Gift } from "lucide-react-native";
+import {
+  Search, Star, Wifi, Zap, Coffee, Clock, X,
+  Navigation, Gift, Phone, Globe, Bookmark, Share2,
+  MapPin, ChevronDown, ChevronUp, Instagram,
+} from "lucide-react-native";
+import { scale, moderateScale } from "../utils/responsive";
 
 const { width, height } = Dimensions.get("window");
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
+const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 const allCafes = [
   {
     id: 1,
     name: "The Roastery",
+    category: "Specialty Coffee",
+    description: "A beloved neighborhood spot renowned for single-origin pour-overs and house-baked pastries. Perfect for work sessions or lazy weekend mornings.",
     image: require("../assets/cafe-1.jpg"),
+    photos: [
+      require("../assets/cafe-1.jpg"),
+      require("../assets/latte-art.jpg"),
+      require("../assets/cafe-2.jpg"),
+    ],
     rating: 4.8,
     distance: "0.3 mi",
     amenities: ["Wi-Fi", "Outlets", "Coffee"],
@@ -33,14 +48,32 @@ const allCafes = [
     isOpen: true,
     priceRange: "$$",
     reviews: 234,
-    hours: "Mon–Fri  7am–8pm",
+    phone: "+1 (718) 555-0101",
+    website: "theroastery.com",
+    instagram: "@theroastery_bk",
     address: "42 Brew St, Brooklyn",
+    fullHours: {
+      Mon: "7:00 AM – 8:00 PM",
+      Tue: "7:00 AM – 8:00 PM",
+      Wed: "7:00 AM – 8:00 PM",
+      Thu: "7:00 AM – 8:00 PM",
+      Fri: "7:00 AM – 9:00 PM",
+      Sat: "8:00 AM – 9:00 PM",
+      Sun: "9:00 AM – 6:00 PM",
+    },
     pin: { x: 0.44, y: 0.30 },
   },
   {
     id: 2,
     name: "Bean & Leaf",
+    category: "Café · Tea Bar",
+    description: "Light-filled minimalist café with an extensive tea menu alongside excellent espresso drinks. A calm escape from the city's energy.",
     image: require("../assets/cafe-2.jpg"),
+    photos: [
+      require("../assets/cafe-2.jpg"),
+      require("../assets/cafe-3.jpg"),
+      require("../assets/latte-art.jpg"),
+    ],
     rating: 4.6,
     distance: "0.5 mi",
     amenities: ["Wi-Fi", "Coffee"],
@@ -48,14 +81,32 @@ const allCafes = [
     isOpen: true,
     priceRange: "$",
     reviews: 189,
-    hours: "Daily  8am–7pm",
+    phone: "+1 (718) 555-0202",
+    website: "beanandleaf.co",
+    instagram: "@beanandleaf",
     address: "15 Green Ave, Williamsburg",
+    fullHours: {
+      Mon: "8:00 AM – 7:00 PM",
+      Tue: "8:00 AM – 7:00 PM",
+      Wed: "8:00 AM – 7:00 PM",
+      Thu: "8:00 AM – 7:00 PM",
+      Fri: "8:00 AM – 8:00 PM",
+      Sat: "9:00 AM – 8:00 PM",
+      Sun: "10:00 AM – 5:00 PM",
+    },
     pin: { x: 0.66, y: 0.50 },
   },
   {
     id: 3,
     name: "Brew Culture",
+    category: "Third Wave Coffee",
+    description: "Industrial-chic space with a rotating selection of micro-roasted beans. Known for exceptional cold brew and a late-night crowd.",
     image: require("../assets/cafe-3.jpg"),
+    photos: [
+      require("../assets/cafe-3.jpg"),
+      require("../assets/cafe-1.jpg"),
+      require("../assets/latte-art.jpg"),
+    ],
     rating: 4.9,
     distance: "0.8 mi",
     amenities: ["Wi-Fi", "Outlets", "Coffee"],
@@ -63,8 +114,19 @@ const allCafes = [
     isOpen: false,
     priceRange: "$$$",
     reviews: 412,
-    hours: "Mon–Sat  9am–10pm",
+    phone: "+1 (718) 555-0303",
+    website: "brewculture.nyc",
+    instagram: "@brewculture",
     address: "88 Culture Blvd, Bushwick",
+    fullHours: {
+      Mon: "Closed",
+      Tue: "9:00 AM – 10:00 PM",
+      Wed: "9:00 AM – 10:00 PM",
+      Thu: "9:00 AM – 10:00 PM",
+      Fri: "9:00 AM – 11:00 PM",
+      Sat: "10:00 AM – 11:00 PM",
+      Sun: "10:00 AM – 8:00 PM",
+    },
     pin: { x: 0.26, y: 0.58 },
   },
 ];
@@ -88,6 +150,9 @@ export default function ExploreScreen() {
   const [activeFilters, setActiveFilters] = useState<string[]>(["open"]);
   const [activeTab, setActiveTab]         = useState<"info" | "rewards" | "reviews">("info");
   const [detailVisible, setDetailVisible] = useState(false);
+  const [photoIndex, setPhotoIndex]       = useState(0);
+  const [hoursExpanded, setHoursExpanded] = useState(false);
+  const [saved, setSaved]                 = useState<number[]>([]);
 
   const tabFade     = useRef(new Animated.Value(1)).current;
   const detailSlide = useRef(new Animated.Value(height)).current;
@@ -118,7 +183,7 @@ export default function ExploreScreen() {
     })
   ).current;
 
-  // Pin pulse – one Animated.Value per cafe
+  // Pin pulse
   const pulseScales  = useRef(allCafes.map(() => new Animated.Value(1))).current;
   const pulseOpacity = useRef(allCafes.map(() => new Animated.Value(0.6))).current;
 
@@ -148,6 +213,8 @@ export default function ExploreScreen() {
   const openDetail = (cafe: (typeof allCafes)[0]) => {
     setSelectedCafe(cafe);
     setActiveTab("info");
+    setPhotoIndex(0);
+    setHoursExpanded(false);
     detailSlide.setValue(height);
     setDetailVisible(true);
     Animated.spring(detailSlide, { toValue: 0, friction: 9, tension: 60, useNativeDriver: true }).start();
@@ -172,6 +239,11 @@ export default function ExploreScreen() {
       prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
     );
 
+  const toggleSave = (id: number) =>
+    setSaved((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+
+  const todayKey = DAYS_SHORT[new Date().getDay()];
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <View style={styles.root}>
@@ -186,12 +258,9 @@ export default function ExploreScreen() {
         {...mapPanResponder.panHandlers}
       >
         <View style={styles.mapBg}>
-          {/* Park patches */}
-          <View style={[styles.park, { top: "14%", left: "54%", width: 88, height: 64 }]} />
-          <View style={[styles.park, { top: "62%", left: "8%",  width: 66, height: 48 }]} />
-          {/* Water */}
+          <View style={[styles.park,  { top: "14%", left: "54%", width: 88, height: 64 }]} />
+          <View style={[styles.park,  { top: "62%", left: "8%",  width: 66, height: 48 }]} />
           <View style={[styles.water, { top: "68%", left: "52%", width: 110, height: 56 }]} />
-          {/* Building blocks */}
           {[
             { t: "7%",  l: "4%",  w: 100, h: 68 },
             { t: "20%", l: "28%", w: 82,  h: 54 },
@@ -202,25 +271,21 @@ export default function ExploreScreen() {
           ].map((b, i) => (
             <View key={i} style={[styles.block, { top: b.t as any, left: b.l as any, width: b.w, height: b.h }]} />
           ))}
-          {/* Minor roads */}
           {["21%", "39%", "57%", "73%"].map((t, i) => (
             <View key={`h${i}`} style={[styles.roadH, { top: t as any }]} />
           ))}
           {["19%", "39%", "61%", "79%"].map((l, i) => (
             <View key={`v${i}`} style={[styles.roadV, { left: l as any }]} />
           ))}
-          {/* Major roads */}
           <View style={[styles.roadHMaj, { top: "39%" }]} />
           <View style={[styles.roadVMaj, { left: "39%" }]} />
         </View>
 
-        {/* You-are-here */}
         <View style={styles.youAreHere}>
           <View style={styles.youRing} />
           <View style={styles.youDot} />
         </View>
 
-        {/* Cafe pins */}
         {filteredCafes.map((cafe, i) => (
           <TouchableOpacity
             key={cafe.id}
@@ -238,11 +303,10 @@ export default function ExploreScreen() {
         ))}
       </Animated.View>
 
-      {/* ── BOTTOM SHEET (list, always visible) ─────────────── */}
+      {/* ── BOTTOM SHEET (list) ─────────────────────────────── */}
       <View style={styles.sheet}>
         <View style={styles.handle} />
 
-        {/* Search bar – FYP-consistent style, top of sheet */}
         <View style={styles.searchContainer}>
           <Search size={15} color="#999" />
           <TextInput
@@ -260,7 +324,6 @@ export default function ExploreScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-          {/* List header */}
           <View style={styles.listHeader}>
             <Text style={styles.listTitle}>Cafés Near You</Text>
             <View style={styles.listCountChip}>
@@ -269,7 +332,6 @@ export default function ExploreScreen() {
             </View>
           </View>
 
-          {/* Filter chips */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -291,7 +353,6 @@ export default function ExploreScreen() {
             })}
           </ScrollView>
 
-          {/* Cafe cards */}
           {filteredCafes.map((cafe) => (
             <TouchableOpacity
               key={cafe.id}
@@ -325,33 +386,64 @@ export default function ExploreScreen() {
         <BottomNav />
       </View>
 
-      {/* ── CAFE DETAIL MODAL (covers BottomNav) ────────────── */}
+      {/* ── CAFE DETAIL MODAL ───────────────────────────────── */}
       <Modal visible={detailVisible} transparent animationType="none" statusBarTranslucent onRequestClose={closeDetail}>
         <View style={{ flex: 1 }}>
-          {/* Dim backdrop */}
           <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={closeDetail}>
             <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.25)" }} />
           </TouchableOpacity>
 
           {selectedCafe && (
             <Animated.View style={[styles.detailSheet, { transform: [{ translateY: detailSlide }] }]}>
-              <View style={styles.handle} />
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: scale(48) }}>
 
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
-                {/* Close */}
-                <TouchableOpacity style={styles.closeBtn} onPress={closeDetail}>
-                  <X size={16} color="#444" />
-                </TouchableOpacity>
+                {/* ── Photo Carousel ── */}
+                <View style={styles.heroWrap}>
+                  <FlatList
+                    data={selectedCafe.photos}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(_, i) => i.toString()}
+                    onMomentumScrollEnd={(e) => {
+                      setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / width));
+                    }}
+                    renderItem={({ item }) => (
+                      <Image source={item} style={styles.detailHero} resizeMode="cover" />
+                    )}
+                  />
 
-                {/* Hero image */}
-                <Image source={selectedCafe.image} style={styles.detailHero} resizeMode="cover" />
+                  {/* Gradient-like dark overlay at bottom of hero */}
+                  <View style={styles.heroOverlay} pointerEvents="none">
+                    <View style={[styles.heroBadge, selectedCafe.isOpen ? styles.heroBadgeOpen : styles.heroBadgeClosed]}>
+                      <Text style={[styles.heroBadgeText, selectedCafe.isOpen ? { color: "#2E7D32" } : { color: "#C62828" }]}>
+                        {selectedCafe.isOpen ? "Open Now" : "Closed"}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Dot indicators */}
+                  {selectedCafe.photos.length > 1 && (
+                    <View style={styles.photoDots}>
+                      {selectedCafe.photos.map((_, i) => (
+                        <View key={i} style={[styles.photoDot, i === photoIndex && styles.photoDotActive]} />
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Close button */}
+                  <TouchableOpacity style={styles.closeBtn} onPress={closeDetail}>
+                    <X size={scale(16)} color="#444" />
+                  </TouchableOpacity>
+                </View>
 
                 <View style={styles.detailBody}>
-                  {/* Name + rating */}
-                  <View style={styles.detailTopRow}>
+
+                  {/* ── Name, category, rating ── */}
+                  <View style={styles.nameRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.detailName}>{selectedCafe.name}</Text>
-                      <Text style={styles.detailAddress}>{selectedCafe.address}</Text>
+                      <Text style={styles.detailCategory}>{selectedCafe.category}</Text>
                     </View>
                     <View style={styles.ratingChip}>
                       <Star size={13} color="#D4A373" fill="#D4A373" />
@@ -360,35 +452,57 @@ export default function ExploreScreen() {
                     </View>
                   </View>
 
-                  {/* Status + meta */}
-                  <View style={styles.metaRow}>
-                    <View style={[styles.statusChip, selectedCafe.isOpen ? styles.statusOpen : styles.statusClosed]}>
-                      <Text style={[styles.statusChipText, selectedCafe.isOpen ? { color: "#2E7D32" } : { color: "#C62828" }]}>
-                        {selectedCafe.isOpen ? "Open Now" : "Closed"}
-                      </Text>
-                    </View>
-                    <Text style={styles.metaText}>{selectedCafe.hours}</Text>
-                    <Text style={styles.metaDot}>·</Text>
-                    <Text style={styles.metaText}>{selectedCafe.distance}</Text>
-                    <Text style={styles.metaDot}>·</Text>
-                    <Text style={styles.metaText}>{selectedCafe.priceRange}</Text>
+                  {/* ── Address + distance ── */}
+                  <View style={styles.addressRow}>
+                    <MapPin size={scale(13)} color="#D4A373" />
+                    <Text style={styles.addressText}>{selectedCafe.address}</Text>
+                    <Text style={styles.distancePill}>{selectedCafe.distance}</Text>
                   </View>
 
-                  {/* Amenity chips */}
+                  {/* ── Quick action buttons ── */}
+                  <View style={styles.actionsRow}>
+                    {[
+                      { icon: Navigation, label: "Directions" },
+                      { icon: Phone,      label: "Call"       },
+                      { icon: Globe,      label: "Website"    },
+                      {
+                        icon: Bookmark,
+                        label: saved.includes(selectedCafe.id) ? "Saved" : "Save",
+                        onPress: () => toggleSave(selectedCafe.id),
+                        active: saved.includes(selectedCafe.id),
+                      },
+                    ].map(({ icon: Icon, label, onPress, active }) => (
+                      <TouchableOpacity
+                        key={label}
+                        style={[styles.actionBtn, active && styles.actionBtnActive]}
+                        onPress={onPress}
+                      >
+                        <Icon size={scale(18)} color={active ? "#D4A373" : "#444"} fill={active ? "#D4A373" : "transparent"} />
+                        <Text style={[styles.actionBtnLabel, active && { color: "#D4A373" }]}>{label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* ── Amenity chips ── */}
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    style={{ marginBottom: 20 }}
-                    contentContainerStyle={{ gap: 8 }}
+                    style={{ marginBottom: scale(20) }}
+                    contentContainerStyle={{ gap: scale(8) }}
                   >
                     {selectedCafe.amenities.map((a) => (
                       <View key={a} style={styles.amenityChip}>
                         <Text style={styles.amenityChipText}>{a}</Text>
                       </View>
                     ))}
+                    {selectedCafe.vibes.map((v) => (
+                      <View key={v} style={[styles.amenityChip, styles.vibeChip]}>
+                        <Text style={[styles.amenityChipText, { color: "#D4A373" }]}>{v}</Text>
+                      </View>
+                    ))}
                   </ScrollView>
 
-                  {/* Tabs */}
+                  {/* ── Tabs ── */}
                   <View style={styles.tabRow}>
                     {(["info", "rewards", "reviews"] as const).map((t) => (
                       <TouchableOpacity
@@ -403,65 +517,137 @@ export default function ExploreScreen() {
                     ))}
                   </View>
 
-                  {/* Tab content */}
+                  {/* ── Tab Content ── */}
                   <Animated.View style={{ opacity: tabFade }}>
+
+                    {/* INFO TAB */}
                     {activeTab === "info" && (
-                      <View style={styles.tabContent}>
-                        {[
-                          "Specialty coffee & artisan pastries",
-                          "Free high-speed Wi-Fi",
-                          "Curated lo-fi & jazz playlist",
-                          "Plenty of seating & power outlets",
-                        ].map((item, i) => (
-                          <View key={i} style={styles.infoRow}>
-                            <View style={styles.infoDot} />
-                            <Text style={styles.infoText}>{item}</Text>
+                      <View>
+                        {/* About */}
+                        <Text style={styles.sectionHeading}>About</Text>
+                        <Text style={styles.descriptionText}>{selectedCafe.description}</Text>
+
+                        {/* Hours */}
+                        <TouchableOpacity
+                          style={styles.hoursHeader}
+                          onPress={() => setHoursExpanded(!hoursExpanded)}
+                        >
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: scale(8) }}>
+                            <Clock size={scale(15)} color="#D4A373" />
+                            <Text style={styles.sectionHeading}>Hours</Text>
                           </View>
-                        ))}
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
+                            <Text style={styles.todayHoursPreview}>
+                              Today: {selectedCafe.fullHours[todayKey as keyof typeof selectedCafe.fullHours]}
+                            </Text>
+                            {hoursExpanded
+                              ? <ChevronUp size={scale(14)} color="#888" />
+                              : <ChevronDown size={scale(14)} color="#888" />
+                            }
+                          </View>
+                        </TouchableOpacity>
+
+                        {hoursExpanded && (
+                          <View style={styles.hoursGrid}>
+                            {Object.entries(selectedCafe.fullHours).map(([day, hrs]) => (
+                              <View key={day} style={[styles.hoursRow, day === todayKey && styles.hoursRowToday]}>
+                                <Text style={[styles.hoursDay, day === todayKey && styles.hoursDayToday]}>{day}</Text>
+                                <Text style={[styles.hoursTime, day === todayKey && styles.hoursTimeToday]}>{hrs}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+
+                        {/* Contact */}
+                        <Text style={[styles.sectionHeading, { marginTop: scale(16) }]}>Contact</Text>
+                        <View style={styles.contactCard}>
+                          <View style={styles.contactRow}>
+                            <Phone size={scale(15)} color="#D4A373" />
+                            <Text style={styles.contactText}>{selectedCafe.phone}</Text>
+                          </View>
+                          <View style={styles.contactRow}>
+                            <Globe size={scale(15)} color="#D4A373" />
+                            <Text style={styles.contactText}>{selectedCafe.website}</Text>
+                          </View>
+                          <View style={[styles.contactRow, { borderBottomWidth: 0 }]}>
+                            <Instagram size={scale(15)} color="#D4A373" />
+                            <Text style={styles.contactText}>{selectedCafe.instagram}</Text>
+                          </View>
+                        </View>
+
+                        {/* Price */}
+                        <View style={styles.priceRow}>
+                          <Text style={styles.priceLabel}>Price range</Text>
+                          <Text style={styles.priceValue}>{selectedCafe.priceRange}</Text>
+                        </View>
                       </View>
                     )}
 
+                    {/* REWARDS TAB */}
                     {activeTab === "rewards" && (
                       <View style={styles.tabContent}>
+                        <Text style={styles.sectionHeading}>Available Rewards</Text>
                         {[
                           ["500 pts", "Free Latte"],
                           ["300 pts", "20% Off Order"],
                           ["700 pts", "Buy 1 Get 1 Free"],
                         ].map(([pts, label], i) => (
                           <View key={i} style={styles.rewardRow}>
-                            <Text style={styles.rewardPts}>{pts}</Text>
+                            <View style={styles.rewardPtsBadge}>
+                              <Text style={styles.rewardPts}>{pts}</Text>
+                            </View>
                             <Text style={styles.rewardLabel}>{label}</Text>
                           </View>
                         ))}
-
-                        {/* Navigate to full Rewards screen */}
                         <TouchableOpacity
                           style={styles.goToRewardsBtn}
                           onPress={() => { closeDetail(); navigation.navigate("Rewards"); }}
                         >
-                          <Gift size={15} color="#FFF" />
+                          <Gift size={scale(15)} color="#FFF" />
                           <Text style={styles.goToRewardsBtnText}>View All Rewards</Text>
                         </TouchableOpacity>
                       </View>
                     )}
 
+                    {/* REVIEWS TAB */}
                     {activeTab === "reviews" && (
                       <View style={styles.tabContent}>
+                        {/* Rating summary */}
+                        <View style={styles.ratingSummary}>
+                          <Text style={styles.ratingSummaryBig}>{selectedCafe.rating}</Text>
+                          <View>
+                            <View style={{ flexDirection: "row", gap: scale(3), marginBottom: scale(4) }}>
+                              {Array.from({ length: 5 }).map((_, j) => (
+                                <Star key={j} size={scale(14)} color="#D4A373" fill={j < Math.round(selectedCafe.rating) ? "#D4A373" : "transparent"} />
+                              ))}
+                            </View>
+                            <Text style={styles.ratingSummaryCount}>{selectedCafe.reviews} reviews</Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.sectionHeading}>Recent Reviews</Text>
                         {[
-                          { user: "Emma W.", text: "Best flat white in the area. Perfect study spot!", stars: 5 },
-                          { user: "James K.", text: "Love the atmosphere. Come every morning.", stars: 5 },
-                          { user: "Aisha M.", text: "Cozy vibes, great music. Highly recommend!", stars: 4 },
+                          { text: "Best flat white in the area. Perfect study spot!", stars: 5, time: "2 days ago" },
+                          { text: "Love the atmosphere. Come every morning.", stars: 5, time: "1 week ago" },
+                          { text: "Cozy vibes, great music. Highly recommend!", stars: 4, time: "2 weeks ago" },
                         ].map((r, i) => (
                           <View key={i} style={styles.reviewCard}>
-                            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-                              <Text style={styles.reviewUser}>{r.user}</Text>
-                              <View style={{ flexDirection: "row", gap: 2 }}>
-                                {Array.from({ length: 5 }).map((_, j) => (
-                                  <Star key={j} size={11} color={j < r.stars ? "#D4A373" : "#DDD"} fill={j < r.stars ? "#D4A373" : "transparent"} />
-                                ))}
+                            <View style={styles.reviewHeader}>
+                              <View style={styles.reviewAvatar}>
+                                <Coffee size={scale(14)} color="#D4A373" />
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                                  <View style={{ flexDirection: "row", gap: scale(2) }}>
+                                    {Array.from({ length: 5 }).map((_, j) => (
+                                      <Star key={j} size={scale(11)} color={j < r.stars ? "#D4A373" : "#DDD"} fill={j < r.stars ? "#D4A373" : "transparent"} />
+                                    ))}
+                                  </View>
+                                  <Text style={styles.reviewTime}>{r.time}</Text>
+                                </View>
+                                <Text style={styles.reviewText}>{r.text}</Text>
                               </View>
                             </View>
-                            <Text style={styles.reviewText}>{r.text}</Text>
                           </View>
                         ))}
                       </View>
@@ -481,321 +667,308 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#EDE9E1" },
 
-  // ── Map ──
   mapBg: { flex: 1, backgroundColor: "#EDE9E1" },
-  block: { position: "absolute", backgroundColor: "#DDD9D1", borderRadius: 6 },
-  park:  { position: "absolute", backgroundColor: "#C5D9A6", borderRadius: 6 },
-  water: { position: "absolute", backgroundColor: "#A8CCE0", borderRadius: 8 },
-  roadH: { position: "absolute", left: 0, right: 0, height: 4, backgroundColor: "#F5F2EC" },
-  roadV: { position: "absolute", top: 0, bottom: 0, width: 4, backgroundColor: "#F5F2EC" },
-  roadHMaj: { position: "absolute", left: 0, right: 0, height: 7, backgroundColor: "#FDFAF6" },
-  roadVMaj: { position: "absolute", top: 0, bottom: 0, width: 7, backgroundColor: "#FDFAF6" },
+  block: { position: "absolute", backgroundColor: "#DDD9D1", borderRadius: scale(6) },
+  park:  { position: "absolute", backgroundColor: "#C5D9A6", borderRadius: scale(6) },
+  water: { position: "absolute", backgroundColor: "#A8CCE0", borderRadius: scale(8) },
+  roadH: { position: "absolute", left: 0, right: 0, height: scale(4), backgroundColor: "#F5F2EC" },
+  roadV: { position: "absolute", top: 0, bottom: 0, width: scale(4), backgroundColor: "#F5F2EC" },
+  roadHMaj: { position: "absolute", left: 0, right: 0, height: scale(7), backgroundColor: "#FDFAF6" },
+  roadVMaj: { position: "absolute", top: 0, bottom: 0, width: scale(7), backgroundColor: "#FDFAF6" },
 
-  navWrapper: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
+  navWrapper: { position: "absolute", bottom: 0, left: 0, right: 0 },
 
-  // You-are-here
   youAreHere: {
-    position: "absolute",
-    top: "47%",
-    left: "50%",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: -10,
-    marginTop: -10,
+    position: "absolute", top: "47%", left: "50%",
+    alignItems: "center", justifyContent: "center",
+    marginLeft: scale(-10), marginTop: scale(-10),
   },
   youRing: {
-    position: "absolute",
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(66,133,244,0.2)",
-    borderWidth: 1.5,
-    borderColor: "rgba(66,133,244,0.4)",
+    position: "absolute", width: scale(28), height: scale(28),
+    borderRadius: scale(14), backgroundColor: "rgba(66,133,244,0.2)",
+    borderWidth: 1.5, borderColor: "rgba(66,133,244,0.4)",
   },
   youDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#4285F4",
-    borderWidth: 2.5,
-    borderColor: "#FFF",
+    width: scale(12), height: scale(12), borderRadius: scale(6),
+    backgroundColor: "#4285F4", borderWidth: 2.5, borderColor: "#FFF",
   },
 
-  // Pins
-  pinWrap: { position: "absolute", alignItems: "center", marginLeft: -32, marginTop: -16 },
+  pinWrap: { position: "absolute", alignItems: "center", marginLeft: scale(-32), marginTop: scale(-16) },
   pinRing: {
-    position: "absolute",
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    position: "absolute", width: scale(36), height: scale(36), borderRadius: scale(18),
     backgroundColor: "rgba(212,163,115,0.35)",
   },
   pin: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#D4A373",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
+    flexDirection: "row", alignItems: "center", gap: scale(4),
+    backgroundColor: "#D4A373", paddingHorizontal: scale(10), paddingVertical: scale(5),
+    borderRadius: scale(20), shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25, shadowRadius: 4, elevation: 4,
   },
   pinSelected: { backgroundColor: "#2C1810" },
-  pinText: { color: "#FFF", fontSize: 11, fontWeight: "700" },
+  pinText: { color: "#FFF", fontSize: moderateScale(11), fontWeight: "700" },
 
-  // Bottom sheet (list, static)
   sheet: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: SHEET_HEIGHT,
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 20,
-    overflow: "hidden",
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    height: SHEET_HEIGHT, backgroundColor: "#FFF",
+    borderTopLeftRadius: scale(28), borderTopRightRadius: scale(28),
+    shadowColor: "#000", shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12, shadowRadius: 20, elevation: 20, overflow: "hidden",
   },
   handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: "#DADADA",
-    borderRadius: 2,
-    alignSelf: "center",
-    marginTop: 10,
-    marginBottom: 8,
+    width: scale(40), height: scale(4), backgroundColor: "#DADADA",
+    borderRadius: scale(2), alignSelf: "center",
+    marginTop: scale(10), marginBottom: scale(8),
   },
-
-  // Search bar (FYP-consistent)
   searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F7F3F0",
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    marginHorizontal: 16,
-    marginBottom: 4,
-    gap: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 6,
-    elevation: 3,
+    flexDirection: "row", alignItems: "center", backgroundColor: "#F7F3F0",
+    borderRadius: scale(16), paddingHorizontal: scale(14), paddingVertical: scale(11),
+    marginHorizontal: scale(16), marginBottom: scale(4), gap: scale(10),
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07, shadowRadius: 6, elevation: 3,
   },
-  searchInput: { flex: 1, fontSize: 14, color: "#1A1A1A" },
+  searchInput: { flex: 1, fontSize: moderateScale(14), color: "#1A1A1A" },
 
-  // List
   listHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 4,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: scale(16), paddingTop: scale(10), paddingBottom: scale(4),
   },
   listTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    fontFamily: "PlayfairDisplay_700Bold",
-    color: "#1A1A1A",
+    fontSize: moderateScale(18), fontWeight: "700",
+    fontFamily: "PlayfairDisplay_700Bold", color: "#1A1A1A",
   },
   listCountChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
+    flexDirection: "row", alignItems: "center", gap: scale(4),
     backgroundColor: "rgba(212,163,115,0.12)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: scale(10), paddingVertical: scale(4), borderRadius: scale(12),
   },
-  listCountText: { fontSize: 12, color: "#D4A373", fontWeight: "600" },
+  listCountText: { fontSize: moderateScale(12), color: "#D4A373", fontWeight: "600" },
 
   filterChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#E0D8D0",
-    backgroundColor: "#F7F3F0",
+    flexDirection: "row", alignItems: "center", gap: scale(5),
+    paddingHorizontal: scale(12), paddingVertical: scale(7),
+    borderRadius: scale(20), borderWidth: 1,
+    borderColor: "#E0D8D0", backgroundColor: "#F7F3F0",
   },
   filterChipActive: { backgroundColor: "#D4A373", borderColor: "#D4A373" },
-  filterChipText: { fontSize: 12, fontWeight: "600", color: "#666" },
+  filterChipText: { fontSize: moderateScale(12), fontWeight: "600", color: "#666" },
 
-  // Cafe card
   cafeCard: {
-    marginHorizontal: 16,
-    marginBottom: 14,
-    borderRadius: 20,
-    overflow: "hidden",
-    height: 160,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.14,
-    shadowRadius: 10,
-    elevation: 5,
+    marginHorizontal: scale(16), marginBottom: scale(14),
+    borderRadius: scale(20), overflow: "hidden", height: scale(160),
+    shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14, shadowRadius: 10, elevation: 5,
   },
   cafeCardImage: { width: "100%", height: "100%" },
-  openPip: { position: "absolute", top: 12, left: 12, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  openPip: {
+    position: "absolute", top: scale(12), left: scale(12),
+    paddingHorizontal: scale(10), paddingVertical: scale(4), borderRadius: scale(12),
+  },
   openPipGreen: { backgroundColor: "rgba(232,245,233,0.95)" },
   openPipRed:   { backgroundColor: "rgba(255,235,238,0.95)" },
-  openPipText:  { fontSize: 11, fontWeight: "600" },
+  openPipText:  { fontSize: moderateScale(11), fontWeight: "600" },
   cardRatingBadge: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
+    position: "absolute", top: scale(12), right: scale(12),
+    flexDirection: "row", alignItems: "center", gap: scale(3),
     backgroundColor: "rgba(255,255,255,0.95)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: scale(8), paddingVertical: scale(4), borderRadius: scale(12),
   },
-  cardRatingText: { fontSize: 12, fontWeight: "700", color: "#1A1A1A" },
+  cardRatingText: { fontSize: moderateScale(12), fontWeight: "700", color: "#1A1A1A" },
   cafeCardTextArea: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    position: "absolute", bottom: 0, left: 0, right: 0,
     backgroundColor: "rgba(0,0,0,0.48)",
-    paddingHorizontal: 14,
-    paddingTop: 20,
-    paddingBottom: 12,
+    paddingHorizontal: scale(14), paddingTop: scale(20), paddingBottom: scale(12),
   },
-  cafeCardName: { fontSize: 17, fontWeight: "700", color: "#FFF", marginBottom: 2 },
+  cafeCardName: { fontSize: moderateScale(17), fontWeight: "700", color: "#FFF", marginBottom: scale(2) },
   cafeCardMeta: { flexDirection: "row", justifyContent: "space-between" },
-  cafeCardSub:  { fontSize: 12, color: "rgba(255,255,255,0.85)" },
-  cafeCardDist: { fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: "600" },
+  cafeCardSub:  { fontSize: moderateScale(12), color: "rgba(255,255,255,0.85)" },
+  cafeCardDist: { fontSize: moderateScale(12), color: "rgba(255,255,255,0.85)", fontWeight: "600" },
 
-  // Detail modal sheet
+  // ── Detail modal ──
   detailSheet: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: height * 0.90,
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 24,
-    overflow: "hidden",
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    height: height * 0.92, backgroundColor: "#FFF",
+    borderTopLeftRadius: scale(28), borderTopRightRadius: scale(28),
+    shadowColor: "#000", shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.18, shadowRadius: 24, elevation: 24, overflow: "hidden",
+  },
+
+  heroWrap: { position: "relative", width: "100%", height: scale(230) },
+  detailHero: { width, height: scale(230) },
+  heroOverlay: {
+    position: "absolute", bottom: scale(12), left: scale(12),
+  },
+  heroBadge: {
+    paddingHorizontal: scale(10), paddingVertical: scale(4), borderRadius: scale(12),
+  },
+  heroBadgeOpen:   { backgroundColor: "rgba(232,245,233,0.95)" },
+  heroBadgeClosed: { backgroundColor: "rgba(255,235,238,0.95)" },
+  heroBadgeText:   { fontSize: moderateScale(12), fontWeight: "600" },
+  photoDots: {
+    position: "absolute", bottom: scale(12), alignSelf: "center",
+    width: "100%", flexDirection: "row", justifyContent: "center", gap: scale(5),
+  },
+  photoDot: {
+    width: scale(6), height: scale(6), borderRadius: scale(3),
+    backgroundColor: "rgba(255,255,255,0.5)",
+  },
+  photoDotActive: {
+    backgroundColor: "#FFF", width: scale(18), borderRadius: scale(3),
   },
   closeBtn: {
-    position: "absolute",
-    top: 14,
-    right: 16,
-    zIndex: 10,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
+    position: "absolute", top: scale(14), right: scale(14), zIndex: 10,
+    width: scale(32), height: scale(32), borderRadius: scale(16),
+    backgroundColor: "rgba(255,255,255,0.92)",
+    justifyContent: "center", alignItems: "center",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15, shadowRadius: 3, elevation: 3,
   },
-  detailHero: { width: "100%", height: 220 },
-  detailBody: { paddingHorizontal: 16, paddingTop: 16 },
-  detailTopRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 6 },
+
+  detailBody: { paddingHorizontal: scale(16), paddingTop: scale(16) },
+
+  nameRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: scale(6) },
   detailName: {
-    fontSize: 22,
-    fontWeight: "700",
-    fontFamily: "PlayfairDisplay_700Bold",
-    color: "#1A1A1A",
-    marginBottom: 2,
+    fontSize: moderateScale(22), fontWeight: "700",
+    fontFamily: "PlayfairDisplay_700Bold", color: "#1A1A1A", marginBottom: scale(2),
   },
-  detailAddress: { fontSize: 13, color: "#777", marginBottom: 12 },
+  detailCategory: { fontSize: moderateScale(13), color: "#888" },
   ratingChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
+    flexDirection: "row", alignItems: "center", gap: scale(3),
     backgroundColor: "rgba(212,163,115,0.12)",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    marginLeft: 8,
+    paddingHorizontal: scale(10), paddingVertical: scale(5),
+    borderRadius: scale(12), marginLeft: scale(8),
   },
-  ratingNum:     { fontSize: 14, fontWeight: "700", color: "#1A1A1A" },
-  ratingReviews: { fontSize: 11, color: "#888" },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" },
-  statusChip:     { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  statusOpen:     { backgroundColor: "#E8F5E9" },
-  statusClosed:   { backgroundColor: "#FFEBEE" },
-  statusChipText: { fontSize: 12, fontWeight: "600" },
-  metaText: { fontSize: 12, color: "#666" },
-  metaDot:  { fontSize: 12, color: "#CCC" },
-  amenityChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E0D8D0",
-    backgroundColor: "#F7F3F0",
+  ratingNum:     { fontSize: moderateScale(14), fontWeight: "700", color: "#1A1A1A" },
+  ratingReviews: { fontSize: moderateScale(11), color: "#888" },
+
+  addressRow: {
+    flexDirection: "row", alignItems: "center", gap: scale(6),
+    marginBottom: scale(16),
   },
-  amenityChipText: { fontSize: 12, color: "#555", fontWeight: "500" },
-  tabRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 16,
+  addressText:  { fontSize: moderateScale(13), color: "#555", flex: 1 },
+  distancePill: {
+    fontSize: moderateScale(12), color: "#D4A373", fontWeight: "600",
+    backgroundColor: "rgba(212,163,115,0.1)",
+    paddingHorizontal: scale(8), paddingVertical: scale(3), borderRadius: scale(10),
+  },
+
+  actionsRow: {
+    flexDirection: "row", gap: scale(8), marginBottom: scale(20),
+  },
+  actionBtn: {
+    flex: 1, alignItems: "center", justifyContent: "center", gap: scale(5),
+    paddingVertical: scale(10), borderRadius: scale(14),
     backgroundColor: "#F5F2EE",
-    borderRadius: 16,
-    padding: 4,
   },
-  tabBtn:           { flex: 1, paddingVertical: 8, borderRadius: 12, alignItems: "center" },
+  actionBtnActive: { backgroundColor: "rgba(212,163,115,0.12)" },
+  actionBtnLabel: { fontSize: moderateScale(11), fontWeight: "600", color: "#444" },
+
+  amenityChip: {
+    paddingHorizontal: scale(12), paddingVertical: scale(6),
+    borderRadius: scale(16), borderWidth: 1,
+    borderColor: "#E0D8D0", backgroundColor: "#F7F3F0",
+  },
+  vibeChip: { borderColor: "rgba(212,163,115,0.3)", backgroundColor: "rgba(212,163,115,0.08)" },
+  amenityChipText: { fontSize: moderateScale(12), color: "#555", fontWeight: "500" },
+
+  tabRow: {
+    flexDirection: "row", gap: scale(8), marginBottom: scale(16),
+    backgroundColor: "#F5F2EE", borderRadius: scale(16), padding: scale(4),
+  },
+  tabBtn:           { flex: 1, paddingVertical: scale(8), borderRadius: scale(12), alignItems: "center" },
   tabBtnActive:     { backgroundColor: "#FFF", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 2 },
-  tabBtnText:       { fontSize: 13, fontWeight: "500", color: "#888" },
+  tabBtnText:       { fontSize: moderateScale(13), fontWeight: "500", color: "#888" },
   tabBtnTextActive: { color: "#1A1A1A", fontWeight: "700" },
-  tabContent: { marginBottom: 16 },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
-  infoDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#D4A373" },
-  infoText: { fontSize: 14, color: "#333", lineHeight: 20 },
+  tabContent: { marginBottom: scale(16) },
+
+  sectionHeading: {
+    fontSize: moderateScale(14), fontWeight: "700", color: "#1A1A1A",
+    marginBottom: scale(8),
+  },
+  descriptionText: {
+    fontSize: moderateScale(13), color: "#555", lineHeight: moderateScale(20),
+    marginBottom: scale(20),
+  },
+
+  hoursHeader: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    marginBottom: scale(8),
+  },
+  todayHoursPreview: { fontSize: moderateScale(12), color: "#888" },
+  hoursGrid: {
+    backgroundColor: "#F7F3F0", borderRadius: scale(12),
+    paddingHorizontal: scale(12), paddingVertical: scale(8),
+    marginBottom: scale(16),
+  },
+  hoursRow: {
+    flexDirection: "row", justifyContent: "space-between",
+    paddingVertical: scale(6), borderBottomWidth: 1, borderBottomColor: "#EEEBE6",
+  },
+  hoursRowToday: { backgroundColor: "rgba(212,163,115,0.08)", marginHorizontal: scale(-4), paddingHorizontal: scale(4), borderRadius: scale(6) },
+  hoursDay:      { fontSize: moderateScale(13), color: "#666", width: scale(36) },
+  hoursDayToday: { color: "#D4A373", fontWeight: "700" },
+  hoursTime:     { fontSize: moderateScale(13), color: "#444" },
+  hoursTimeToday:{ color: "#D4A373", fontWeight: "700" },
+
+  contactCard: {
+    backgroundColor: "#F7F3F0", borderRadius: scale(12),
+    paddingHorizontal: scale(12), paddingVertical: scale(4),
+    marginBottom: scale(12),
+  },
+  contactRow: {
+    flexDirection: "row", alignItems: "center", gap: scale(10),
+    paddingVertical: scale(10), borderBottomWidth: 1, borderBottomColor: "#EEEBE6",
+  },
+  contactText: { fontSize: moderateScale(13), color: "#444" },
+
+  priceRow: {
+    flexDirection: "row", justifyContent: "space-between",
+    paddingVertical: scale(12), borderTopWidth: 1, borderTopColor: "#EEEBE6",
+  },
+  priceLabel: { fontSize: moderateScale(13), color: "#888" },
+  priceValue: { fontSize: moderateScale(13), fontWeight: "700", color: "#1A1A1A" },
+
   rewardRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F7F3F0",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    gap: 12,
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#F7F3F0", borderRadius: scale(12),
+    padding: scale(12), marginBottom: scale(8), gap: scale(12),
   },
-  rewardPts:   { fontSize: 13, fontWeight: "700", color: "#D4A373", width: 64 },
-  rewardLabel: { fontSize: 14, color: "#333", fontWeight: "500" },
+  rewardPtsBadge: {
+    backgroundColor: "rgba(212,163,115,0.15)",
+    paddingHorizontal: scale(10), paddingVertical: scale(5), borderRadius: scale(10),
+  },
+  rewardPts:   { fontSize: moderateScale(13), fontWeight: "700", color: "#D4A373" },
+  rewardLabel: { fontSize: moderateScale(14), color: "#333", fontWeight: "500" },
   goToRewardsBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#D4A373",
-    borderRadius: 14,
-    paddingVertical: 12,
-    marginTop: 8,
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: scale(8), backgroundColor: "#D4A373",
+    borderRadius: scale(14), paddingVertical: scale(12), marginTop: scale(8),
   },
-  goToRewardsBtnText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
-  reviewCard: { backgroundColor: "#F7F3F0", borderRadius: 12, padding: 12, marginBottom: 8 },
-  reviewUser: { fontSize: 13, fontWeight: "700", color: "#1A1A1A" },
-  reviewText: { fontSize: 13, color: "#555", lineHeight: 19, marginTop: 2 },
+  goToRewardsBtnText: { color: "#FFF", fontSize: moderateScale(14), fontWeight: "700" },
+
+  ratingSummary: {
+    flexDirection: "row", alignItems: "center", gap: scale(16),
+    backgroundColor: "#F7F3F0", borderRadius: scale(14),
+    padding: scale(16), marginBottom: scale(16),
+  },
+  ratingSummaryBig: {
+    fontSize: moderateScale(40), fontWeight: "800", color: "#1A1A1A",
+    fontFamily: "PlayfairDisplay_700Bold",
+  },
+  ratingSummaryCount: { fontSize: moderateScale(12), color: "#888" },
+
+  reviewCard: {
+    backgroundColor: "#F7F3F0", borderRadius: scale(12),
+    padding: scale(12), marginBottom: scale(8),
+  },
+  reviewHeader: { flexDirection: "row", gap: scale(10) },
+  reviewAvatar: {
+    width: scale(32), height: scale(32), borderRadius: scale(16),
+    backgroundColor: "rgba(212,163,115,0.15)",
+    justifyContent: "center", alignItems: "center",
+  },
+  reviewTime: { fontSize: moderateScale(11), color: "#AAA" },
+  reviewText: {
+    fontSize: moderateScale(13), color: "#555",
+    lineHeight: moderateScale(19), marginTop: scale(4),
+  },
 });

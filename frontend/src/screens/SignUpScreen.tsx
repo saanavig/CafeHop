@@ -12,6 +12,7 @@ import Button from "../components/ui/Button";
 import { apiFetch } from "../api/client";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
+import { scale, moderateScale } from "../utils/responsive";
 
 export default function SignUpScreen() {
   const navigation = useNavigation<any>();
@@ -166,15 +167,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
+    padding: scale(24),
     backgroundColor: "#F7F3F0",
   },
 
   card: {
     width: "100%",
     maxWidth: 480,
-    padding: 24,
-    borderRadius: 16,
+    padding: scale(24),
+    borderRadius: scale(16),
     backgroundColor: "#FFF",
     shadowColor: "#000",
     shadowOpacity: 0.1,
@@ -182,34 +183,34 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 28,
+    fontSize: moderateScale(28),
     fontWeight: "bold",
     fontFamily: "PlayfairDisplay_700Bold",
-    marginBottom: 8,
+    marginBottom: scale(8),
     textAlign: "center",
   },
 
   subtitle: {
-    fontSize: 14,
+    fontSize: moderateScale(14),
     color: "#555",
-    marginBottom: 24,
+    marginBottom: scale(24),
     textAlign: "center",
   },
 
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
 
   label: {
     fontWeight: "500",
-    marginBottom: 4,
+    marginBottom: scale(4),
   },
 
   input: {
     borderWidth: 1,
     borderColor: "#CCC",
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: scale(8),
+    padding: scale(12),
   },
 
   passwordContainer: {
@@ -217,12 +218,12 @@ const styles = StyleSheet.create({
   },
 
   passwordInput: {
-    paddingRight: 60,
+    paddingRight: scale(60),
   },
 
   eyeButton: {
     position: "absolute",
-    right: 12,
+    right: scale(12),
     top: "50%",
     transform: [{ translateY: -10 }],
   },
@@ -234,13 +235,13 @@ const styles = StyleSheet.create({
 
   errorText: {
     color: "#d9534f",
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: moderateScale(12),
+    marginTop: scale(4),
   },
 
   loginText: {
     textAlign: "center",
-    marginTop: 12,
+    marginTop: scale(12),
   },
 
   linkText: {
