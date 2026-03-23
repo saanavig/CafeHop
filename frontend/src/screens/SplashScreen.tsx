@@ -8,6 +8,7 @@ import { useFonts, PlayfairDisplay_700Bold } from "@expo-google-fonts/playfair-d
 
 import { Coffee } from "lucide-react-native";
 import Button from "../components/ui/Button";
+import { scale, moderateScale } from "../utils/responsive";
 
 export default function SplashScreen() {
   const navigation = useNavigation<any>();
@@ -46,30 +47,30 @@ export default function SplashScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 24 },
+  container: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: scale(24) },
   content: { maxWidth: 480, alignItems: "center" },
   logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
+    width: scale(80),
+    height: scale(80),
+    borderRadius: scale(16),
     backgroundColor: "rgba(212, 163, 115, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
   title: {
-    fontSize: 36,
+    fontSize: moderateScale(36),
     fontWeight: "bold",
     fontFamily: "PlayfairDisplay_700Bold",
-    marginBottom: 12,
+    marginBottom: scale(12),
     textAlign: "center",
     color: "#1A1A1A",
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: moderateScale(16),
     textAlign: "center",
     color: "#666",
-    marginBottom: 32,
+    marginBottom: scale(32),
   },
   buttonsContainer: { width: "100%" },
 });

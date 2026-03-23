@@ -25,6 +25,7 @@ import {
 import Button from "../components/ui/Button";
 import { useRole } from "../context/RoleContext";
 import BottomNav from "../components/ui/BottomNav";
+import { scale, moderateScale } from "../utils/responsive";
 
 type MenuItem = {
   icon: React.ElementType;
@@ -57,8 +58,9 @@ const SettingsScreen = () => {
   ];
 
   const cafeMenu: MenuItem[] = [
+    { icon: Store, label: "Café Profile", desc: "Edit your café details & hours", route: "CafeEdit" },
     { icon: Bell, label: "Live Visits", desc: "See who's checked in right now", route: "Notifications" },
-    { icon: BarChart2, label: "Analytics", desc: "Sales, trends & peak hours", route: "Analytics" },
+    // { icon: BarChart2, label: "Analytics", desc: "Sales, trends & peak hours", route: "Analytics" },
     { icon: Coffee, label: "Account Settings", desc: "App preferences", route: "Preferences" },
     { icon: HelpCircle, label: "Support", desc: "FAQs & contact", route: "Help" },
   ];
@@ -173,48 +175,48 @@ const styles = StyleSheet.create({
     backgroundColor: "#F7F3F0",
   },
   scrollContent: {
-    paddingTop: 40,
-    paddingBottom: 100,
+    paddingTop: scale(40),
+    paddingBottom: scale(100),
     alignItems: "center",
   },
   header: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
   avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: scale(80),
+    height: scale(80),
+    borderRadius: scale(40),
     backgroundColor: "rgba(212,163,115,0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: scale(12),
   },
-  title: { fontSize: 24, fontWeight: "bold", fontFamily: "PlayfairDisplay_700Bold", marginBottom: 4 },
-  subtitle: { fontSize: 14, color: "#555", marginBottom: 8 },
+  title: { fontSize: moderateScale(24), fontWeight: "bold", fontFamily: "PlayfairDisplay_700Bold", marginBottom: scale(4) },
+  subtitle: { fontSize: moderateScale(14), color: "#555", marginBottom: scale(8) },
   infoBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: scale(6),
     backgroundColor: "#FFF",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(6),
+    borderRadius: scale(20),
     borderWidth: 1,
     borderColor: "#DDD",
   },
-  infoText: { fontSize: 14, color: "#333" },
-  infoValue: { fontSize: 14, color: "#D4A373", fontWeight: "bold" },
+  infoText: { fontSize: moderateScale(14), color: "#333" },
+  infoValue: { fontSize: moderateScale(14), color: "#D4A373", fontWeight: "bold" },
 
   content: {
     alignSelf: "center",
-    paddingHorizontal:4,
+    paddingHorizontal: scale(4),
   },
   menuContainer: {
-    marginTop: 24,
-    marginBottom: 24,
+    marginTop: scale(24),
+    marginBottom: scale(24),
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: scale(16),
     borderWidth: 1,
     borderColor: "#E8DFD5",
     overflow: "hidden",
@@ -222,18 +224,18 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(16),
+    gap: scale(12),
   },
   menuItemBorder: {
     borderBottomWidth: 1,
     borderBottomColor: "#E8DFD5",
   },
   menuIconBackground: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(10),
     backgroundColor: "#F7F3F0",
     justifyContent: "center",
     alignItems: "center",
@@ -242,25 +244,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   menuLabel: {
-    fontSize: 14,
+    fontSize: moderateScale(14),
     fontWeight: "600",
     color: "#1A1A1A",
-    marginBottom: 2,
+    marginBottom: scale(2),
   },
   menuDesc: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
     color: "#888",
   },
   signOutContainer: {
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
   signOutButton: {
     backgroundColor: "#FFF",
     borderWidth: 1,
     borderColor: "#E8DFD5",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(16),
+    borderRadius: scale(12),
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
@@ -268,14 +270,14 @@ const styles = StyleSheet.create({
   signOutText: {
     color: "#D32F2F",
     fontWeight: "600",
-    fontSize: 14,
-    marginLeft: 8,
+    fontSize: moderateScale(14),
+    marginLeft: scale(8),
   },
   footerText: {
     textAlign: "center",
-    fontSize: 12,
+    fontSize: moderateScale(12),
     color: "#888",
-    marginBottom: 80,
+    marginBottom: scale(80),
   },
 });
 

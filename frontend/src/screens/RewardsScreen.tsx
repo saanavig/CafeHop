@@ -17,6 +17,7 @@ import BottomNav from "../components/ui/BottomNav";
 import RewardsCard from "../components/ui/RewardsCard";
 import Button from "../components/ui/Button";
 import { useRole } from "../context/RoleContext";
+import { scale, moderateScale } from "../utils/responsive";
 
 interface Reward {
   id: number;
@@ -374,62 +375,62 @@ const styles = StyleSheet.create({
   },
 
   scrollContent: {
-    paddingTop: 24,
-    paddingBottom: 100,
+    paddingTop: scale(24),
+    paddingBottom: scale(100),
     alignItems: "center",
   },
 
   content: {
     alignSelf: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: scale(16),
   },
 
   header: {
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
 
   title: {
-    fontSize: 28,
+    fontSize: moderateScale(28),
     fontWeight: "bold",
     fontFamily: "PlayfairDisplay_700Bold",
     color: "#1A1A1A",
-    marginBottom: 4,
+    marginBottom: scale(4),
   },
 
   subtitle: {
     color: "#666",
-    fontSize: 14,
+    fontSize: moderateScale(14),
   },
 
   section: {
-    marginTop: 24,
+    marginTop: scale(24),
   },
 
   sectionTitle: {
-    fontSize: 18,
+    fontSize: moderateScale(18),
     fontWeight: "600",
     color: "#1A1A1A",
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
 
   rewardCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFF",
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 12,
+    padding: scale(12),
+    borderRadius: scale(16),
+    marginBottom: scale(12),
   },
 
   rewardImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
+    width: scale(60),
+    height: scale(60),
+    borderRadius: scale(12),
   },
 
   rewardInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: scale(12),
   },
 
   rewardTitle: {
@@ -437,65 +438,65 @@ const styles = StyleSheet.create({
   },
 
   rewardCafe: {
-    fontSize: 13,
+    fontSize: moderateScale(13),
     color: "#777",
   },
 
   rewardPoints: {
-    marginTop: 4,
+    marginTop: scale(4),
     color: "#D4A373",
     fontWeight: "600",
   },
 
-    modalOverlay: {
+  modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
-    paddingHorizontal: 20, // horizontal padding only
-    },
+    paddingHorizontal: scale(20),
+  },
 
-    modalCard: {
+  modalCard: {
     backgroundColor: "#FFF",
-    borderRadius: 16,
-    padding: 20,
-    alignSelf: "center",            // center horizontally
-    width: "100%",                  // take full width of parent overlay padding
-    maxWidth: 480,                  // match contentWidth max
-    },
+    borderRadius: scale(16),
+    padding: scale(20),
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: 480,
+  },
 
   modalTitle: {
-    fontSize: 18,
+    fontSize: moderateScale(18),
     fontWeight: "600",
-    marginBottom: 12,
+    marginBottom: scale(12),
   },
 
   modalText: {
     color: "#666",
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
 
   fakeQR: {
-    width: 160,
-    height: 160,
+    width: scale(160),
+    height: scale(160),
     backgroundColor: "#EEE",
     alignSelf: "center",
-    marginBottom: 20,
-    borderRadius: 12,
+    marginBottom: scale(20),
+    borderRadius: scale(12),
   },
 
   closeBtn: {
-    marginTop: 12,
+    marginTop: scale(12),
     alignItems: "center",
   },
 
   newProgInput: {
     borderWidth: 1,
     borderColor: "#E0D8D0",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    marginBottom: 10,
+    borderRadius: scale(10),
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(10),
+    fontSize: moderateScale(14),
+    marginBottom: scale(10),
     backgroundColor: "#F7F3F0",
   },
 
@@ -503,69 +504,69 @@ const styles = StyleSheet.create({
   cafeStatsRow: {
     flexDirection: "row",
     backgroundColor: "#FFF",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 8,
+    borderRadius: scale(16),
+    padding: scale(16),
+    marginBottom: scale(8),
     alignItems: "center",
     justifyContent: "space-around",
   },
   cafeStat: { alignItems: "center", flex: 1 },
-  cafeStatNumber: { fontSize: 20, fontWeight: "700", color: "#2C1810" },
-  cafeStatLabel: { fontSize: 11, color: "#888", marginTop: 2 },
-  cafeStatDivider: { width: 1, height: 32, backgroundColor: "#E8DFD5" },
+  cafeStatNumber: { fontSize: moderateScale(20), fontWeight: "700", color: "#2C1810" },
+  cafeStatLabel: { fontSize: moderateScale(11), color: "#888", marginTop: scale(2) },
+  cafeStatDivider: { width: 1, height: scale(32), backgroundColor: "#E8DFD5" },
 
   programCard: {
     backgroundColor: "#FFF",
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
+    borderRadius: scale(14),
+    padding: scale(14),
+    marginBottom: scale(10),
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: scale(12),
   },
   programCardInactive: { opacity: 0.6 },
-  programName: { fontSize: 15, fontWeight: "600", color: "#1A1A1A" },
-  programDesc: { fontSize: 12, color: "#777", marginTop: 2 },
-  programStat: { fontSize: 11, color: "#D4A373", fontWeight: "500" },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  programName: { fontSize: moderateScale(15), fontWeight: "600", color: "#1A1A1A" },
+  programDesc: { fontSize: moderateScale(12), color: "#777", marginTop: scale(2) },
+  programStat: { fontSize: moderateScale(11), color: "#D4A373", fontWeight: "500" },
+  statusBadge: { paddingHorizontal: scale(8), paddingVertical: scale(2), borderRadius: scale(10) },
   statusBadgeActive: { backgroundColor: "#E8F5E9" },
   statusBadgeOff: { backgroundColor: "#F5F5F5" },
-  statusBadgeText: { fontSize: 11, fontWeight: "600" },
+  statusBadgeText: { fontSize: moderateScale(11), fontWeight: "600" },
   toggleBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(6),
+    borderRadius: scale(20),
     borderWidth: 1,
     borderColor: "#D4A373",
   },
-  toggleBtnText: { fontSize: 12, color: "#D4A373", fontWeight: "600" },
+  toggleBtnText: { fontSize: moderateScale(12), color: "#D4A373", fontWeight: "600" },
 
   addBtn: {
     backgroundColor: "#D4A373",
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(6),
+    borderRadius: scale(20),
   },
-  addBtnText: { color: "#FFF", fontSize: 13, fontWeight: "600" },
+  addBtnText: { color: "#FFF", fontSize: moderateScale(13), fontWeight: "600" },
 
   redemptionRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingVertical: 10,
+    gap: scale(12),
+    paddingVertical: scale(10),
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
   },
   redemptionAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
     backgroundColor: "#F7F3F0",
     justifyContent: "center",
     alignItems: "center",
   },
-  redemptionCustomer: { fontSize: 14, fontWeight: "600", color: "#1A1A1A" },
-  redemptionReward: { fontSize: 12, color: "#888" },
-  redemptionPoints: { fontSize: 13, color: "#D4A373", fontWeight: "600" },
-  redemptionTime: { fontSize: 11, color: "#BBB", marginTop: 2 },
+  redemptionCustomer: { fontSize: moderateScale(14), fontWeight: "600", color: "#1A1A1A" },
+  redemptionReward: { fontSize: moderateScale(12), color: "#888" },
+  redemptionPoints: { fontSize: moderateScale(13), color: "#D4A373", fontWeight: "600" },
+  redemptionTime: { fontSize: moderateScale(11), color: "#BBB", marginTop: scale(2) },
 });

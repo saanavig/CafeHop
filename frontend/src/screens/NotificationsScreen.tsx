@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
+import { scale, moderateScale } from "../utils/responsive";
 import {
   ArrowLeft,
   Bell,
@@ -137,23 +138,23 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     backgroundColor: "#F7F3F0",
-    paddingVertical: 16,
+    paddingVertical: scale(16),
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    marginBottom: 24,
+    paddingHorizontal: scale(16),
+    marginBottom: scale(24),
   },
   backButton: {
-    padding: 8,
-    marginRight: 12,
+    padding: scale(8),
+    marginRight: scale(12),
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: moderateScale(20),
     fontWeight: "600",
     fontFamily: "PlayfairDisplay_700Bold",
-    marginLeft: 8,
+    marginLeft: scale(8),
     color: "#1A1A1A",
   },
   content: {
@@ -161,27 +162,27 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: "center",
-    fontSize: 16,
+    fontSize: moderateScale(16),
     color: "#888",
-    marginTop: 48,
+    marginTop: scale(48),
   },
   notifications: {
-    gap: 12,
+    gap: scale(12),
   },
   notificationCard: {
     flexDirection: "row",
     alignItems: "flex-start",
-    padding: 16,
+    padding: scale(16),
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: scale(16),
     borderWidth: 1,
     borderColor: "#E8DFD5",
-    gap: 12,
+    gap: scale(12),
   },
   iconBackground: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(12),
     backgroundColor: "#F7F3F0",
     justifyContent: "center",
     alignItems: "center",
@@ -189,7 +190,7 @@ const styles = StyleSheet.create({
   },
   notificationContent: {
     flex: 1,
-    gap: 4,
+    gap: scale(4),
   },
   titleRow: {
     flexDirection: "row",
@@ -197,21 +198,21 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   notificationTitle: {
-    fontSize: 14,
+    fontSize: moderateScale(14),
     fontWeight: "600",
     color: "#1A1A1A",
     flex: 1,
-    marginRight: 8,
+    marginRight: scale(8),
   },
   timeText: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
     color: "#888",
     flexShrink: 0,
   },
   notificationMessage: {
-    fontSize: 13,
+    fontSize: moderateScale(13),
     color: "#666",
-    lineHeight: 18,
+    lineHeight: moderateScale(18),
   },
   pointsText: {
     color: "#D4A373",
