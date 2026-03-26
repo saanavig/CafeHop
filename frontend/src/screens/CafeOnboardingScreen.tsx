@@ -30,6 +30,8 @@ const defaultHours: Record<string, DayHours> = Object.fromEntries(
   DAYS.map((d) => [d, { open: true, start: "09:00", end: "21:00" }])
 );
 
+// const TOTAL_STEPS = 5;
+
 export default function CafeOnboarding({ navigation }: any) {
   const { setRole } = useRole();
   const [step, setStep] = useState(1);
@@ -72,7 +74,7 @@ export default function CafeOnboarding({ navigation }: any) {
       // if (!res.ok) {
       //   const text = await res.text();
       //   console.error("Backend error:", text);
-      //   Alert.alert("Error", "Failed to create café");
+      //   Alert.alert("Error", "Failed to create cafe");
       //   return;
       // }
 
@@ -80,7 +82,7 @@ export default function CafeOnboarding({ navigation }: any) {
 
       if (!res.ok) {
         console.error("Backend error:", data);
-        Alert.alert("Error", data.error || "Failed to create café");
+        Alert.alert("Error", data.error || "Failed to create cafe");
         return;
       }
 
@@ -100,7 +102,7 @@ export default function CafeOnboarding({ navigation }: any) {
         <View style={[styles.innerContainer, { maxWidth }]}>
           {/* Header */}
           <Coffee size={32} color="#D4A373" style={{ alignSelf: "center", marginBottom: 8 }} />
-          <Text style={styles.title}>Set Up Your Café</Text>
+          <Text style={styles.title}>Set Up Your Cafe</Text>
           <Text style={styles.subtitle}>Step {step} of {TOTAL_STEPS}</Text>
 
           {/* Progress Bar */}
@@ -113,13 +115,13 @@ export default function CafeOnboarding({ navigation }: any) {
             <Text style={styles.backText}>← Back</Text>
           </Pressable>
 
-          {/* STEP 1 — Café Info */}
+          {/* STEP 1 — Cafe Info */}
           {step === 1 && (
             <View style={styles.stepSection}>
-              <Text style={styles.stepTitle}>Café Information</Text>
-              <Text style={styles.stepDesc}>Tell us about your café</Text>
+              <Text style={styles.stepTitle}>Cafe Information</Text>
+              <Text style={styles.stepDesc}>Tell us about your cafe</Text>
               <TextInput
-                placeholder="Café name"
+                placeholder="Cafe name"
                 style={styles.input}
                 value={cafeName}
                 onChangeText={setCafeName}
@@ -279,7 +281,7 @@ export default function CafeOnboarding({ navigation }: any) {
               <CheckCircle size={48} color="#D4A373" style={{ alignSelf: "center", marginBottom: 16 }} />
               <Text style={styles.stepTitle}>You're All Set!</Text>
               <Text style={styles.stepDesc}>
-                Your café is registered. Once approved, you can start managing loyalty rewards on CafeHop.
+                Your cafe is registered. Once approved, you can start managing loyalty rewards on CafeHop.
               </Text>
               <Button
                 title="Finish Setup"

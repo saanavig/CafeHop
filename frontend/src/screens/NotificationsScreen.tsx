@@ -1,15 +1,3 @@
-import React from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  Pressable,
-  Dimensions,
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { useRole } from "../context/RoleContext";
-import { scale, moderateScale } from "../utils/responsive";
 import {
   ArrowLeft,
   Bell,
@@ -17,6 +5,19 @@ import {
   Star,
   Store,
 } from "lucide-react-native";
+import {
+  Dimensions,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { moderateScale, scale } from "../utils/responsive";
+
+import React from "react";
+import { useNavigation } from "@react-navigation/native";
+import { useRole } from "../context/RoleContext";
 
 const customerNotifications = [
   {
@@ -30,7 +31,7 @@ const customerNotifications = [
     id: 2,
     icon: Star,
     title: "Reward unlocked 🎉",
-    message: "You can now redeem a free latte at Oak Tree Café.",
+    message: "You can now redeem a free latte at Oak Tree Cafe.",
     time: "Yesterday",
   },
   {

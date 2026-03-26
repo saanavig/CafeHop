@@ -1,17 +1,18 @@
-import React, { useState, useRef, useEffect } from "react";
 import {
-  View,
-  Text,
-  FlatList,
-  TextInput,
-  StyleSheet,
-  Dimensions,
   Animated,
+  Dimensions,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
-import { Search } from "lucide-react-native";
 import ForYouCard, { Post } from "../components/ui/ForYouCard";
+import React, { useEffect, useRef, useState } from "react";
+import { moderateScale, scale } from "../utils/responsive";
+
 import BottomNav from "../components/ui/BottomNav";
-import { scale, moderateScale } from "../utils/responsive";
+import { Search } from "lucide-react-native";
 
 const { height } = Dimensions.get("window");
 const CARD_HEIGHT = height - 180;
@@ -63,7 +64,7 @@ const Index = () => {
     <View style={styles.container}>
       {/* Header */}
       <Animated.View style={[styles.header, { opacity: headerFade, transform: [{ translateY: headerSlide }] }]}>
-        <Text style={styles.title}>CAFÉHOP</Text>
+        <Text style={styles.title}>CAFEHOP</Text>
 
         {/* Search bar — icon + input row, consistent with Explore */}
         <View style={styles.searchRow}>

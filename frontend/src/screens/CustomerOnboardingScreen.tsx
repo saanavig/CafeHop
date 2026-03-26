@@ -1,15 +1,16 @@
-import React, { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
   Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import React, { useState } from "react";
+import { moderateScale, scale } from "../utils/responsive";
+
 import Button from "../components/ui/Button";
+import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
-import { scale, moderateScale } from "../utils/responsive";
 
 const preferenceCategories = [
   {
@@ -82,7 +83,7 @@ export default function CustomerOnboardingScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.innerContainer, { maxWidth }]}>
           {/* Header */}
-          <Text style={styles.title}>Customize your café experience</Text>
+          <Text style={styles.title}>Customize your cafe experience</Text>
           <Text style={styles.subtitle}>
             Step {step + 1} of {totalSteps}
           </Text>
@@ -143,7 +144,7 @@ export default function CustomerOnboardingScreen() {
                 <Text style={styles.locationTitle}>Enable location</Text>
               </View>
               <Text style={styles.locationDesc}>
-                Find cafés near you and see what’s open.
+                Find cafes near you and see what’s open.
               </Text>
               <Button
                 title={locationAllowed ? "Location enabled" : "Allow location"}

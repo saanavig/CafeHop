@@ -1,27 +1,28 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  Pressable,
-  Dimensions,
-  TextInput,
-  Modal,
-  Image,
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { useRole } from "../context/RoleContext";
 import {
   ArrowLeft,
+  CheckCircle,
   Clock,
   Coffee,
   User,
   X,
-  CheckCircle,
 } from "lucide-react-native";
+import {
+  Dimensions,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import React, { useState } from "react";
+import { moderateScale, scale } from "../utils/responsive";
+
 import BottomNav from "../components/ui/BottomNav";
-import { scale, moderateScale } from "../utils/responsive";
+import { useNavigation } from "@react-navigation/native";
+import { useRole } from "../context/RoleContext";
 
 type VisitItem = { name: string; price: string };
 
@@ -249,7 +250,7 @@ const HistoryScreen = () => {
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={styles.statValue}>{(stats as any).cafesTried}</Text>
-                  <Text style={styles.statLabel}>Cafés Tried</Text>
+                  <Text style={styles.statLabel}>Cafes Tried</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>

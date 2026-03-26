@@ -1,29 +1,30 @@
-import React, { useState } from "react";
+import { ArrowLeft, ChevronDown, ChevronUp, Info, Mail } from "lucide-react-native";
 import {
-  View,
-  Text,
+  Dimensions,
+  Pressable,
   ScrollView,
   StyleSheet,
-  Pressable,
-  Dimensions,
+  Text,
+  View,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { useRole } from "../context/RoleContext";
-import { ArrowLeft, Info, Mail, ChevronDown, ChevronUp } from "lucide-react-native";
+import React, { useState } from "react";
+import { moderateScale, scale } from "../utils/responsive";
+
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
-import { scale, moderateScale } from "../utils/responsive";
+import { useNavigation } from "@react-navigation/native";
+import { useRole } from "../context/RoleContext";
 
 const customerFAQs = [
   {
     question: "How do I earn points?",
     answer:
-      "You earn points by visiting cafés, making purchases, and participating in events. Each visit can add points to your CafeHop wallet.",
+      "You earn points by visiting cafes, making purchases, and participating in events. Each visit can add points to your CafeHop wallet.",
   },
   {
     question: "How do I redeem rewards?",
     answer:
-      "Redeem rewards by going to the Rewards tab, selecting a reward, and confirming redemption at the café. Points will be deducted from your balance.",
+      "Redeem rewards by going to the Rewards tab, selecting a reward, and confirming redemption at the cafe. Points will be deducted from your balance.",
   },
   {
     question: "Troubleshooting & support",
@@ -33,7 +34,7 @@ const customerFAQs = [
   {
     question: "Can I transfer points to friends?",
     answer:
-      "Currently, points cannot be transferred to other users, but you can redeem rewards for friends at participating cafés.",
+      "Currently, points cannot be transferred to other users, but you can redeem rewards for friends at participating cafes.",
   },
   {
     question: "How do I update my account info?",
