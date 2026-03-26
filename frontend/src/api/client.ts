@@ -1,6 +1,6 @@
 import { supabase } from "./supabaseClient";
 
-const API_BASE = "http://127.0.0.1:5000/api";
+const API_BASE = "http://127.0.0.1:3001/api";
 
 export async function apiFetch(endpoint: string, options: any = {}) {
     try {

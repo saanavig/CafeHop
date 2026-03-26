@@ -1,15 +1,18 @@
-import React, { useState } from "react";
+import { CheckCircle, Coffee } from "lucide-react-native";
 import {
-  View,
-  Text,
-  TextInput,
+  Dimensions,
+  Pressable,
   ScrollView,
   StyleSheet,
-  Pressable,
-  Dimensions,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
-import { Coffee, CheckCircle } from "lucide-react-native";
+import React, { useState } from "react";
+
+import { Alert } from "react-native";
 import Button from "../components/ui/Button";
+import { apiFetch } from "../api/client";
 import { useRole } from "../context/RoleContext";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -43,6 +46,48 @@ export default function CafeOnboarding({ navigation }: any) {
   };
 
   const maxWidth = 480;
+
+  const handleFinishSetup = async () => {
+    try {
+      const payload = {
+        name: cafeName,
+        address,
+        contact,
+        hours,
+        pos_type: posType,
+      };
+
+      console.log("Sending cafe:", payload);
+
+      const res = await apiFetch("/cafe/register", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      // if (!res.ok) {
+      //   const text = await res.text();
+      //   console.error("Backend error:", text);
+      //   Alert.alert("Error", "Failed to create café");
+      //   return;
+      // }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error("Backend error:", data);
+        Alert.alert("Error", data.error || "Failed to create café");
+        return;
+      }
+
+      console.log("Cafe created:", data);
+      setRole("cafe");
+      navigation.navigate("Home");
+
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", "Something went wrong");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -234,7 +279,7 @@ export default function CafeOnboarding({ navigation }: any) {
               <Button
                 title="Finish Setup"
                 variant="caramel"
-                onPress={() => { setRole("cafe"); navigation.navigate("Home"); }}
+                onPress={handleFinishSetup} 
               />
             </View>
           )}
