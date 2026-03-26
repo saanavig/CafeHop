@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { ArrowLeft, Star } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
+import { scale, moderateScale } from "../utils/responsive";
 
 const favoriteCafes = [
   { name: "Daily Grind", location: "Brooklyn, NY" },
@@ -52,28 +53,28 @@ export default function FavoritesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, backgroundColor: "#F7F3F0" },
-  header: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 24 },
-  backButton: { padding: 8, borderRadius: 16 },
-  h1: { fontSize: 20, fontWeight: "600" },
+  container: { padding: scale(24), backgroundColor: "#F7F3F0" },
+  header: { flexDirection: "row", alignItems: "center", gap: scale(8), marginBottom: scale(24) },
+  backButton: { padding: scale(8), borderRadius: scale(16) },
+  h1: { fontSize: moderateScale(20), fontWeight: "600" },
   card: {
     backgroundColor: "#FFF",
-    borderRadius: 20,
+    borderRadius: scale(20),
     borderWidth: 1,
     borderColor: "#DDD",
     overflow: "hidden",
   },
-  sectionTitle: { fontSize: 14, fontWeight: "500", padding: 12 },
+  sectionTitle: { fontSize: moderateScale(14), fontWeight: "500", padding: scale(12) },
   row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 12,
+    padding: scale(12),
     borderTopWidth: 1,
     borderTopColor: "#DDD",
   },
-  rowLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  rowLeft: { flexDirection: "row", alignItems: "center", gap: scale(8) },
   cafeName: { fontWeight: "500" },
-  cafeLoc: { fontSize: 12, color: "#555" },
-  footer: { textAlign: "center", fontSize: 12, color: "#555", marginTop: 40 },
+  cafeLoc: { fontSize: moderateScale(12), color: "#555" },
+  footer: { textAlign: "center", fontSize: moderateScale(12), color: "#555", marginTop: scale(40) },
 });

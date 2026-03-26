@@ -5,11 +5,11 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Dimensions,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import Button from "../components/ui/Button";
 import { useRole } from "../context/RoleContext";
+import { scale, moderateScale } from "../utils/responsive";
 
 const preferenceCategories = [
   {
@@ -176,44 +176,44 @@ export default function CustomerOnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F7F3F0" },
-  scrollContent: { padding: 24, alignItems: "center" },
-  innerContainer: { width: "100%" }, // center & maxWidth handled inline
-  title: { fontSize: 22, fontWeight: "bold", fontFamily: "PlayfairDisplay_700Bold", marginBottom: 4, textAlign: "center" },
-  subtitle: { fontSize: 14, color: "#555", marginBottom: 16, textAlign: "center" },
-  progressBackground: { width: "100%", height: 6, backgroundColor: "#DDD", borderRadius: 3, marginBottom: 16 },
-  progressForeground: { height: 6, backgroundColor: "#D4A373", borderRadius: 3 },
-  backText: { color: "#555", marginBottom: 8, alignSelf: "flex-start" },
-  prefSection: { marginBottom: 24 },
-  prefTitle: { fontSize: 16, fontWeight: "600", marginBottom: 12 },
+  scrollContent: { padding: scale(24), alignItems: "center" },
+  innerContainer: { width: "100%" },
+  title: { fontSize: moderateScale(22), fontWeight: "bold", fontFamily: "PlayfairDisplay_700Bold", marginBottom: scale(4), textAlign: "center" },
+  subtitle: { fontSize: moderateScale(14), color: "#555", marginBottom: scale(16), textAlign: "center" },
+  progressBackground: { width: "100%", height: scale(6), backgroundColor: "#DDD", borderRadius: scale(3), marginBottom: scale(16) },
+  progressForeground: { height: scale(6), backgroundColor: "#D4A373", borderRadius: scale(3) },
+  backText: { color: "#555", marginBottom: scale(8), alignSelf: "flex-start" },
+  prefSection: { marginBottom: scale(24) },
+  prefTitle: { fontSize: moderateScale(16), fontWeight: "600", marginBottom: scale(12) },
   prefGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
   prefButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    padding: 12,
+    gap: scale(8),
+    padding: scale(12),
     borderWidth: 1,
     borderColor: "#CCC",
-    borderRadius: 16,
+    borderRadius: scale(16),
     width: "48%",
-    marginBottom: 12,
+    marginBottom: scale(12),
     backgroundColor: "#FFF",
   },
   prefButtonActive: { borderColor: "#D4A373", backgroundColor: "#FFF0E6" },
-  prefIcon: { fontSize: 18, color: "#555" },
+  prefIcon: { fontSize: moderateScale(18), color: "#555" },
   prefIconActive: { color: "#D4A373" },
-  prefText: { fontSize: 14, fontWeight: "500", color: "#555" },
+  prefText: { fontSize: moderateScale(14), fontWeight: "500", color: "#555" },
   prefTextActive: { color: "#D4A373" },
   locationCard: {
     backgroundColor: "#FFF",
-    borderRadius: 16,
+    borderRadius: scale(16),
     borderWidth: 1,
     borderColor: "#CCC",
-    padding: 16,
-    marginBottom: 24,
+    padding: scale(16),
+    marginBottom: scale(24),
   },
-  locationHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8, gap: 8 },
-  locationIcon: { fontSize: 18, color: "#D4A373" },
-  locationTitle: { fontWeight: "500", fontSize: 16 },
-  locationDesc: { fontSize: 12, color: "#555", marginBottom: 12 },
-  finishButton: { marginBottom: 24 },
+  locationHeader: { flexDirection: "row", alignItems: "center", marginBottom: scale(8), gap: scale(8) },
+  locationIcon: { fontSize: moderateScale(18), color: "#D4A373" },
+  locationTitle: { fontWeight: "500", fontSize: moderateScale(16) },
+  locationDesc: { fontSize: moderateScale(12), color: "#555", marginBottom: scale(12) },
+  finishButton: { marginBottom: scale(24) },
 });

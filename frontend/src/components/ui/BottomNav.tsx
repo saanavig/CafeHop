@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, Animated } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Home, Compass, Gift, User, Settings, BarChart2 } from "lucide-react-native";
 import { useRole } from "../../context/RoleContext";
+import { scale, moderateScale } from "../../utils/responsive";
 
 interface NavItem {
   icon: React.ElementType;
@@ -112,14 +113,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
     borderTopColor: "#E8DFD5",
-    paddingBottom: 16,
+    paddingBottom: scale(16),
     alignItems: "center",
   },
   toggleRow: {
     flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    gap: scale(8),
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(8),
     width: "90%",
     maxWidth: 480,
   },
@@ -128,9 +129,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingVertical: 6,
-    borderRadius: 20,
+    gap: scale(6),
+    paddingVertical: scale(6),
+    borderRadius: scale(20),
     borderWidth: 1,
     borderColor: "#E8DFD5",
     backgroundColor: "#F7F3F0",
@@ -139,8 +140,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#D4A373",
     borderColor: "#D4A373",
   },
-  toggleIcon: { fontSize: 14 },
-  toggleLabel: { fontSize: 12, fontWeight: "600", color: "#888" },
+  toggleIcon: { fontSize: moderateScale(14) },
+  toggleLabel: { fontSize: moderateScale(12), fontWeight: "600", color: "#888" },
   toggleLabelActive: { color: "#FFF" },
 
   navWrapper: {
@@ -151,18 +152,18 @@ const styles = StyleSheet.create({
   },
   navItem: {
     alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    gap: 4,
+    paddingVertical: scale(8),
+    paddingHorizontal: scale(12),
+    borderRadius: scale(16),
+    gap: scale(4),
   },
   activeNavItem: {
     backgroundColor: "#D4A373",
   },
   navLabel: {
-    fontSize: 11,
+    fontSize: moderateScale(11),
     color: "#888",
-    marginTop: 2,
+    marginTop: scale(2),
     fontWeight: "500",
   },
   activeNavLabel: {

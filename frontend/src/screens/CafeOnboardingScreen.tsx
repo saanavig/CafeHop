@@ -16,14 +16,19 @@ import { apiFetch } from "../api/client";
 import { useRole } from "../context/RoleContext";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const TOTAL_STEPS = 6;
+
+const ATTRIBUTE_OPTIONS = [
+  "WiFi", "Outdoor Seating", "Pet Friendly", "Study Friendly",
+  "Vegan Options", "Matcha", "Cold Brew", "Live Music",
+  "Takeaway", "Accepts Cards", "Dog Friendly", "Cozy Vibes",
+];
 
 type DayHours = { open: boolean; start: string; end: string };
 
 const defaultHours: Record<string, DayHours> = Object.fromEntries(
   DAYS.map((d) => [d, { open: true, start: "09:00", end: "21:00" }])
 );
-
-const TOTAL_STEPS = 5;
 
 export default function CafeOnboarding({ navigation }: any) {
   const { setRole } = useRole();

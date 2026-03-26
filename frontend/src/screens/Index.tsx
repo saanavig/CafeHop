@@ -8,11 +8,13 @@ import {
   Dimensions,
   Animated,
 } from "react-native";
+import { Search } from "lucide-react-native";
 import ForYouCard, { Post } from "../components/ui/ForYouCard";
 import BottomNav from "../components/ui/BottomNav";
+import { scale, moderateScale } from "../utils/responsive";
 
 const { height } = Dimensions.get("window");
-const CARD_HEIGHT = height - 180; // wrapper height = FlatList snap interval
+const CARD_HEIGHT = height - 180;
 
 const initialPosts: Post[] = [
   {
@@ -23,6 +25,7 @@ const initialPosts: Post[] = [
     comments: 18,
     postedBy: "Sarah",
     tags: ["studyspot", "cozy"],
+    location: "Brooklyn, NY",
     commentList: [{ user: "Alex", text: "Looks great!" }],
   },
   {
@@ -33,6 +36,7 @@ const initialPosts: Post[] = [
     comments: 32,
     postedBy: "James",
     tags: ["latteart"],
+    location: "Williamsburg, NY",
     commentList: [{ user: "Nina", text: "Love this place!" }],
   },
 ];
@@ -44,7 +48,6 @@ const Index = () => {
 
   const flatListRef = useRef<FlatList<Post>>(null);
 
-  // Header fade-in
   const headerFade = useRef(new Animated.Value(0)).current;
   const headerSlide = useRef(new Animated.Value(-12)).current;
   useEffect(() => {
@@ -61,28 +64,33 @@ const Index = () => {
       {/* Header */}
       <Animated.View style={[styles.header, { opacity: headerFade, transform: [{ translateY: headerSlide }] }]}>
         <Text style={styles.title}>CAFÉHOP</Text>
-        <TextInput
-          placeholder="Search posts..."
-          style={styles.search}
-          value={search}
-          onChangeText={setSearch}
-        />
+
+        {/* Search bar — icon + input row, consistent with Explore */}
+        <View style={styles.searchRow}>
+          <Search size={scale(18)} color="#AAA" style={{ marginRight: scale(8) }} />
+          <TextInput
+            placeholder="Search posts..."
+            placeholderTextColor="#AAA"
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
       </Animated.View>
 
       {/* TikTok-style vertical feed */}
       <FlatList
         ref={flatListRef}
         data={posts.filter((p) =>
-          p.caption.toLowerCase().includes(search.toLowerCase())
+          p.caption.toLowerCase().includes(search.toLowerCase()) ||
+          p.cafeName.toLowerCase().includes(search.toLowerCase())
         )}
         keyExtractor={(_, i) => i.toString()}
         renderItem={({ item }) => (
           <ForYouCard post={item} onModalToggle={(isOpen) => setModalOpen(isOpen)} />
         )}
-        scrollEnabled={!modalOpen} // block scrolling when modal open
+        scrollEnabled={!modalOpen}
         showsVerticalScrollIndicator={false}
-
-        // --- snapping settings ---
         pagingEnabled
         decelerationRate="fast"
         getItemLayout={(_, index) => ({
@@ -90,15 +98,11 @@ const Index = () => {
           offset: CARD_HEIGHT * index,
           index,
         })}
-
-        // load more posts
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
-
         contentContainerStyle={{ paddingBottom: 0 }}
       />
 
-      {/* Bottom Navigation */}
       <BottomNav />
     </View>
   );
@@ -108,24 +112,37 @@ export default Index;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F7F3F0" },
-  header: { paddingTop: 30, paddingBottom: 20, paddingHorizontal: 20, alignItems: "center" },
+  header: {
+    paddingTop: scale(30),
+    paddingBottom: scale(14),
+    paddingHorizontal: scale(16),
+    alignItems: "center",
+  },
   title: {
-    fontSize: 28,
+    fontSize: moderateScale(28),
     fontWeight: "bold",
     fontFamily: "PlayfairDisplay_700Bold",
-    marginBottom: 12,
+    marginBottom: scale(12),
     color: "#2C1810",
   },
-  search: {
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#FFF",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
+    borderRadius: scale(16),
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(11),
+    width: "100%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: moderateScale(15),
+    color: "#1A1A1A",
+    padding: 0,
   },
 });
