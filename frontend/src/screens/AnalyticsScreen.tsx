@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   Pressable,
   Animated,
 } from "react-native";
@@ -16,10 +15,9 @@ import {
   Coffee,
 } from "lucide-react-native";
 import BottomNav from "../components/ui/BottomNav";
-import { scale, moderateScale } from "../utils/responsive";
+import { scale, moderateScale, deviceWidth } from "../utils/responsive";
 
-const { width } = Dimensions.get("window");
-const contentWidth = width - 40; // 20px padding on each side
+const contentWidth = deviceWidth - 40; // 20px padding on each side
 
 const PEAK_HOURS = [
   { label: "8am", value: 30 },

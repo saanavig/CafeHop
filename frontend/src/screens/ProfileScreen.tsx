@@ -7,7 +7,6 @@ import {
   TextInput,
   Image,
   Modal,
-  Dimensions,
   StyleSheet,
   Animated,
   FlatList,
@@ -17,11 +16,11 @@ import {
 import { useRole } from "../context/RoleContext";
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
-import { scale, moderateScale } from "../utils/responsive";
+import { scale, moderateScale, deviceWidth } from "../utils/responsive";
 import { Grid3X3, Star, Bookmark, Store, User, Heart, X, Camera, Layers, Plus, MapPin } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const SCREEN_WIDTH = deviceWidth;
 
 type Comment = { text: string };
 type Post = {
@@ -39,8 +38,7 @@ export default function ProfileScreen() {
   const { role } = useRole();
   const isCafe = role === "cafe";
 
-  const { width } = Dimensions.get("window");
-  const contentWidth = Math.min(width * 0.9, 480);
+  const contentWidth = Math.min(deviceWidth * 0.9, 480);
   const photoSize = (contentWidth - 6) / 3;
 
   const profile = {

@@ -5,16 +5,12 @@ import {
   FlatList,
   TextInput,
   StyleSheet,
-  Dimensions,
   Animated,
 } from "react-native";
 import { Search } from "lucide-react-native";
 import ForYouCard, { Post } from "../components/ui/ForYouCard";
 import BottomNav from "../components/ui/BottomNav";
-import { scale, moderateScale } from "../utils/responsive";
-
-const { height } = Dimensions.get("window");
-const CARD_HEIGHT = height - 180;
+import { scale, moderateScale, deviceHeight } from "../utils/responsive";
 
 const initialPosts: Post[] = [
   {
@@ -45,6 +41,7 @@ const Index = () => {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [listHeight, setListHeight] = useState(deviceHeight - 180);
 
   const flatListRef = useRef<FlatList<Post>>(null);
 
@@ -78,30 +75,32 @@ const Index = () => {
         </View>
       </Animated.View>
 
-      {/* TikTok-style vertical feed */}
-      <FlatList
-        ref={flatListRef}
-        data={posts.filter((p) =>
-          p.caption.toLowerCase().includes(search.toLowerCase()) ||
-          p.cafeName.toLowerCase().includes(search.toLowerCase())
-        )}
-        keyExtractor={(_, i) => i.toString()}
-        renderItem={({ item }) => (
-          <ForYouCard post={item} onModalToggle={(isOpen) => setModalOpen(isOpen)} />
-        )}
-        scrollEnabled={!modalOpen}
-        showsVerticalScrollIndicator={false}
-        pagingEnabled
-        decelerationRate="fast"
-        getItemLayout={(_, index) => ({
-          length: CARD_HEIGHT,
-          offset: CARD_HEIGHT * index,
-          index,
-        })}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
-        contentContainerStyle={{ paddingBottom: 0 }}
-      />
+      {/* TikTok-style vertical feed — measure exact available height */}
+      <View style={{ flex: 1 }} onLayout={(e) => setListHeight(e.nativeEvent.layout.height)}>
+        <FlatList
+          ref={flatListRef}
+          data={posts.filter((p) =>
+            p.caption.toLowerCase().includes(search.toLowerCase()) ||
+            p.cafeName.toLowerCase().includes(search.toLowerCase())
+          )}
+          keyExtractor={(_, i) => i.toString()}
+          renderItem={({ item }) => (
+            <ForYouCard post={item} listHeight={listHeight} onModalToggle={(isOpen) => setModalOpen(isOpen)} />
+          )}
+          scrollEnabled={!modalOpen}
+          showsVerticalScrollIndicator={false}
+          pagingEnabled
+          decelerationRate="fast"
+          getItemLayout={(_, index) => ({
+            length: listHeight,
+            offset: listHeight * index,
+            index,
+          })}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          contentContainerStyle={{ paddingBottom: 0 }}
+        />
+      </View>
 
       <BottomNav />
     </View>

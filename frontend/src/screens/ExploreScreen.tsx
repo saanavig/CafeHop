@@ -24,7 +24,9 @@ import {
 } from "lucide-react-native";
 import { scale, moderateScale } from "../utils/responsive";
 
-const { width, height } = Dimensions.get("window");
+const { width: RAW_WIDTH, height: RAW_HEIGHT } = Dimensions.get("window");
+const width  = Math.min(RAW_WIDTH,  430);
+const height = Math.min(RAW_HEIGHT, 932);
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
