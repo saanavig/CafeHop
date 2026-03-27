@@ -1,22 +1,23 @@
-import React, { useState, useRef, useEffect } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
+  Animated,
   Dimensions,
   Pressable,
-  Animated,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import {
-  TrendingUp,
-  Users,
-  DollarSign,
-  Gift,
   Clock,
   Coffee,
+  DollarSign,
+  Gift,
+  TrendingUp,
+  Users,
 } from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { moderateScale, scale } from "../utils/responsive";
+
 import BottomNav from "../components/ui/BottomNav";
-import { scale, moderateScale } from "../utils/responsive";
 
 const { width } = Dimensions.get("window");
 const contentWidth = width - 40; // 20px padding on each side
@@ -78,7 +79,7 @@ export default function AnalyticsScreen() {
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Analytics</Text>
-            <Text style={styles.subtitle}>Your café at a glance</Text>
+            <Text style={styles.subtitle}>Your cafe at a glance</Text>
           </View>
 
           {/* Period Toggle */}

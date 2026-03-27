@@ -8,12 +8,12 @@ import {
 } from "react-native";
 // frontend/src/screens/LoginScreen.tsx
 import React, { useState } from "react";
+import { moderateScale, scale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
 import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
-import { scale, moderateScale } from "../utils/responsive";
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
@@ -69,7 +69,7 @@ export default function LoginScreen() {
           {/* Header */}
           <Text style={styles.title}>Welcome back ☕</Text>
           <Text style={styles.subtitle}>
-            Log in to continue exploring cafés
+            Log in to continue exploring cafes
           </Text>
 
           {/* Email */}

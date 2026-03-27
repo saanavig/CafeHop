@@ -1,16 +1,19 @@
-import React, { useState } from "react";
+import { CheckCircle, Coffee } from "lucide-react-native";
 import {
-  View,
-  Text,
-  TextInput,
+  Dimensions,
+  Pressable,
   ScrollView,
   StyleSheet,
-  Pressable,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
-import { Coffee, CheckCircle } from "lucide-react-native";
+import React, { useState } from "react";
+
+import { Alert } from "react-native";
 import Button from "../components/ui/Button";
+import { apiFetch } from "../api/client";
 import { useRole } from "../context/RoleContext";
-import { scale, moderateScale } from "../utils/responsive";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const TOTAL_STEPS = 6;
@@ -27,28 +30,15 @@ const defaultHours: Record<string, DayHours> = Object.fromEntries(
   DAYS.map((d) => [d, { open: true, start: "09:00", end: "21:00" }])
 );
 
+// const TOTAL_STEPS = 5;
+
 export default function CafeOnboarding({ navigation }: any) {
   const { setRole } = useRole();
   const [step, setStep] = useState(1);
-
-  // Step 1 — Basic Info
   const [cafeName, setCafeName] = useState("");
   const [address, setAddress] = useState("");
-  const [description, setDescription] = useState("");
-
-  // Step 2 — Contact & Social
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [websiteUrl, setWebsiteUrl] = useState("");
-  const [instagramUrl, setInstagramUrl] = useState("");
-
-  // Step 3 — Attributes
-  const [attributes, setAttributes] = useState<string[]>([]);
-
-  // Step 4 — Hours
+  const [contact, setContact] = useState("");
   const [hours, setHours] = useState<Record<string, DayHours>>(defaultHours);
-
-  // Step 5 — Loyalty
   const [posType, setPosType] = useState<"manual" | "square" | null>(null);
   const [linkedPOS, setLinkedPOS] = useState<"Square" | null>(null);
   const [posEmail, setPosEmail] = useState("");
@@ -62,13 +52,49 @@ export default function CafeOnboarding({ navigation }: any) {
     setHours((prev) => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
   };
 
-  const toggleAttribute = (attr: string) => {
-    setAttributes((prev) =>
-      prev.includes(attr) ? prev.filter((a) => a !== attr) : [...prev, attr]
-    );
-  };
-
   const maxWidth = 480;
+
+  const handleFinishSetup = async () => {
+    try {
+      const payload = {
+        name: cafeName,
+        address,
+        contact,
+        hours,
+        pos_type: posType,
+      };
+
+      console.log("Sending cafe:", payload);
+
+      const res = await apiFetch("/cafe/register", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      // if (!res.ok) {
+      //   const text = await res.text();
+      //   console.error("Backend error:", text);
+      //   Alert.alert("Error", "Failed to create cafe");
+      //   return;
+      // }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error("Backend error:", data);
+        Alert.alert("Error", data.error || "Failed to create cafe");
+        return;
+      }
+
+      console.log("Cafe created:", data);
+      setRole("cafe");
+      navigation.navigate("Home");
+
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", "Something went wrong");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -76,7 +102,7 @@ export default function CafeOnboarding({ navigation }: any) {
         <View style={[styles.innerContainer, { maxWidth }]}>
           {/* Header */}
           <Coffee size={32} color="#D4A373" style={{ alignSelf: "center", marginBottom: 8 }} />
-          <Text style={styles.title}>Set Up Your Café</Text>
+          <Text style={styles.title}>Set Up Your Cafe</Text>
           <Text style={styles.subtitle}>Step {step} of {TOTAL_STEPS}</Text>
 
           {/* Progress Bar */}
@@ -89,111 +115,41 @@ export default function CafeOnboarding({ navigation }: any) {
             <Text style={styles.backText}>← Back</Text>
           </Pressable>
 
-          {/* STEP 1 — Basic Info */}
+          {/* STEP 1 — Cafe Info */}
           {step === 1 && (
             <View style={styles.stepSection}>
-              <Text style={styles.stepTitle}>Café Information</Text>
-              <Text style={styles.stepDesc}>Tell us the basics about your café</Text>
+              <Text style={styles.stepTitle}>Cafe Information</Text>
+              <Text style={styles.stepDesc}>Tell us about your cafe</Text>
               <TextInput
-                placeholder="Café name *"
+                placeholder="Cafe name"
                 style={styles.input}
                 value={cafeName}
                 onChangeText={setCafeName}
               />
               <TextInput
-                placeholder="Address *"
+                placeholder="Address"
                 style={styles.input}
                 value={address}
                 onChangeText={setAddress}
               />
               <TextInput
-                placeholder="Description (what makes your café special?)"
-                style={[styles.input, styles.multilineInput]}
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={4}
-              />
-              <Button
-                title="Continue"
-                variant="caramel"
-                onPress={next}
-                disabled={!cafeName.trim() || !address.trim()}
-              />
-            </View>
-          )}
-
-          {/* STEP 2 — Contact & Social */}
-          {step === 2 && (
-            <View style={styles.stepSection}>
-              <Text style={styles.stepTitle}>Contact & Social</Text>
-              <Text style={styles.stepDesc}>How can customers reach you?</Text>
-              <TextInput
-                placeholder="Contact email *"
+                placeholder="Contact email or phone"
                 style={styles.input}
-                value={contactEmail}
-                onChangeText={setContactEmail}
+                value={contact}
+                onChangeText={setContact}
                 keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <TextInput
-                placeholder="Contact phone"
-                style={styles.input}
-                value={contactPhone}
-                onChangeText={setContactPhone}
-                keyboardType="phone-pad"
-              />
-              <TextInput
-                placeholder="Website URL (optional)"
-                style={styles.input}
-                value={websiteUrl}
-                onChangeText={setWebsiteUrl}
-                autoCapitalize="none"
-                keyboardType="url"
-              />
-              <TextInput
-                placeholder="Instagram handle (e.g. @mycafe)"
-                style={styles.input}
-                value={instagramUrl}
-                onChangeText={setInstagramUrl}
-                autoCapitalize="none"
               />
               <Button
                 title="Continue"
                 variant="caramel"
                 onPress={next}
-                disabled={!contactEmail.trim()}
+                disabled={!cafeName.trim() || !address.trim() || !contact.trim()}
               />
             </View>
           )}
 
-          {/* STEP 3 — Amenities */}
-          {step === 3 && (
-            <View style={styles.stepSection}>
-              <Text style={styles.stepTitle}>Café Amenities</Text>
-              <Text style={styles.stepDesc}>Select everything that applies to your café</Text>
-              <View style={styles.chipsContainer}>
-                {ATTRIBUTE_OPTIONS.map((attr) => {
-                  const selected = attributes.includes(attr);
-                  return (
-                    <Pressable
-                      key={attr}
-                      style={[styles.chip, selected && styles.chipSelected]}
-                      onPress={() => toggleAttribute(attr)}
-                    >
-                      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                        {attr}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              <Button title="Continue" variant="caramel" onPress={next} />
-            </View>
-          )}
-
-          {/* STEP 4 — Operating Hours */}
-          {step === 4 && (
+          {/* STEP 2 — Operating Hours */}
+          {step === 2 && (
             <View style={styles.stepSection}>
               <Text style={styles.stepTitle}>Operating Hours</Text>
               <Text style={styles.stepDesc}>Set your opening and closing times for each day</Text>
@@ -239,8 +195,8 @@ export default function CafeOnboarding({ navigation }: any) {
             </View>
           )}
 
-          {/* STEP 5 — Loyalty Tracking */}
-          {step === 5 && (
+          {/* STEP 3 — Loyalty Tracking */}
+          {step === 3 && (
             <View style={styles.stepSection}>
               <Text style={styles.stepTitle}>Loyalty Tracking</Text>
               <Text style={styles.stepDesc}>How will you track customer visits and rewards?</Text>
@@ -254,14 +210,22 @@ export default function CafeOnboarding({ navigation }: any) {
                 variant={posType === "square" ? "caramel" : "outline"}
                 onPress={() => setPosType("square")}
               />
-              {posType === "square" && !linkedPOS && (
+              <Button title="Continue" variant="caramel" onPress={next} disabled={!posType} />
+            </View>
+          )}
+
+          {/* STEP 4 — Square */}
+          {step === 4 && posType === "square" && (
+            <View style={styles.stepSection}>
+              <Text style={styles.stepTitle}>Connect Square</Text>
+              <Text style={styles.stepDesc}>Link your Square account to automatically track loyalty</Text>
+              {!linkedPOS ? (
                 <Button
                   title="Connect Square Account"
                   variant="outline"
                   onPress={() => setLinkedPOS("Square")}
                 />
-              )}
-              {posType === "square" && linkedPOS && (
+              ) : (
                 <>
                   <TextInput
                     placeholder="POS Account Email"
@@ -291,26 +255,38 @@ export default function CafeOnboarding({ navigation }: any) {
                 variant="caramel"
                 onPress={next}
                 disabled={
-                  !posType ||
-                  (posType === "square" &&
-                    (!linkedPOS || !posEmail.trim() || !posPassword.trim() || !verificationCode.trim()))
+                  !linkedPOS ||
+                  !posEmail.trim() ||
+                  !posPassword.trim() ||
+                  !verificationCode.trim()
                 }
               />
             </View>
           )}
 
-          {/* STEP 6 — Confirmation */}
-          {step === 6 && (
+          {/* STEP 4 — Manual */}
+          {step === 4 && posType === "manual" && (
+            <View style={styles.stepSection}>
+              <Text style={styles.stepTitle}>Manual Setup</Text>
+              <Text style={styles.stepDesc}>
+                Staff can add visits or points manually through the app. No extra setup needed!
+              </Text>
+              <Button title="Continue" variant="caramel" onPress={next} />
+            </View>
+          )}
+
+          {/* STEP 5 — Confirmation */}
+          {step === 5 && (
             <View style={styles.stepSection}>
               <CheckCircle size={48} color="#D4A373" style={{ alignSelf: "center", marginBottom: 16 }} />
               <Text style={styles.stepTitle}>You're All Set!</Text>
               <Text style={styles.stepDesc}>
-                Your café is registered. Once approved, you can start managing loyalty rewards on CafeHop.
+                Your cafe is registered. Once approved, you can start managing loyalty rewards on CafeHop.
               </Text>
               <Button
                 title="Finish Setup"
                 variant="caramel"
-                onPress={() => { setRole("cafe"); navigation.navigate("Home"); }}
+                onPress={handleFinishSetup} 
               />
             </View>
           )}
@@ -322,106 +298,85 @@ export default function CafeOnboarding({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F7F3F0" },
-  scrollContent: { padding: scale(24), alignItems: "center" },
+  scrollContent: { padding: 24, alignItems: "center" },
   innerContainer: { width: "100%" },
   title: {
-    fontSize: moderateScale(22),
+    fontSize: 22,
     fontWeight: "bold",
     fontFamily: "PlayfairDisplay_700Bold",
-    marginBottom: scale(4),
+    marginBottom: 4,
     textAlign: "center",
   },
-  subtitle: { fontSize: moderateScale(14), color: "#555", marginBottom: scale(16), textAlign: "center" },
+  subtitle: { fontSize: 14, color: "#555", marginBottom: 16, textAlign: "center" },
   progressBackground: {
     width: "100%",
-    height: scale(6),
+    height: 6,
     backgroundColor: "#DDD",
-    borderRadius: scale(3),
-    marginBottom: scale(16),
+    borderRadius: 3,
+    marginBottom: 16,
   },
-  progressForeground: { height: scale(6), backgroundColor: "#D4A373", borderRadius: scale(3) },
-  backText: { color: "#555", marginBottom: scale(8), alignSelf: "flex-start" },
-  stepSection: { width: "100%", marginBottom: scale(24) },
+  progressForeground: { height: 6, backgroundColor: "#D4A373", borderRadius: 3 },
+  backText: { color: "#555", marginBottom: 8, alignSelf: "flex-start" },
+  stepSection: { width: "100%", marginBottom: 24 },
   stepTitle: {
-    fontSize: moderateScale(20),
+    fontSize: 20,
     fontWeight: "bold",
     textAlign: "center",
-    marginBottom: scale(6),
+    marginBottom: 6,
     color: "#2C1810",
   },
-  stepDesc: { fontSize: moderateScale(14), color: "#666", textAlign: "center", marginBottom: scale(20) },
+  stepDesc: { fontSize: 14, color: "#666", textAlign: "center", marginBottom: 20 },
   input: {
     borderWidth: 1,
     borderColor: "#CCC",
-    borderRadius: scale(8),
-    padding: scale(12),
-    marginBottom: scale(12),
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
     backgroundColor: "#FFF",
-    fontSize: moderateScale(15),
+    fontSize: 15,
   },
-  multilineInput: {
-    height: scale(96),
-    textAlignVertical: "top",
-  },
-  chipsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: scale(8),
-    marginBottom: scale(20),
-  },
-  chip: {
-    paddingHorizontal: scale(14),
-    paddingVertical: scale(8),
-    borderRadius: scale(20),
-    borderWidth: 1,
-    borderColor: "#CCC",
-    backgroundColor: "#FFF",
-  },
-  chipSelected: { borderColor: "#D4A373", backgroundColor: "#FFF0E6" },
-  chipText: { fontSize: moderateScale(13), color: "#666" },
-  chipTextSelected: { color: "#D4A373", fontWeight: "600" },
   // Hours
   dayRow: {
     backgroundColor: "#FFF",
-    borderRadius: scale(12),
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E0E0E0",
-    padding: scale(12),
-    marginBottom: scale(10),
+    padding: 12,
+    marginBottom: 10,
   },
   dayHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  dayName: { fontSize: moderateScale(15), fontWeight: "600", color: "#2C1810" },
+  dayName: { fontSize: 15, fontWeight: "600", color: "#2C1810" },
   togglePill: {
-    paddingHorizontal: scale(14),
-    paddingVertical: scale(6),
-    borderRadius: scale(20),
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: "#CCC",
     backgroundColor: "#F5F5F5",
   },
   togglePillActive: { borderColor: "#D4A373", backgroundColor: "#FFF0E6" },
-  togglePillText: { fontSize: moderateScale(13), color: "#888" },
+  togglePillText: { fontSize: 13, color: "#888" },
   togglePillTextActive: { color: "#D4A373", fontWeight: "600" },
   timeRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: scale(10),
-    gap: scale(8),
+    marginTop: 10,
+    gap: 8,
   },
   timeField: { flex: 1 },
-  timeLabel: { fontSize: moderateScale(11), color: "#999", marginBottom: scale(4) },
+  timeLabel: { fontSize: 11, color: "#999", marginBottom: 4 },
   timeInput: {
     borderWidth: 1,
     borderColor: "#DDD",
-    borderRadius: scale(8),
-    padding: scale(8),
+    borderRadius: 8,
+    padding: 8,
     backgroundColor: "#FAFAFA",
-    fontSize: moderateScale(14),
+    fontSize: 14,
     textAlign: "center",
   },
-  timeSep: { fontSize: moderateScale(18), color: "#CCC", marginTop: scale(16) },
+  timeSep: { fontSize: 18, color: "#CCC", marginTop: 16 },
 });

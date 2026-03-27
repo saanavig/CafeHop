@@ -1,11 +1,12 @@
-import React, { useState } from "react";
 import {
-  View,
+  Pressable,
+  StyleSheet,
   Text,
   TextInput,
-  StyleSheet,
-  Pressable,
+  View,
 } from "react-native";
+import React, { useState } from "react";
+
 import FontAwesome5 from "react-native-vector-icons/FontAwesome5";
 
 const HeroSection = () => {
@@ -23,9 +24,9 @@ const HeroSection = () => {
           <View style={styles.logoWrapper}>
             <FontAwesome5 name="coffee" size={24} color="#D4A373" />
           </View>
-          <Text style={styles.title}>CAFÉHOP</Text>
+          <Text style={styles.title}>CAFEHOP</Text>
           <Text style={styles.subtitle}>
-            Connecting local cafés with cafe hoppers
+            Connecting local cafes with cafe hoppers
           </Text>
         </View>
 
@@ -34,7 +35,7 @@ const HeroSection = () => {
           <View style={styles.searchInputWrapper}>
             <FontAwesome5 name="search" size={16} color="#555" />
             <TextInput
-              placeholder="Search cafés, vibes, amenities..."
+              placeholder="Search cafes, vibes, amenities..."
               placeholderTextColor="#555"
               style={styles.searchInput}
               value={search}
@@ -51,7 +52,7 @@ const HeroSection = () => {
         <View style={styles.statsSection}>
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>150+</Text>
-            <Text style={styles.statLabel}>Cafés</Text>
+            <Text style={styles.statLabel}>Cafes</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.statItem}>

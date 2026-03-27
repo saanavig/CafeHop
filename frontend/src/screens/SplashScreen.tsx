@@ -1,14 +1,14 @@
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { PlayfairDisplay_700Bold, useFonts } from "@expo-google-fonts/playfair-display";
+import { StyleSheet, Text, View } from "react-native";
+import { moderateScale, scale } from "../utils/responsive";
+
+import Button from "../components/ui/Button";
+import { Coffee } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 // frontend/src/screens/SplashScreen.tsx
 import React from "react";
-import { View, StyleSheet, Text } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { useNavigation } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
-import { useFonts, PlayfairDisplay_700Bold } from "@expo-google-fonts/playfair-display";
-
-import { Coffee } from "lucide-react-native";
-import Button from "../components/ui/Button";
-import { scale, moderateScale } from "../utils/responsive";
 
 export default function SplashScreen() {
   const navigation = useNavigation<any>();
@@ -31,7 +31,7 @@ export default function SplashScreen() {
         </View>
         <Text style={styles.title}>CafeHop</Text>
         <Text style={styles.subtitle}>
-          Discover cafés. Earn rewards. Build community.
+          Discover cafes. Earn rewards. Build community.
         </Text>
         <View style={styles.buttonsContainer}>
           <Button title="Log In" onPress={() => navigation.navigate("Login")} />

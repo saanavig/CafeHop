@@ -1,19 +1,20 @@
-import React, { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
+  Alert,
+  Dimensions,
+  Pressable,
   ScrollView,
   StyleSheet,
-  Pressable,
-  Dimensions,
-  Alert,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
+import React, { useState } from "react";
+import { moderateScale, scale } from "../utils/responsive";
+
 import { ArrowLeft } from "lucide-react-native";
-import { useNavigation } from "@react-navigation/native";
-import Button from "../components/ui/Button";
 import BottomNav from "../components/ui/BottomNav";
-import { scale, moderateScale } from "../utils/responsive";
+import Button from "../components/ui/Button";
+import { useNavigation } from "@react-navigation/native";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -37,7 +38,7 @@ export default function CafeEditScreen() {
   // Basic Info
   const [cafeName, setCafeName] = useState("Bean & Bloom");
   const [address, setAddress] = useState("123 Coffee Lane, Brooklyn, NY");
-  const [description, setDescription] = useState("A cozy neighborhood café known for artisan coffee and fresh pastries.");
+  const [description, setDescription] = useState("A cozy neighborhood cafe known for artisan coffee and fresh pastries.");
 
   // Contact & Social
   const [contactEmail, setContactEmail] = useState("hello@beanandbloom.com");
@@ -62,7 +63,7 @@ export default function CafeEditScreen() {
   };
 
   const handleSave = () => {
-    Alert.alert("Saved", "Your café profile has been updated.");
+    Alert.alert("Saved", "Your cafe profile has been updated.");
   };
 
   return (
@@ -76,7 +77,7 @@ export default function CafeEditScreen() {
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
             <ArrowLeft size={24} color="#333" />
           </Pressable>
-          <Text style={styles.headerTitle}>Edit Café Profile</Text>
+          <Text style={styles.headerTitle}>Edit Cafe Profile</Text>
         </View>
 
         <View style={[styles.content, { width: contentWidth }]}>
@@ -84,12 +85,12 @@ export default function CafeEditScreen() {
           {/* Basic Info */}
           <Text style={styles.sectionLabel}>Basic Information</Text>
           <View style={styles.card}>
-            <Text style={styles.fieldLabel}>Café Name</Text>
+            <Text style={styles.fieldLabel}>Cafe Name</Text>
             <TextInput
               style={styles.input}
               value={cafeName}
               onChangeText={setCafeName}
-              placeholder="Café name"
+              placeholder="Cafe name"
             />
             <Text style={styles.fieldLabel}>Address</Text>
             <TextInput
@@ -103,7 +104,7 @@ export default function CafeEditScreen() {
               style={[styles.input, styles.multilineInput]}
               value={description}
               onChangeText={setDescription}
-              placeholder="What makes your café special?"
+              placeholder="What makes your cafe special?"
               multiline
               numberOfLines={4}
             />
