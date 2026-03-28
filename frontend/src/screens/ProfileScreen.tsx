@@ -1,5 +1,4 @@
-import * as ImagePicker from "expo-image-picker";
-
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,29 +9,16 @@ import {
   Modal,
   StyleSheet,
   Animated,
-  Dimensions,
   FlatList,
-  Image,
   KeyboardAvoidingView,
-  Modal,
   Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
 } from "react-native";
-import { Bookmark, Camera, Grid3X3, Heart, Layers, MapPin, Plus, Star, Store, User, X } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
-import { moderateScale, scale } from "../utils/responsive";
-
+import { useRole } from "../context/RoleContext";
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
 import { scale, moderateScale, deviceWidth } from "../utils/responsive";
 import { Grid3X3, Star, Bookmark, Store, User, Heart, X, Camera, Layers, Plus, MapPin } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
-import { useRole } from "../context/RoleContext";
 
 const SCREEN_WIDTH = deviceWidth;
 
@@ -56,10 +42,10 @@ export default function ProfileScreen() {
   const photoSize = (contentWidth - 6) / 3;
 
   const profile = {
-    name: isCafe ? "Bean & Bloom Cafe" : "Harry Potter",
+    name: isCafe ? "Bean & Bloom Café" : "Harry Potter",
     bio: isCafe
-      ? "Cozy neighbourhood cafe in Brooklyn ☕ | Mon–Sun 7am–8pm"
-      : "Exploring NYC cafes ☕✨",
+      ? "Cozy neighbourhood café in Brooklyn ☕ | Mon–Sun 7am–8pm"
+      : "Exploring NYC cafés ☕✨",
     stats: isCafe
       ? { posts: 42, visits: 5420, rating: 4.8 }
       : { posts: 27, visits: 340, favorites: 12 },
@@ -128,7 +114,7 @@ export default function ProfileScreen() {
         saved: false,
         comments: [
           { text: "Looks amazing!" },
-          { text: isCafe ? "Can't wait to visit!" : "Love this Cafe" },
+          { text: isCafe ? "Can't wait to visit!" : "Love this café" },
         ],
       };
     })
