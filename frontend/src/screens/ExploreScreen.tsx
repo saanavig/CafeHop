@@ -1,43 +1,28 @@
+import React, { useState, useRef, useEffect } from "react";
 import {
-  Animated,
-  Dimensions,
-  FlatList,
-  Image,
-  Modal,
-  PanResponder,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
+  View,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  ScrollView,
+  FlatList,
+  Image,
+  StyleSheet,
+  Dimensions,
+  Animated,
+  StatusBar,
+  PanResponder,
+  Modal,
 } from "react-native";
-import {
-  Bookmark,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  Coffee,
-  Gift,
-  Globe,
-  Instagram,
-  MapPin,
-  Navigation,
-  Phone,
-  Search,
-  Share2,
-  Star,
-  Wifi,
-  X,
-  Zap,
-} from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
-import { moderateScale, scale } from "../utils/responsive";
-
-import BottomNav from "../components/ui/BottomNav";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
+import BottomNav from "../components/ui/BottomNav";
+import {
+  Search, Star, Wifi, Zap, Coffee, Clock, X,
+  Navigation, Gift, Phone, Globe, Bookmark, Share2,
+  MapPin, ChevronDown, ChevronUp, Instagram,
+} from "lucide-react-native";
+import { scale, moderateScale } from "../utils/responsive";
 
 const { width: RAW_WIDTH, height: RAW_HEIGHT } = Dimensions.get("window");
 const width  = Math.min(RAW_WIDTH,  430);
@@ -83,8 +68,8 @@ const allCafes = [
   {
     id: 2,
     name: "Bean & Leaf",
-    category: "Cafe · Tea Bar",
-    description: "Light-filled minimalist cafe with an extensive tea menu alongside excellent espresso drinks. A calm escape from the city's energy.",
+    category: "Café · Tea Bar",
+    description: "Light-filled minimalist café with an extensive tea menu alongside excellent espresso drinks. A calm escape from the city's energy.",
     image: require("../assets/cafe-2.jpg"),
     photos: [
       require("../assets/cafe-2.jpg"),
@@ -327,7 +312,7 @@ export default function ExploreScreen() {
         <View style={styles.searchContainer}>
           <Search size={15} color="#999" />
           <TextInput
-            placeholder="Search cafes near you…"
+            placeholder="Search cafés near you…"
             placeholderTextColor="#BBB"
             style={styles.searchInput}
             value={search}
@@ -342,7 +327,7 @@ export default function ExploreScreen() {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
           <View style={styles.listHeader}>
-            <Text style={styles.listTitle}>Cafes Near You</Text>
+            <Text style={styles.listTitle}>Cafés Near You</Text>
             <View style={styles.listCountChip}>
               <Navigation size={11} color="#D4A373" />
               <Text style={styles.listCountText}>{filteredCafes.length} places</Text>
