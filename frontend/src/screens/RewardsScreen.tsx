@@ -1,23 +1,23 @@
-import React, { useState, useRef, useEffect } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
+  Animated,
+  Dimensions,
   Image,
   Modal,
-  TextInput,
   Pressable,
   ScrollView,
-  Dimensions,
-  Animated,
+  StyleSheet,
+  Text,
+  TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { moderateScale, scale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
-import RewardsCard from "../components/ui/RewardsCard";
 import Button from "../components/ui/Button";
+import RewardsCard from "../components/ui/RewardsCard";
 import { useRole } from "../context/RoleContext";
-import { scale, moderateScale } from "../utils/responsive";
 
 interface Reward {
   id: number;
@@ -32,7 +32,7 @@ const initialRewards: Reward[] = [
   {
     id: 1,
     title: "Free Latte",
-    cafe: "Any participating café",
+    cafe: "Any participating cafe",
     points: 500,
     image: require("../assets/latte-art.jpg"),
     popular: true,
@@ -284,7 +284,7 @@ export default function RewardsScreen() {
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Rewards</Text>
-            <Text style={styles.subtitle}>Earn & redeem across cafés</Text>
+            <Text style={styles.subtitle}>Earn & redeem across cafes</Text>
           </View>
 
           {/* Rewards Card */}
@@ -331,7 +331,7 @@ export default function RewardsScreen() {
           <View style={styles.modalCard}>
             {!scanSuccess ? (
               <>
-                <Text style={styles.modalTitle}>Scan Café QR Code</Text>
+                <Text style={styles.modalTitle}>Scan Cafe QR Code</Text>
                 <View style={styles.fakeQR} />
                 <Button title="Simulate Scan" onPress={() => { setPoints((p) => p + 150); setScanSuccess(true); }} />
               </>

@@ -1,7 +1,8 @@
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { moderateScale, scale } from "../utils/responsive";
+
 import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { scale, moderateScale } from "../utils/responsive";
 
 export default function OnboardingRoleScreen() {
   const navigation = useNavigation<any>();
@@ -26,7 +27,7 @@ export default function OnboardingRoleScreen() {
           onPress={() => navigation.navigate("CafeOnboarding")}
         >
           <Text style={styles.icon}>🏪</Text>
-          <Text style={styles.buttonText}>I own a café</Text>
+          <Text style={styles.buttonText}>I own a cafe</Text>
         </Pressable>
       </View>
     </View>

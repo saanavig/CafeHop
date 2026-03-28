@@ -1,31 +1,32 @@
-import React, { useRef, useEffect } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  Dimensions,
   Alert,
   Animated,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
 import {
+  BarChart2,
   Bell,
-  History,
-  Settings,
-  HelpCircle,
-  LogOut,
   ChevronRight,
+  Coffee,
+  HelpCircle,
+  History,
+  LogOut,
+  Settings,
   Store,
   User,
-  Coffee,
-  BarChart2,
 } from "lucide-react-native";
-import Button from "../components/ui/Button";
-import { useRole } from "../context/RoleContext";
+import React, { useEffect, useRef } from "react";
+import { moderateScale, scale } from "../utils/responsive";
+
 import BottomNav from "../components/ui/BottomNav";
-import { scale, moderateScale } from "../utils/responsive";
+import Button from "../components/ui/Button";
+import { useNavigation } from "@react-navigation/native";
+import { useRole } from "../context/RoleContext";
 
 type MenuItem = {
   icon: React.ElementType;
@@ -52,13 +53,13 @@ const SettingsScreen = () => {
 
   const customerMenu: MenuItem[] = [
     { icon: Bell, label: "Notifications", desc: "Manage alerts", route: "Notifications" },
-    { icon: History, label: "Visit History", desc: "Your past café visits", route: "History" },
+    { icon: History, label: "Visit History", desc: "Your past cafe visits", route: "History" },
     { icon: Settings, label: "Account Settings", desc: "App preferences", route: "Preferences" },
     { icon: HelpCircle, label: "Help & Support", desc: "FAQs & contact", route: "Help" },
   ];
 
   const cafeMenu: MenuItem[] = [
-    { icon: Store, label: "Café Profile", desc: "Edit your café details & hours", route: "CafeEdit" },
+    { icon: Store, label: "Cafe Profile", desc: "Edit your cafe details & hours", route: "CafeEdit" },
     { icon: Bell, label: "Live Visits", desc: "See who's checked in right now", route: "Notifications" },
     // { icon: BarChart2, label: "Analytics", desc: "Sales, trends & peak hours", route: "Analytics" },
     { icon: Coffee, label: "Account Settings", desc: "App preferences", route: "Preferences" },

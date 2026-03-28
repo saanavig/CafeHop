@@ -1,9 +1,10 @@
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { BarChart2, Compass, Gift, Home, Settings, User } from "lucide-react-native";
 import React, { useRef } from "react";
-import { View, Text, Pressable, StyleSheet, Animated } from "react-native";
+import { moderateScale, scale } from "../../utils/responsive";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { Home, Compass, Gift, User, Settings, BarChart2 } from "lucide-react-native";
+
 import { useRole } from "../../context/RoleContext";
-import { scale, moderateScale } from "../../utils/responsive";
 
 interface NavItem {
   icon: React.ElementType;
@@ -72,7 +73,7 @@ const BottomNav: React.FC = () => {
         >
           <Text style={styles.toggleIcon}>🏪</Text>
           <Text style={[styles.toggleLabel, role === "cafe" && styles.toggleLabelActive]}>
-            Café Owner
+            Cafe Owner
           </Text>
         </Pressable>
       </Animated.View>

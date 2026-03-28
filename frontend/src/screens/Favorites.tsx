@@ -1,14 +1,15 @@
-import React from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  StyleSheet,
-} from "react-native";
 import { ArrowLeft, Star } from "lucide-react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { moderateScale, scale } from "../utils/responsive";
+
+import React from "react";
 import { useNavigation } from "@react-navigation/native";
-import { scale, moderateScale } from "../utils/responsive";
 
 const favoriteCafes = [
   { name: "Daily Grind", location: "Brooklyn, NY" },
@@ -33,7 +34,7 @@ export default function FavoritesScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Your Favorite Cafés</Text>
+        <Text style={styles.sectionTitle}>Your Favorite Cafes</Text>
         {favoriteCafes.map((cafe, idx) => (
           <View key={idx} style={styles.row}>
             <View style={styles.rowLeft}>
