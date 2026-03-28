@@ -1,4 +1,7 @@
 import {
+  View,
+  Text,
+  StyleSheet,
   Animated,
   Dimensions,
   Pressable,
@@ -18,9 +21,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { moderateScale, scale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
+import { scale, moderateScale, deviceWidth } from "../utils/responsive";
 
-const { width } = Dimensions.get("window");
-const contentWidth = width - 40; // 20px padding on each side
+const contentWidth = deviceWidth - 40; // 20px padding on each side
 
 const PEAK_HOURS = [
   { label: "8am", value: 30 },

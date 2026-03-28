@@ -39,7 +39,9 @@ import BottomNav from "../components/ui/BottomNav";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
 
-const { width, height } = Dimensions.get("window");
+const { width: RAW_WIDTH, height: RAW_HEIGHT } = Dimensions.get("window");
+const width  = Math.min(RAW_WIDTH,  430);
+const height = Math.min(RAW_HEIGHT, 932);
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

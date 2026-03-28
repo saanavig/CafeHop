@@ -1,6 +1,14 @@
 import * as ImagePicker from "expo-image-picker";
 
 import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Image,
+  Modal,
+  StyleSheet,
   Animated,
   Dimensions,
   FlatList,
@@ -21,9 +29,12 @@ import { moderateScale, scale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
+import { scale, moderateScale, deviceWidth } from "../utils/responsive";
+import { Grid3X3, Star, Bookmark, Store, User, Heart, X, Camera, Layers, Plus, MapPin } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
 import { useRole } from "../context/RoleContext";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const SCREEN_WIDTH = deviceWidth;
 
 type Comment = { text: string };
 type Post = {
@@ -41,8 +52,7 @@ export default function ProfileScreen() {
   const { role } = useRole();
   const isCafe = role === "cafe";
 
-  const { width } = Dimensions.get("window");
-  const contentWidth = Math.min(width * 0.9, 480);
+  const contentWidth = Math.min(deviceWidth * 0.9, 480);
   const photoSize = (contentWidth - 6) / 3;
 
   const profile = {

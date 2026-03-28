@@ -10,15 +10,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  Dimensions,
   Modal,
 } from "react-native";
 import Button from "./Button";
 import { Heart, Bookmark, MessageCircle, MapPin, X } from "lucide-react-native";
-import { scale, moderateScale } from "../../utils/responsive";
+import { scale, moderateScale, deviceWidth, deviceHeight } from "../../utils/responsive";
 
-const { height, width } = Dimensions.get("window");
-const CONTENT_WIDTH = Math.min(width * 0.85, 480);
+// 88% of screen width → consistent proportional side padding on all devices
+const CARD_WIDTH = deviceWidth * 0.88;
 
 export interface Comment {
   user: string;
@@ -39,10 +38,14 @@ export interface Post {
 
 interface ForYouCardProps {
   post: Post;
+  listHeight?: number; // measured FlatList height passed from Index
   onModalToggle?: (isOpen: boolean) => void;
 }
 
-const ForYouCard = ({ post, onModalToggle }: ForYouCardProps) => {
+const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
+  // Fill the measured FlatList space; fall back to a reasonable estimate
+  const wrapperH = listHeight ?? deviceHeight - 180;
+  const cardH    = wrapperH * 0.97; // 1.5% gap top + bottom inside the page
   const [liked, setLiked] = useState(false);
   const [likesState, setLikesState] = useState(post.likes);
   const [saved, setSaved] = useState(false);
@@ -51,21 +54,21 @@ const ForYouCard = ({ post, onModalToggle }: ForYouCardProps) => {
   const [commentsState, setCommentsState] = useState(post.commentList || []);
   const [newComment, setNewComment] = useState("");
 
-  const slideAnim = useRef(new Animated.Value(height)).current;
+  const slideAnim = useRef(new Animated.Value(deviceHeight)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
   const openComments = () => {
     setShowComments(true);
     onModalToggle?.(true);
     Animated.parallel([
-      Animated.timing(slideAnim, { toValue: height * 0.45, duration: 250, useNativeDriver: false }),
+      Animated.timing(slideAnim, { toValue: deviceHeight * 0.45, duration: 250, useNativeDriver: false }),
       Animated.timing(backdropAnim, { toValue: 1, duration: 250, useNativeDriver: false }),
     ]).start();
   };
 
   const closeComments = () => {
     Animated.parallel([
-      Animated.timing(slideAnim, { toValue: height, duration: 200, useNativeDriver: false }),
+      Animated.timing(slideAnim, { toValue: deviceHeight, duration: 200, useNativeDriver: false }),
       Animated.timing(backdropAnim, { toValue: 0, duration: 200, useNativeDriver: false }),
     ]).start(() => {
       setShowComments(false);
@@ -85,8 +88,8 @@ const ForYouCard = ({ post, onModalToggle }: ForYouCardProps) => {
   };
 
   return (
-    <View style={styles.cardWrapper}>
-      <View style={[styles.card, { width: CONTENT_WIDTH }]}>
+    <View style={[styles.cardWrapper, { height: wrapperH }]}>
+      <View style={[styles.card, { width: CARD_WIDTH, height: cardH }]}>
         <Image source={post.image} style={styles.image} />
 
         <View style={styles.overlay}>
@@ -203,42 +206,40 @@ const ForYouCard = ({ post, onModalToggle }: ForYouCardProps) => {
 };
 
 const styles = StyleSheet.create({
-  cardWrapper: { alignItems: "center", height: height - 180 },
-  card: { height: height - 260, borderRadius: scale(20), overflow: "hidden", backgroundColor: "#000" },
+  cardWrapper: { alignItems: "center", justifyContent: "center" },
+  card: { borderRadius: scale(20), overflow: "hidden", backgroundColor: "#000" },
   image: { width: "100%", height: "100%" },
   overlay: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    padding: scale(20),
-    paddingBottom: scale(40),
+    paddingHorizontal: scale(16),
+    paddingTop: scale(40),
+    paddingBottom: scale(32),
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "flex-end",
   },
-  contentContainer: { flex: 1, marginRight: scale(20), marginBottom: scale(20) },
-  cafeName: { color: "#FFF", fontSize: moderateScale(22), fontWeight: "600", marginBottom: scale(2) },
-  locationRow: { flexDirection: "row", alignItems: "center", gap: scale(4), marginBottom: scale(6) },
+  contentContainer: { flex: 1, marginRight: scale(12) },
+  cafeName: { color: "#FFF", fontSize: moderateScale(18), fontWeight: "700", marginBottom: scale(2) },
+  locationRow: { flexDirection: "row", alignItems: "center", gap: scale(4), marginBottom: scale(4) },
   locationText: { color: "rgba(255,255,255,0.85)", fontSize: moderateScale(12) },
-  caption: { color: "#FFF", fontSize: moderateScale(15), lineHeight: moderateScale(22), marginBottom: scale(6) },
+  caption: { color: "#FFF", fontSize: moderateScale(13), lineHeight: moderateScale(18), marginBottom: scale(6) },
   tags: { flexDirection: "row", flexWrap: "wrap" },
   tag: {
     backgroundColor: "rgba(212,163,115,0.25)",
     color: "#D4A373",
     paddingHorizontal: scale(8),
-    paddingVertical: scale(4),
+    paddingVertical: scale(3),
     borderRadius: scale(12),
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(11),
     marginRight: scale(6),
     marginBottom: scale(4),
   },
   actionsContainer: {
     alignItems: "center",
-    gap: scale(16),
-    position: "absolute",
-    right: scale(10),
-    bottom: scale(60),
+    gap: scale(20),
+    paddingBottom: scale(4),
   },
   actionButton: {
     alignItems: "center",
@@ -247,12 +248,12 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.3)",
     minWidth: scale(44),
   },
-  actionText: { color: "#FFF", fontSize: moderateScale(12), marginTop: scale(3) },
+  actionText: { color: "#FFF", fontSize: moderateScale(11), marginTop: scale(2) },
   modalContent: {
     position: "absolute",
     left: 0,
     right: 0,
-    height: height * 0.55,
+    height: deviceHeight * 0.55,
     backgroundColor: "#FFF",
     borderTopLeftRadius: scale(24),
     borderTopRightRadius: scale(24),
