@@ -13,10 +13,13 @@ import React, { useState } from "react";
 import { Alert } from "react-native";
 import Button from "../components/ui/Button";
 import { apiFetch } from "../api/client";
+import { supabase } from "../api/supabaseClient";
 import { useRole } from "../context/RoleContext";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const TOTAL_STEPS = 6;
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const ATTRIBUTE_OPTIONS = [
   "WiFi", "Outdoor Seating", "Pet Friendly", "Study Friendly",
@@ -66,19 +69,32 @@ export default function CafeOnboarding({ navigation }: any) {
 
       console.log("Sending cafe:", payload);
 
-      const res = await apiFetch("/cafe/register", {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        Alert.alert("Error", "You are not logged in");
+        return;
+      }
+
+      const res = await fetch(`${API_URL}/cafe/register`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify(payload),
       });
 
-      // if (!res.ok) {
-      //   const text = await res.text();
-      //   console.error("Backend error:", text);
-      //   Alert.alert("Error", "Failed to create cafe");
-      //   return;
-      // }
+      // 👇 DEBUG RAW RESPONSE
+      const text = await res.text();
+      console.log("RAW RESPONSE:", text);
 
-      const data = await res.json();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { error: text };
+      }
 
       if (!res.ok) {
         console.error("Backend error:", data);
@@ -87,11 +103,12 @@ export default function CafeOnboarding({ navigation }: any) {
       }
 
       console.log("Cafe created:", data);
+
       setRole("cafe");
       navigation.navigate("Home");
 
     } catch (err) {
-      console.error(err);
+      console.error("CRASH:", err);
       Alert.alert("Error", "Something went wrong");
     }
   };
