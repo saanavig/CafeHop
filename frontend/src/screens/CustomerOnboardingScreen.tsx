@@ -1,3 +1,5 @@
+import * as Location from "expo-location";
+
 import {
   Pressable,
   ScrollView,
@@ -67,6 +69,7 @@ export default function CustomerOnboardingScreen() {
   const { setRole } = useRole();
   const [selectedPrefs, setSelectedPrefs] = useState<string[]>([]);
   const [locationAllowed, setLocationAllowed] = useState(false);
+  const [distance, setDistance] = useState(5);
   const [step, setStep] = useState(0);
   const totalSteps = preferenceCategories.length + 1;
   const togglePref = (pref: string) => {
@@ -109,6 +112,8 @@ export default function CustomerOnboardingScreen() {
       // budget_preferences: selectedPrefs.filter((p) =>
       //   ["Student discounts", "Accepts cash", "Deals & specials", "Affordable portions"].includes(p)
       // ),
+
+      max_distance_miles: distance,
     };
   };
 
@@ -180,14 +185,62 @@ export default function CustomerOnboardingScreen() {
                 <Text style={styles.locationIcon}>📍</Text>
                 <Text style={styles.locationTitle}>Enable location</Text>
               </View>
+
               <Text style={styles.locationDesc}>
                 Find cafes near you and see what’s open.
               </Text>
+
               <Button
                 title={locationAllowed ? "Location enabled" : "Allow location"}
                 variant={locationAllowed ? "outline" : "caramel"}
-                onPress={() => setLocationAllowed(true)}
+                onPress={async () => {
+                  try {
+                    const { status } = await Location.requestForegroundPermissionsAsync();
+
+                    if (status === "granted") {
+                      setLocationAllowed(true);
+                    } else {
+                      setLocationAllowed(false);
+                      alert("Location permission is required to find nearby cafes.");
+                    }
+                  } catch (err) {
+                    console.error("Location error:", err);
+                  }
+                }}
               />
+
+              {locationAllowed && (
+                <View style={{ marginTop: 16 }}>
+                  <Text style={{ fontSize: 14, marginBottom: 8 }}>
+                    Search within
+                  </Text>
+
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    {[1, 3, 5, 10].map((d) => {
+                      const active = distance === d;
+
+                      return (
+                        <Pressable
+                          key={d}
+                          onPress={() => setDistance(d)}
+                          style={{
+                            paddingVertical: 8,
+                            paddingHorizontal: 12,
+                            borderWidth: 1,
+                            borderColor: active ? "#D4A373" : "#CCC",
+                            borderRadius: 20,
+                            backgroundColor: active ? "#FFF0E6" : "#FFF",
+                          }}
+                        >
+                          <Text style={{ color: active ? "#D4A373" : "#555" }}>
+                            {d} mi
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
             </View>
           )}
 
