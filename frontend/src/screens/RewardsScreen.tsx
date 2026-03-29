@@ -78,7 +78,7 @@ const recentRedemptions: RecentRedemption[] = [
 ];
 
 // ─── Component ───────────────────────────────────────────────────────────────
-export default function RewardsScreen() {
+export default function RewardsScreen({ navigation }) {
   const { role } = useRole();
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
@@ -295,6 +295,10 @@ export default function RewardsScreen() {
             description="Earn points and unlock perks"
             role={role}
             onScan={() => setShowScan(true)}
+          />
+          <Button
+            title="Upload Receipt"
+            onPress={() => navigation.navigate("ReceiptUpload")}
           />
 
           {/* Rewards List */}
