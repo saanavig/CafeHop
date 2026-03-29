@@ -23,6 +23,7 @@ const preferenceCategories = [
       { label: "Cozy", icon: "☕" },
       { label: "Lively", icon: "👥" },
       { label: "Outdoor seating", icon: "☀️" },
+      { label: "No preference", icon: "➖" },
     ],
   },
   {
@@ -32,6 +33,7 @@ const preferenceCategories = [
       { label: "Power outlets", icon: "🔌" },
       { label: "Study-friendly", icon: "💻" },
       { label: "Good for meetings", icon: "💼" },
+      { label: "No preference", icon: "➖" },
     ],
   },
   {
@@ -40,6 +42,7 @@ const preferenceCategories = [
       { label: "Great pastries", icon: "🥐" },
       { label: "Vegan options", icon: "🌿" },
       { label: "Specialty drinks", icon: "☕" },
+      { label: "No preference", icon: "➖" },
     ],
   },
   {
@@ -48,6 +51,7 @@ const preferenceCategories = [
       { label: "Instagrammable", icon: "📷" },
       { label: "Late-night", icon: "🌙" },
       { label: "Early morning", icon: "🌅" },
+      { label: "No preference", icon: "➖" },
     ],
   },
   {
@@ -56,6 +60,7 @@ const preferenceCategories = [
       { label: "$ (Budget-friendly)", icon: "💲" },
       { label: "$$ (Moderate)", icon: "👛" },
       { label: "$$$ (Premium)", icon: "💳" },
+      { label: "No preference", icon: "➖" },
       // { label: "Student discounts", icon: "🎓" },
       // { label: "Accepts cash", icon: "💵" },
       // { label: "Deals & specials", icon: "🏷️" },
@@ -72,10 +77,24 @@ export default function CustomerOnboardingScreen() {
   const [distance, setDistance] = useState(5);
   const [step, setStep] = useState(0);
   const totalSteps = preferenceCategories.length + 1;
+  const [error, setError] = useState("");
+
+  // must pick a preference
   const togglePref = (pref: string) => {
-    setSelectedPrefs((prev) =>
-      prev.includes(pref) ? prev.filter((p) => p !== pref) : [...prev, pref]
-    );
+    setSelectedPrefs((prev) => {
+      if (pref === "No preference") {
+        return ["No preference"];
+      }
+
+      // Otherwise remove "No preference" if present
+      let updated = prev.filter((p) => p !== "No preference");
+
+      if (updated.includes(pref)) {
+        return updated.filter((p) => p !== pref);
+      } else {
+        return [...updated, pref];
+      }
+    });
   };
 
   const currentCategory = preferenceCategories[step];
@@ -148,6 +167,9 @@ export default function CustomerOnboardingScreen() {
           {/* Preference Steps */}
           {step < preferenceCategories.length && (
             <View key={currentCategory.title} style={styles.prefSection}>
+              {error !== "" && (
+                <Text style={styles.errorText}>{error}</Text>
+              )}
               <Text style={styles.prefTitle}>{currentCategory.title}</Text>
               <View style={styles.prefGrid}>
                 {currentCategory.items.map((pref) => {
@@ -250,7 +272,15 @@ export default function CustomerOnboardingScreen() {
             title={step < preferenceCategories.length ? "Continue" : "Finish"}
             onPress={async () => {
                 if (step < preferenceCategories.length) {
-                setStep((prev) => prev + 1); // can continue even if no prefs selected
+                  const hasSelection = selectedPrefs.length > 0;
+
+                  if (!hasSelection) {
+                    setError("Please select at least one option or choose 'No preference'");
+                    return;
+                  }
+
+                  setError("");
+                  setStep((prev) => prev + 1);
                 } else {
                   const preferences = buildPreferences();
 
@@ -331,4 +361,10 @@ const styles = StyleSheet.create({
   locationTitle: { fontWeight: "500", fontSize: moderateScale(16) },
   locationDesc: { fontSize: moderateScale(12), color: "#555", marginBottom: scale(12) },
   finishButton: { marginBottom: scale(24) },
+
+  errorText: {
+  color: "#D9534F",
+  marginTop: 8,
+  fontSize: 13,
+  },
 });
