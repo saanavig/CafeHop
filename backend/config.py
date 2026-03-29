@@ -8,6 +8,9 @@ load_dotenv()
 
 # Gemini API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+print("GEMINI_API_KEY exists:", bool(GEMINI_API_KEY))
+print("GEMINI_API_KEY prefix:", GEMINI_API_KEY[:12] if GEMINI_API_KEY else "NONE")
+
 if not GEMINI_API_KEY:
     raise RuntimeError("Missing GEMINI_API_KEY")
 

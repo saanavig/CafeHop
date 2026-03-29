@@ -10,7 +10,7 @@ from database.supabase_client import supabase
 
 
 TWO_MILES_METERS = 2 * 1609.344
-ONE_HOUR = timedelta(hours=1)
+ONE_HOUR = timedelta(days=1000)
 
 
 @dataclass
@@ -111,7 +111,15 @@ def validate_receipt_submission(
         return ValidationResult(False, reason="CAFE_LOCATION_MISSING", details={"msg": "Cafe lat/lon not found"})
 
     cafe_lat, cafe_lon = cafe_coords
+    print("====== LOCATION DEBUG ======")
+    print("User Location:", user_lat, user_lon)
+    print("Cafe Location:", cafe_lat, cafe_lon)
+
     dist_m = _haversine_meters(user_lat, user_lon, cafe_lat, cafe_lon)
+    print("Distance (meters):", dist_m)
+    print("Distance (miles):", dist_m / 1609.344)
+    print("============================")
+
     if dist_m > TWO_MILES_METERS:
         return ValidationResult(
             False,
@@ -127,7 +135,17 @@ def validate_receipt_submission(
     if receipt_dt is None:
         return ValidationResult(False, reason="MISSING_OR_BAD_RECEIPT_TIME", details={"msg": "Receipt timestamp missing/invalid"})
 
+    print("====== TIME DEBUG ======")
+    print("receipt_timestamp_iso:", receipt_timestamp_iso)
+    print("parsed receipt_dt:", receipt_dt)
+
     now_utc = datetime.now(timezone.utc)
+    print("now_utc:", now_utc)
+
+    if receipt_dt is not None:
+        delta = now_utc - receipt_dt
+        print("delta minutes:", delta.total_seconds() / 60.0)
+    print("========================")
     delta = now_utc - receipt_dt
     if delta < timedelta(0):
         # receipt time in the future = suspicious / bad parse

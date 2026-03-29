@@ -1,27 +1,47 @@
 import json
-from pydantic import BaseModel, ValidationError, Field
+from io import BytesIO
+from typing import Optional, List
+from PIL import Image
+from pydantic import BaseModel, Field
+
 from config import gemini_model
 from models.gemini_purchase import GeminiPurchase
 from utils.text_utils import extract_json
-from typing import Optional, List, Tuple
 
-def build_purchase_prompt(ocr_text: str) -> str:
+
+def build_purchase_prompt_from_text(ocr_text: str) -> str:
     return f"""
-You are extracting structured purchase data from receipt OCR text for insertion into a Postgres table named public.purchases.
+You are extracting structured purchase data from noisy receipt OCR text for insertion into a Postgres table named public.purchases.
 
-Return ONLY valid JSON. No markdown, no backticks, no explanations.
+Return ONLY valid JSON.
+No markdown, no backticks, no explanations, no extra text.
 
-We need:
+Extract:
 - merchant_name: string | null
 - merchant_address: string | null
-- amount: number | null  (TOTAL amount paid, e.g. 5.67)
-- receipt_timestamp: string | null (ISO 8601 if present; else null)
-- receipt_number: string | null (receipt/order/check number if present; else null)
+- amount: number | null
+- receipt_timestamp: string | null
+- receipt_number: string | null
 
-Rules:
-- amount must be a number, not a string.
-- Prefer the final charged amount labeled like "Total", "Amount", "Balance Due".
-- Do NOT invent address, timestamp, or receipt_number.
+Rules for amount:
+- amount must be the FINAL amount paid as a JSON number.
+- ALWAYS extract the final total if it appears anywhere in the receipt.
+- Look for labels like: "Total", "TOTAL", "Grand Total", "Amount", "Amount Due", "Balance Due".
+- If a line contains "Total" followed by a dollar amount, extract that number.
+- If multiple amounts exist, ignore item prices, subtotal, and tax; choose the final charged total.
+- Only return null if there is absolutely no final total visible.
+
+Rules for timestamp:
+- If a clear date and time are present, return ISO 8601 format.
+- Otherwise return null.
+
+Rules for receipt number:
+- Use a receipt/order/check/auth/reference number only if clearly present.
+- Do not invent one.
+
+Rules for address:
+- Use a merchant address only if clearly present.
+- Do not confuse coordinates with the merchant address.
 
 OCR TEXT:
 {ocr_text}
@@ -37,9 +57,75 @@ Return exactly:
 """.strip()
 
 
+def build_purchase_prompt_from_image() -> str:
+    return """
+You are extracting structured purchase data from a receipt image for insertion into a Postgres table named public.purchases.
+
+Return ONLY valid JSON.
+No markdown, no backticks, no explanations, no extra text.
+
+Extract:
+- merchant_name: string | null
+- merchant_address: string | null
+- amount: number | null
+- receipt_timestamp: string | null
+- receipt_number: string | null
+
+Rules for amount:
+- amount must be the FINAL amount paid as a JSON number.
+- ALWAYS extract the final total if it appears anywhere in the receipt image.
+- Look for labels like: "Total", "TOTAL", "Grand Total", "Amount", "Amount Due", "Balance Due".
+- If multiple amounts exist, ignore item prices, subtotal, and tax; choose the final charged total.
+- If the receipt shows a clearly emphasized final amount near the bottom, use that as the total.
+- Only return null if there is absolutely no final total visible.
+
+Rules for timestamp:
+- If a clear date and time are present, return ISO 8601 format.
+- Otherwise return null.
+
+Rules for receipt number:
+- Use a receipt/order/check/auth/reference number only if clearly present.
+- Do not invent one.
+
+Rules for address:
+- Use a merchant address only if clearly present.
+- Do not confuse coordinates with the merchant address.
+
+Return exactly:
+{
+  "merchant_name": string | null,
+  "merchant_address": string | null,
+  "amount": number | null,
+  "receipt_timestamp": string | null,
+  "receipt_number": string | null
+}
+""".strip()
+
+
 def parse_purchase_from_ocr(ocr_text: str) -> tuple[GeminiPurchase, str]:
-    prompt = build_purchase_prompt(ocr_text)
+    prompt = build_purchase_prompt_from_text(ocr_text)
     resp = gemini_model.generate_content(prompt)
+    raw = resp.text or ""
+    json_str = extract_json(raw)
+
+    parsed = json.loads(json_str)
+    purchase = GeminiPurchase(**parsed)
+    return purchase, raw
+
+
+def parse_purchase_from_image(file) -> tuple[GeminiPurchase, str]:
+    """
+    Accepts a Flask FileStorage object from request.files["file"].
+    Sends the image directly to Gemini instead of relying on OCR text.
+    """
+    file.stream.seek(0)
+    image_bytes = file.read()
+    file.stream.seek(0)
+
+    image = Image.open(BytesIO(image_bytes))
+
+    prompt = build_purchase_prompt_from_image()
+    resp = gemini_model.generate_content([prompt, image])
     raw = resp.text or ""
     json_str = extract_json(raw)
 
@@ -53,6 +139,7 @@ class CafeReviewSummary(BaseModel):
     positives: List[str] = Field(default_factory=list)
     negatives: List[str] = Field(default_factory=list)
     best_for: List[str] = Field(default_factory=list)
+
 
 class CafeRecommendationExplanation(BaseModel):
     cafe_id: str
