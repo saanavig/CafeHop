@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useFonts, PlayfairDisplay_700Bold } from "@expo-google-fonts/playfair-display";
 import { RoleProvider } from "./src/context/RoleContext";
 
+import ReceiptUploadScreen from "./src/screens/ReceiptUploadScreen";
 import SplashScreen from "./src/screens/SplashScreen";
 import LoginScreen from "./src/screens/LoginScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
@@ -60,6 +61,7 @@ export default function App() {
           <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="CafeOnboarding" component={CafeOnboarding} />
           <Stack.Screen name="Favorites" component={FavoritesScreen} />
+          <Stack.Screen name="ReceiptUpload" component={ReceiptUploadScreen} />
           <Stack.Screen name="Rewards" component={RewardsScreen} />
           <Stack.Screen name="Analytics" component={AnalyticsScreen} />
           <Stack.Screen name="CafeEdit" component={CafeEditScreen} />
