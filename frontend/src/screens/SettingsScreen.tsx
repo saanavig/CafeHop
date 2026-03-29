@@ -25,6 +25,7 @@ import { moderateScale, scale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
+import { useAuth } from "../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
 
@@ -38,12 +39,14 @@ type MenuItem = {
 const SettingsScreen = () => {
   const navigation = useNavigation<any>();
   const { role } = useRole();
+  const { user, signOut } = useAuth();
 
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(18)).current;
+
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 380, useNativeDriver: true }),
@@ -68,17 +71,9 @@ const SettingsScreen = () => {
 
   const menuItems = role === "customer" ? customerMenu : cafeMenu;
 
-  const handleSignOut = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", onPress: () => {}, style: "cancel" },
-      {
-        text: "Sign Out",
-        onPress: () => {
-          navigation.reset({ index: 0, routes: [{ name: "Splash" }] });
-        },
-        style: "destructive",
-      },
-    ]);
+  const handleSignOut = async () => {
+    console.log("SIGN OUT CLICKED");
+    await signOut();
   };
 
   return (
@@ -89,7 +84,7 @@ const SettingsScreen = () => {
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
       >
         {/* Hero / Profile Section */}
-        <View style={[styles.header, { width: contentWidth }]}>        
+        <View style={[styles.header, { width: contentWidth }]}>
           <View style={styles.avatarContainer}>
             {role === "customer" ? (
               <User size={36} color="#D4A373" />
@@ -101,7 +96,7 @@ const SettingsScreen = () => {
             {role === "customer" ? "Welcome back!" : "Cafe Dashboard"}
           </Text>
           <Text style={styles.subtitle}>
-            {role === "customer" ? "cafe.hopper@email.com" : "beanandbloom@cafehop.com"}
+            {user?.email ?? "No email"}
           </Text>
           <View style={styles.infoBadge}>
             {role === "customer" ? (
@@ -149,19 +144,30 @@ const SettingsScreen = () => {
 
           {/* Sign Out Button */}
           <View style={styles.signOutContainer}>
-            <Button
-              variant="outline"
-              onPress={handleSignOut}
-              style={styles.signOutButton}
-            >
-              <LogOut size={16} color="#D32F2F" style={{ marginRight: 8 }} />
-              <Text style={styles.signOutText}>Sign Out</Text>
-            </Button>
+            {user ? (
+              <Button
+                variant="outline"
+                onPress={handleSignOut}
+                style={styles.signOutButton}
+              >
+                <LogOut size={16} color="#D32F2F" style={{ marginRight: 8 }} />
+                <Text style={styles.signOutText}>Sign Out</Text>
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                onPress={() => navigation.navigate("Splash")}
+                style={styles.signOutButton}
+              >
+                <User size={16} color="#D4A373" style={{ marginRight: 8 }} />
+                <Text style={{ color: "#D4A373", fontWeight: "600" }}>
+                  Sign Up/Login
+                </Text>
+              </Button>
+            )}
           </View>
-
-          {/* Footer */}
-          <Text style={styles.footerText}>CafeHop v1.0.0 • Made with ☕</Text>
         </View>
+
       </Animated.ScrollView>
 
       {/* Bottom Nav */}
@@ -193,8 +199,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: scale(12),
   },
-  title: { fontSize: moderateScale(24), fontWeight: "bold", fontFamily: "PlayfairDisplay_700Bold", marginBottom: scale(4) },
-  subtitle: { fontSize: moderateScale(14), color: "#555", marginBottom: scale(8) },
+  title: {
+    fontSize: moderateScale(24),
+    fontWeight: "bold",
+    fontFamily: "PlayfairDisplay_700Bold",
+    marginBottom: scale(4),
+  },
+  subtitle: {
+    fontSize: moderateScale(14),
+    color: "#555",
+    marginBottom: scale(8),
+  },
   infoBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -207,7 +222,11 @@ const styles = StyleSheet.create({
     borderColor: "#DDD",
   },
   infoText: { fontSize: moderateScale(14), color: "#333" },
-  infoValue: { fontSize: moderateScale(14), color: "#D4A373", fontWeight: "bold" },
+  infoValue: {
+    fontSize: moderateScale(14),
+    color: "#D4A373",
+    fontWeight: "bold",
+  },
 
   content: {
     alignSelf: "center",
