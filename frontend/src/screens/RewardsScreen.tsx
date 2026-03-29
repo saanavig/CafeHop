@@ -17,6 +17,7 @@ import { moderateScale, scale } from "../utils/responsive";
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
 import RewardsCard from "../components/ui/RewardsCard";
+import { supabase } from "../api/supabaseClient";
 import { useRole } from "../context/RoleContext";
 
 interface Reward {
@@ -63,6 +64,7 @@ const cafePrograms: CafeProgram[] = [
   { id: 2, name: "Loyalty Points", description: "Earn points on every £1 spent", pointsPerVisit: 50, totalIssued: 15230, redemptions: 890, active: true },
   { id: 3, name: "Weekend Bonus", description: "2× points every Saturday & Sunday", pointsPerVisit: 200, totalIssued: 3100, redemptions: 140, active: false },
 ];
+const API_URL = process.env.EXPO_PUBLIC_API_URL!;
 
 interface RecentRedemption {
   customer: string;
@@ -82,22 +84,79 @@ export default function RewardsScreen({ navigation }) {
   const { role } = useRole();
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
+  const [earnedPoints, setEarnedPoints] = useState(0);
 
   // Entry animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(18)).current;
+  const [points, setPoints] = useState(0);
+  const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
+  const [showScan, setShowScan] = useState(false);
+  const [scanSuccess, setScanSuccess] = useState(false);
+
+  const handleScan = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      const res = await fetch(`${API_URL}/purchase/submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          cafe_id: 1,
+          amount: 10,
+          latitude: 40.74,
+          longitude: -74.03,
+          submission_token: Date.now().toString(),
+          receipt_timestamp: new Date().toISOString(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setPoints(data.total_points);
+        setEarnedPoints(data.points_earned);
+        setScanSuccess(true);
+      } else {
+        alert(data.error);
+      }
+    } catch (err) {
+      console.error("Scan error:", err);
+    }
+  };
+
+  const fetchPoints = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const userId = sessionData.session?.user.id;
+
+      const res = await fetch(`${API_URL}/api/users/${userId}/points`, {
+      headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      setPoints(data.points);
+    } catch (err) {
+      console.error("Error fetching points:", err);
+    }
+  };
+
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 380, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 380, useNativeDriver: true }),
     ]).start();
+    fetchPoints();
   }, []);
 
   // Customer state
-  const [points, setPoints] = useState(1250);
-  const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
-  const [showScan, setShowScan] = useState(false);
-  const [scanSuccess, setScanSuccess] = useState(false);
   const [availableRewards] = useState<Reward[]>(initialRewards);
 
   // Cafe state
@@ -125,11 +184,36 @@ export default function RewardsScreen({ navigation }) {
     setShowNewProgram(false);
   };
 
-  const handleRedeem = () => {
+  const handleRedeem = async () => {
     if (!selectedReward) return;
-    if (points < selectedReward.points) return;
-    setPoints((prev) => prev - selectedReward.points);
-    setSelectedReward(null);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      const res = await fetch(`${API_URL}/redeem`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          cafe_id: 1, // TEMP
+          points: selectedReward.points,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setPoints(data.remaining_points);
+        setSelectedReward(null);
+      } else {
+        alert(data.error);
+      }
+    } catch (err) {
+      console.error("Redeem error:", err);
+    }
   };
 
   const toggleProgram = (id: number) => {
@@ -337,11 +421,11 @@ export default function RewardsScreen({ navigation }) {
               <>
                 <Text style={styles.modalTitle}>Scan Cafe QR Code</Text>
                 <View style={styles.fakeQR} />
-                <Button title="Simulate Scan" onPress={() => { setPoints((p) => p + 150); setScanSuccess(true); }} />
+                <Button title="Simulate Scan" onPress={handleScan} />
               </>
             ) : (
               <>
-                <Text style={styles.modalTitle}>+150 Points Earned 🎉</Text>
+                <Text style={styles.modalTitle}>+{earnedPoints} Points Earned 🎉</Text>
                 <Button title="Close" onPress={() => { setShowScan(false); setScanSuccess(false); }} />
               </>
             )}
