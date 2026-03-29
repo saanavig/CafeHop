@@ -17,7 +17,7 @@ import { supabase } from "../api/supabaseClient";
 import { useRole } from "../context/RoleContext";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -50,6 +50,8 @@ export default function CafeOnboarding({ navigation }: any) {
   // const [posEmail, setPosEmail] = useState("");
   // const [posPassword, setPosPassword] = useState("");
   // const [verificationCode, setVerificationCode] = useState("");
+  const [priceRange, setPriceRange] = useState<string | null>(null);
+  const [priceError, setPriceError] = useState("");
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) => {
@@ -81,6 +83,7 @@ export default function CafeOnboarding({ navigation }: any) {
         address,
         contact,
         hours,
+        price_range: priceRange,
         // pos_type: posType,
       };
 
@@ -93,7 +96,7 @@ export default function CafeOnboarding({ navigation }: any) {
         return;
       }
 
-      const res = await fetch(`${API_URL}/cafe/register`, {
+      const res = await fetch(`${API_URL}/api/cafe/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -314,6 +317,61 @@ export default function CafeOnboarding({ navigation }: any) {
           )} */}
 
           {step === 3 && (
+          <View style={styles.stepSection}>
+            <Text style={styles.stepTitle}>Pricing</Text>
+            <Text style={styles.stepDesc}>
+              Select your cafe's general price range
+            </Text>
+
+            <View style={{ gap: 10, marginTop: 16 }}>
+              {[
+                "$ (Budget-friendly)",
+                "$$ (Moderate)",
+                "$$$ (Premium)",
+              ].map((option) => (
+                <Pressable
+                  key={option}
+                  onPress={() => {
+                    setPriceRange(option);
+                    setPriceError("");
+                  }}
+                  style={{
+                    padding: 14,
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    borderColor:
+                      priceRange === option ? "#D4A373" : "#CCC",
+                    backgroundColor:
+                      priceRange === option ? "#FFF0E6" : "#FFF",
+                  }}
+                >
+                  <Text style={{ textAlign: "center" }}>{option}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {priceError ? (
+              <Text style={{ color: "red", marginTop: 12, textAlign: "center" }}>
+                {priceError}
+              </Text>
+            ) : null}
+
+            <Button
+              title="Continue"
+              variant="caramel"
+              onPress={() => {
+                if (!priceRange) {
+                  setPriceError("Please select a price range");
+                  return;
+                }
+                next();
+              }}
+              style={{ marginTop: 24 }}
+            />
+          </View>
+        )}
+
+          {step === 4 && (
             <View style={styles.stepSection}>
               <Text style={styles.stepTitle}>Cafe Attributes</Text>
               <Text style={styles.stepDesc}>
