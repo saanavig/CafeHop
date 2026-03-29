@@ -77,13 +77,19 @@ export default function SignUpScreen() {
 
     console.log("Signup success:", data);
 
-    try {
-      await apiFetch("/users/me", {
-        method: "POST",
-      });
-    } catch (err) {
+    // try {
+    //   await apiFetch("/users/me", {
+    //     method: "POST",
+    //   });
+    // } catch (err) {
+    //   console.error("Backend error:", err);
+    // }
+
+    apiFetch("/users/me", {
+      method: "POST",
+    }).catch((err) => {
       console.error("Backend error:", err);
-    }
+    });
 
     navigation.navigate("Onboarding");
   };

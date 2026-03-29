@@ -9,6 +9,7 @@ import React, { useState } from "react";
 import { moderateScale, scale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
+import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
 
@@ -53,8 +54,10 @@ const preferenceCategories = [
       { label: "$ (Budget-friendly)", icon: "💲" },
       { label: "$$ (Moderate)", icon: "👛" },
       { label: "$$$ (Premium)", icon: "💳" },
-      { label: "Student discounts", icon: "🎓" },
-      { label: "Accepts cash", icon: "💵" },
+      // { label: "Student discounts", icon: "🎓" },
+      // { label: "Accepts cash", icon: "💵" },
+      // { label: "Deals & specials", icon: "🏷️" },
+      // { label: "Affordable portions", icon: "🍽️" },
     ],
   },
 ];
@@ -65,8 +68,7 @@ export default function CustomerOnboardingScreen() {
   const [selectedPrefs, setSelectedPrefs] = useState<string[]>([]);
   const [locationAllowed, setLocationAllowed] = useState(false);
   const [step, setStep] = useState(0);
-
-  const totalSteps = preferenceCategories.length + 1; // +1 for location
+  const totalSteps = preferenceCategories.length + 1;
   const togglePref = (pref: string) => {
     setSelectedPrefs((prev) =>
       prev.includes(pref) ? prev.filter((p) => p !== pref) : [...prev, pref]
@@ -74,6 +76,41 @@ export default function CustomerOnboardingScreen() {
   };
 
   const currentCategory = preferenceCategories[step];
+  const buildPreferences = () => {
+    return {
+      wants_wifi: selectedPrefs.includes("WiFi"),
+
+      preferred_price_level: selectedPrefs.includes("$$$ (Premium)")
+        ? 3
+        : selectedPrefs.includes("$$ (Moderate)")
+        ? 2
+        : selectedPrefs.includes("$ (Budget-friendly)")
+        ? 1
+        : null,
+
+      // preferred_price_level: null,
+
+      atmosphere: selectedPrefs.filter((p) =>
+        ["Quiet", "Cozy", "Lively", "Outdoor seating"].includes(p)
+      ),
+
+      work_preferences: selectedPrefs.filter((p) =>
+        ["Study-friendly", "Good for meetings", "Power outlets"].includes(p)
+      ),
+
+      food_preferences: selectedPrefs.filter((p) =>
+        ["Vegan options", "Great pastries", "Specialty drinks"].includes(p)
+      ),
+
+      vibe: selectedPrefs.filter((p) =>
+        ["Instagrammable", "Late-night", "Early morning"].includes(p)
+      ),
+
+      // budget_preferences: selectedPrefs.filter((p) =>
+      //   ["Student discounts", "Accepts cash", "Deals & specials", "Affordable portions"].includes(p)
+      // ),
+    };
+  };
 
   // Max width for centered content (same as signup/login)
   const maxWidth = 480;
@@ -158,10 +195,34 @@ export default function CustomerOnboardingScreen() {
           <View style={styles.finishButton}>
             <Button
             title={step < preferenceCategories.length ? "Continue" : "Finish"}
-            onPress={() => {
+            onPress={async () => {
                 if (step < preferenceCategories.length) {
                 setStep((prev) => prev + 1); // can continue even if no prefs selected
                 } else {
+                  const preferences = buildPreferences();
+
+                  const {
+                    data: { user },
+                    error: userError,
+                  } = await supabase.auth.getUser();
+
+                  if (userError || !user) {
+                    console.error("User not found:", userError);
+                    return;
+                  }
+
+                  const { error } = await supabase
+                    .from("user_preferences")
+                    .upsert({
+                      user_id: user.id,
+                      ...preferences,
+                    });
+
+                  if (error) {
+                    console.error("Error saving preferences:", error);
+                    return;
+                  }
+
                   setRole("customer");
                   navigation.navigate("Home");
                 }
