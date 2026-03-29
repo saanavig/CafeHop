@@ -15,7 +15,7 @@ export default function OnboardingRoleScreen() {
         {/* Customer */}
         <Pressable
           style={styles.button}
-          onPress={() => navigation.navigate("CustomerOnboarding")}
+          onPress={() => navigation.navigate("Name")}
         >
           <Text style={styles.icon}>☕</Text>
           <Text style={styles.buttonText}>I’m a customer</Text>

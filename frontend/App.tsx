@@ -15,6 +15,7 @@ import HelpScreen from "./src/screens/HelpScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 import Index from "./src/screens/Index";
 import LoginScreen from "./src/screens/LoginScreen";
+import NameScreen from "./src/screens/NameScreen";
 import { NavigationContainer } from "@react-navigation/native";
 import NotificationsScreen from "./src/screens/NotificationsScreen";
 import OnboardingRoleScreen from "./src/screens/OnboardingRoleScreen";
@@ -74,6 +75,7 @@ function AppContent() {
         <Stack.Screen name="Help" component={HelpScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="CafeOnboarding" component={CafeOnboarding} />
+        <Stack.Screen name="Name" component={NameScreen} />
         <Stack.Screen name="Favorites" component={FavoritesScreen} />
         <Stack.Screen name="Rewards" component={RewardsScreen} />
         <Stack.Screen name="Analytics" component={AnalyticsScreen} />
