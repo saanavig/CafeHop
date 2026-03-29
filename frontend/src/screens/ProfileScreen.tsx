@@ -1,24 +1,26 @@
-import React, { useState, useRef, useEffect } from "react";
+import * as ImagePicker from "expo-image-picker";
+
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Image,
-  Modal,
-  StyleSheet,
   Animated,
   FlatList,
+  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { useRole } from "../context/RoleContext";
+import { Bookmark, Camera, Grid3X3, Heart, Layers, MapPin, Plus, Star, Store, User, X } from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { deviceWidth, moderateScale, scale } from "../utils/responsive";
+
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
-import { scale, moderateScale, deviceWidth } from "../utils/responsive";
-import { Grid3X3, Star, Bookmark, Store, User, Heart, X, Camera, Layers, Plus, MapPin } from "lucide-react-native";
-import * as ImagePicker from "expo-image-picker";
+import { useRole } from "../context/RoleContext";
 
 const SCREEN_WIDTH = deviceWidth;
 

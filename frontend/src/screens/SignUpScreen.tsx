@@ -7,12 +7,12 @@ import {
   View,
 } from "react-native";
 import React, { useState } from "react";
+import { moderateScale, scale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
 import { apiFetch } from "../api/client";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
-import { scale, moderateScale } from "../utils/responsive";
 
 export default function SignUpScreen() {
   const navigation = useNavigation<any>();
@@ -23,8 +23,10 @@ export default function SignUpScreen() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [emailError, setEmailError] = useState("");
 
   const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
 
   const validatePassword = (password: string) => {
     const minLength = password.length >= 8;
@@ -50,38 +52,46 @@ export default function SignUpScreen() {
     }
 
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match!");
+      setConfirmPasswordError("Passwords do not match");
       return;
     }
 
-    setPasswordError("");
-    navigation.navigate("Onboarding");
+    setConfirmPasswordError("");
 
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
 
-      if (error) {
-        Alert.alert("Signup Error", error.message);
-        return;
+    if (error) {
+      console.error(error.message);
+
+      if (error.message.toLowerCase().includes("already registered")) {
+        setEmailError("This email is already registered");
+      } else {
+        Alert.alert("Error", error.message);
       }
 
-      console.log("Signup success:", data);
-
-      if (data.session) {
-        await apiFetch("/users/me", {
-          method: "POST",
-        });
-      }
-
-      navigation.navigate("Onboarding");
-
-    } catch (err) {
-      console.error(err);
-      Alert.alert("Error", "Something went wrong");
+      return;
     }
+
+    console.log("Signup success:", data);
+
+    // try {
+    //   await apiFetch("/users/me", {
+    //     method: "POST",
+    //   });
+    // } catch (err) {
+    //   console.error("Backend error:", err);
+    // }
+
+    apiFetch("/users/me", {
+      method: "POST",
+    }).catch((err) => {
+      console.error("Backend error:", err);
+    });
+
+    navigation.navigate("Onboarding");
   };
 
   return (
@@ -90,24 +100,43 @@ export default function SignUpScreen() {
         <Text style={styles.title}>Create Account</Text>
         <Text style={styles.subtitle}>Sign up to get started</Text>
 
+        {/* EMAIL */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Email</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              emailError && { borderColor: "red" },
+            ]}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (emailError) setEmailError("");
+            }}
             autoCapitalize="none"
             keyboardType="email-address"
           />
+
+          {emailError ? (
+            <Text style={styles.errorText}>{emailError}</Text>
+          ) : null}
         </View>
 
+        {/* PASSWORD */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Password</Text>
           <View style={styles.passwordContainer}>
             <TextInput
-              style={[styles.input, styles.passwordInput]}
+              style={[
+                styles.input,
+                styles.passwordInput,
+                passwordError && { borderColor: "red" },
+              ]}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (passwordError) setPasswordError("");
+              }}
               secureTextEntry={!showPassword}
             />
             <Pressable
@@ -119,20 +148,32 @@ export default function SignUpScreen() {
               </Text>
             </Pressable>
           </View>
+
           {passwordError ? (
             <Text style={styles.errorText}>{passwordError}</Text>
           ) : null}
         </View>
 
+        {/* CONFIRM PASSWORD */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Confirm Password</Text>
+
           <View style={styles.passwordContainer}>
             <TextInput
-              style={[styles.input, styles.passwordInput]}
+              style={[
+                styles.input,
+                styles.passwordInput,
+                confirmPasswordError && { borderColor: "red" },
+              ]}
               value={confirmPassword}
-              onChangeText={setConfirmPassword}
+              onChangeText={(text) => {
+                setConfirmPassword(text);
+                if (confirmPasswordError)
+                  setConfirmPasswordError("");
+              }}
               secureTextEntry={!showConfirmPassword}
             />
+
             <Pressable
               style={styles.eyeButton}
               onPress={() =>
@@ -144,10 +185,18 @@ export default function SignUpScreen() {
               </Text>
             </Pressable>
           </View>
+
+          {confirmPasswordError ? (
+            <Text style={styles.errorText}>
+              {confirmPasswordError}
+            </Text>
+          ) : null}
         </View>
 
+        {/* BUTTON */}
         <Button title="Continue" onPress={handleContinue} />
 
+        {/* LOGIN LINK */}
         <Text style={styles.loginText}>
           Already have an account?{" "}
           <Text
