@@ -13,15 +13,18 @@ import React, { useState } from "react";
 import { Alert } from "react-native";
 import Button from "../components/ui/Button";
 import { apiFetch } from "../api/client";
+import { supabase } from "../api/supabaseClient";
 import { useRole } from "../context/RoleContext";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 4;
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const ATTRIBUTE_OPTIONS = [
-  "WiFi", "Outdoor Seating", "Pet Friendly", "Study Friendly",
-  "Vegan Options", "Matcha", "Cold Brew", "Live Music",
-  "Takeaway", "Accepts Cards", "Dog Friendly", "Cozy Vibes",
+  "Cozy", "Quiet", "Lively", "Outdoor Seating", "Pet Friendly", "WiFi", "Power Outlets",
+  "Specialty Drinks", "Great Pastries", "Vegan Options", "Study-friendly", "Good for Meetings",
+  "Instagrammable", "Late-night", "Early morning"
 ];
 
 type DayHours = { open: boolean; start: string; end: string };
@@ -31,19 +34,38 @@ const defaultHours: Record<string, DayHours> = Object.fromEntries(
 );
 
 // const TOTAL_STEPS = 5;
+// const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
 export default function CafeOnboarding({ navigation }: any) {
   const { setRole } = useRole();
   const [step, setStep] = useState(1);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [cafeName, setCafeName] = useState("");
   const [address, setAddress] = useState("");
   const [contact, setContact] = useState("");
   const [hours, setHours] = useState<Record<string, DayHours>>(defaultHours);
-  const [posType, setPosType] = useState<"manual" | "square" | null>(null);
-  const [linkedPOS, setLinkedPOS] = useState<"Square" | null>(null);
-  const [posEmail, setPosEmail] = useState("");
-  const [posPassword, setPosPassword] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
+  const [tagError, setTagError] = useState("");
+  // const [posType, setPosType] = useState<"manual" | "square" | null>(null);
+  // const [linkedPOS, setLinkedPOS] = useState<"Square" | null>(null);
+  // const [posEmail, setPosEmail] = useState("");
+  // const [posPassword, setPosPassword] = useState("");
+  // const [verificationCode, setVerificationCode] = useState("");
+  const [priceRange, setPriceRange] = useState<string | null>(null);
+  const [priceError, setPriceError] = useState("");
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) => {
+      const updated = prev.includes(tag)
+        ? prev.filter((t) => t !== tag)
+        : [...prev, tag];
+
+      if (updated.length > 0) {
+        setTagError("");
+      }
+
+      return updated;
+    });
+  };
 
   const next = () => setStep((prev) => Math.min(prev + 1, TOTAL_STEPS));
   const back = () => setStep((prev) => Math.max(prev - 1, 1));
@@ -61,24 +83,37 @@ export default function CafeOnboarding({ navigation }: any) {
         address,
         contact,
         hours,
-        pos_type: posType,
+        price_range: priceRange,
+        // pos_type: posType,
       };
 
       console.log("Sending cafe:", payload);
 
-      const res = await apiFetch("/cafe/register", {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        Alert.alert("Error", "You are not logged in");
+        return;
+      }
+
+      const res = await fetch(`${API_URL}/api/cafe/register`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify(payload),
       });
 
-      // if (!res.ok) {
-      //   const text = await res.text();
-      //   console.error("Backend error:", text);
-      //   Alert.alert("Error", "Failed to create cafe");
-      //   return;
-      // }
+      const text = await res.text();
+      console.log("RAW RESPONSE:", text);
 
-      const data = await res.json();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { error: text };
+      }
 
       if (!res.ok) {
         console.error("Backend error:", data);
@@ -87,11 +122,18 @@ export default function CafeOnboarding({ navigation }: any) {
       }
 
       console.log("Cafe created:", data);
+
+      await supabase.auth.updateUser({
+      data: {
+        display_name: cafeName,
+      },
+    });
+
       setRole("cafe");
       navigation.navigate("Home");
 
     } catch (err) {
-      console.error(err);
+      console.error("CRASH:", err);
       Alert.alert("Error", "Something went wrong");
     }
   };
@@ -195,7 +237,7 @@ export default function CafeOnboarding({ navigation }: any) {
             </View>
           )}
 
-          {/* STEP 3 — Loyalty Tracking */}
+          {/* STEP 3 — Loyalty Tracking
           {step === 3 && (
             <View style={styles.stepSection}>
               <Text style={styles.stepTitle}>Loyalty Tracking</Text>
@@ -212,10 +254,10 @@ export default function CafeOnboarding({ navigation }: any) {
               />
               <Button title="Continue" variant="caramel" onPress={next} disabled={!posType} />
             </View>
-          )}
+          )} */}
 
           {/* STEP 4 — Square */}
-          {step === 4 && posType === "square" && (
+          {/* {step === 4 && posType === "square" && (
             <View style={styles.stepSection}>
               <Text style={styles.stepTitle}>Connect Square</Text>
               <Text style={styles.stepDesc}>Link your Square account to automatically track loyalty</Text>
@@ -262,21 +304,10 @@ export default function CafeOnboarding({ navigation }: any) {
                 }
               />
             </View>
-          )}
-
-          {/* STEP 4 — Manual */}
-          {step === 4 && posType === "manual" && (
-            <View style={styles.stepSection}>
-              <Text style={styles.stepTitle}>Manual Setup</Text>
-              <Text style={styles.stepDesc}>
-                Staff can add visits or points manually through the app. No extra setup needed!
-              </Text>
-              <Button title="Continue" variant="caramel" onPress={next} />
-            </View>
-          )}
+          )} */}
 
           {/* STEP 5 — Confirmation */}
-          {step === 5 && (
+          {/* {step === 5 && (
             <View style={styles.stepSection}>
               <CheckCircle size={48} color="#D4A373" style={{ alignSelf: "center", marginBottom: 16 }} />
               <Text style={styles.stepTitle}>You're All Set!</Text>
@@ -289,7 +320,129 @@ export default function CafeOnboarding({ navigation }: any) {
                 onPress={handleFinishSetup} 
               />
             </View>
+          )} */}
+
+          {step === 3 && (
+          <View style={styles.stepSection}>
+            <Text style={styles.stepTitle}>Pricing</Text>
+            <Text style={styles.stepDesc}>
+              Select your cafe's general price range
+            </Text>
+
+            <View style={{ gap: 10, marginTop: 16 }}>
+              {[
+                "$ (Budget-friendly)",
+                "$$ (Moderate)",
+                "$$$ (Premium)",
+              ].map((option) => (
+                <Pressable
+                  key={option}
+                  onPress={() => {
+                    setPriceRange(option);
+                    setPriceError("");
+                  }}
+                  style={{
+                    padding: 14,
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    borderColor:
+                      priceRange === option ? "#D4A373" : "#CCC",
+                    backgroundColor:
+                      priceRange === option ? "#FFF0E6" : "#FFF",
+                  }}
+                >
+                  <Text style={{ textAlign: "center" }}>{option}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {priceError ? (
+              <Text style={{ color: "red", marginTop: 12, textAlign: "center" }}>
+                {priceError}
+              </Text>
+            ) : null}
+
+            <Button
+              title="Continue"
+              variant="caramel"
+              onPress={() => {
+                if (!priceRange) {
+                  setPriceError("Please select a price range");
+                  return;
+                }
+                next();
+              }}
+              style={{ marginTop: 24 }}
+            />
+          </View>
+        )}
+
+          {step === 4 && (
+            <View style={styles.stepSection}>
+              <Text style={styles.stepTitle}>Cafe Attributes</Text>
+              <Text style={styles.stepDesc}>
+                Select what best describes your cafe (optional)
+              </Text>
+
+              <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 6, marginTop: 12, }}>
+                {ATTRIBUTE_OPTIONS.map((tag) => (
+                  <Pressable
+                    key={tag}
+                    onPress={() => toggleTag(tag)}
+                    style={{
+                      paddingVertical: 10,
+                      paddingHorizontal: 14,
+                      borderRadius: 20,
+                      borderWidth: 1,
+                      borderColor: selectedTags.includes(tag) ? "#D4A373" : "#CCC",
+                      backgroundColor: selectedTags.includes(tag) ? "#FFF0E6" : "#FFF",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <Text>{tag}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {tagError ? (
+                <Text style={{ color: "red", marginTop: 10, textAlign: "center" }}>
+                  {tagError}
+                </Text>
+              ) : null}
+
+              <Button
+                title="Finish Setup"
+                variant="caramel"
+                onPress={() => {
+                  if (selectedTags.length === 0) {
+                    setTagError("Please select at least one attribute");
+                    return;
+                  }
+
+                  setTagError("");
+                  handleFinishSetup();
+                }}
+                style={{ marginTop: 28 }}
+              />
+            </View>
           )}
+
+          {/* STEP 4 — Manual */}
+          {/* {step === 4 && (
+            <View style={styles.stepSection}>
+              <CheckCircle size={48} color="#D4A373" style={{ alignSelf: "center", marginBottom: 16 }} />
+              <Text style={styles.stepTitle}>You're All Set!</Text>
+              <Text style={styles.stepDesc}>
+                Your cafe is registered. Once approved, you can start managing CafeHop.
+              </Text>
+
+              <Button
+                title="Finish Setup"
+                variant="caramel"
+                onPress={handleFinishSetup}
+              />
+            </View>
+          )} */}
         </View>
       </ScrollView>
     </View>

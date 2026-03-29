@@ -20,7 +20,18 @@ from routes.recommendation import recommendations_bp
 
 
 app = Flask(__name__)
-CORS(app)
+CORS(
+    app,
+    resources={r"/*": {"origins": "*"}},
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+)
+
+@app.before_request
+def handle_options():
+    if request.method == "OPTIONS":
+        return "", 200
 
 app.register_blueprint(reviews_bp, url_prefix="/api")
 app.register_blueprint(cafe_bp, url_prefix="/api")

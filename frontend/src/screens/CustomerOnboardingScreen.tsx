@@ -1,3 +1,5 @@
+import * as Location from "expo-location";
+
 import {
   Pressable,
   ScrollView,
@@ -9,6 +11,7 @@ import React, { useState } from "react";
 import { moderateScale, scale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
+import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
 
@@ -20,6 +23,8 @@ const preferenceCategories = [
       { label: "Cozy", icon: "☕" },
       { label: "Lively", icon: "👥" },
       { label: "Outdoor seating", icon: "☀️" },
+      { label: "Pet Friendly", icon: "🐕" },
+      { label: "No preference", icon: "➖" },
     ],
   },
   {
@@ -29,6 +34,7 @@ const preferenceCategories = [
       { label: "Power outlets", icon: "🔌" },
       { label: "Study-friendly", icon: "💻" },
       { label: "Good for meetings", icon: "💼" },
+      { label: "No preference", icon: "➖" },
     ],
   },
   {
@@ -37,6 +43,7 @@ const preferenceCategories = [
       { label: "Great pastries", icon: "🥐" },
       { label: "Vegan options", icon: "🌿" },
       { label: "Specialty drinks", icon: "☕" },
+      { label: "No preference", icon: "➖" },
     ],
   },
   {
@@ -45,6 +52,7 @@ const preferenceCategories = [
       { label: "Instagrammable", icon: "📷" },
       { label: "Late-night", icon: "🌙" },
       { label: "Early morning", icon: "🌅" },
+      { label: "No preference", icon: "➖" },
     ],
   },
   {
@@ -53,8 +61,11 @@ const preferenceCategories = [
       { label: "$ (Budget-friendly)", icon: "💲" },
       { label: "$$ (Moderate)", icon: "👛" },
       { label: "$$$ (Premium)", icon: "💳" },
-      { label: "Student discounts", icon: "🎓" },
-      { label: "Accepts cash", icon: "💵" },
+      { label: "No preference", icon: "➖" },
+      // { label: "Student discounts", icon: "🎓" },
+      // { label: "Accepts cash", icon: "💵" },
+      // { label: "Deals & specials", icon: "🏷️" },
+      // { label: "Affordable portions", icon: "🍽️" },
     ],
   },
 ];
@@ -64,16 +75,67 @@ export default function CustomerOnboardingScreen() {
   const { setRole } = useRole();
   const [selectedPrefs, setSelectedPrefs] = useState<string[]>([]);
   const [locationAllowed, setLocationAllowed] = useState(false);
+  const [distance, setDistance] = useState(5);
   const [step, setStep] = useState(0);
+  const totalSteps = preferenceCategories.length + 1;
+  const [error, setError] = useState("");
 
-  const totalSteps = preferenceCategories.length + 1; // +1 for location
+  // must pick a preference
   const togglePref = (pref: string) => {
-    setSelectedPrefs((prev) =>
-      prev.includes(pref) ? prev.filter((p) => p !== pref) : [...prev, pref]
-    );
+    setSelectedPrefs((prev) => {
+      if (pref === "No preference") {
+        return ["No preference"];
+      }
+
+      // Otherwise remove "No preference" if present
+      let updated = prev.filter((p) => p !== "No preference");
+
+      if (updated.includes(pref)) {
+        return updated.filter((p) => p !== pref);
+      } else {
+        return [...updated, pref];
+      }
+    });
   };
 
   const currentCategory = preferenceCategories[step];
+  const buildPreferences = () => {
+    return {
+      wants_wifi: selectedPrefs.includes("WiFi"),
+
+      preferred_price_level: selectedPrefs.includes("$$$ (Premium)")
+        ? 3
+        : selectedPrefs.includes("$$ (Moderate)")
+        ? 2
+        : selectedPrefs.includes("$ (Budget-friendly)")
+        ? 1
+        : null,
+
+      // preferred_price_level: null,
+
+      atmosphere: selectedPrefs.filter((p) =>
+        ["Quiet", "Cozy", "Lively", "Outdoor seating", "Pet Friendly"].includes(p)
+      ),
+
+      work_preferences: selectedPrefs.filter((p) =>
+        ["Study-friendly", "Good for meetings", "Power outlets"].includes(p)
+      ),
+
+      food_preferences: selectedPrefs.filter((p) =>
+        ["Vegan options", "Great pastries", "Specialty drinks"].includes(p)
+      ),
+
+      vibe: selectedPrefs.filter((p) =>
+        ["Instagrammable", "Late-night", "Early morning"].includes(p)
+      ),
+
+      // budget_preferences: selectedPrefs.filter((p) =>
+      //   ["Student discounts", "Accepts cash", "Deals & specials", "Affordable portions"].includes(p)
+      // ),
+
+      max_distance_miles: distance,
+    };
+  };
 
   // Max width for centered content (same as signup/login)
   const maxWidth = 480;
@@ -106,6 +168,9 @@ export default function CustomerOnboardingScreen() {
           {/* Preference Steps */}
           {step < preferenceCategories.length && (
             <View key={currentCategory.title} style={styles.prefSection}>
+              {error !== "" && (
+                <Text style={styles.errorText}>{error}</Text>
+              )}
               <Text style={styles.prefTitle}>{currentCategory.title}</Text>
               <View style={styles.prefGrid}>
                 {currentCategory.items.map((pref) => {
@@ -143,14 +208,62 @@ export default function CustomerOnboardingScreen() {
                 <Text style={styles.locationIcon}>📍</Text>
                 <Text style={styles.locationTitle}>Enable location</Text>
               </View>
+
               <Text style={styles.locationDesc}>
                 Find cafes near you and see what’s open.
               </Text>
+
               <Button
                 title={locationAllowed ? "Location enabled" : "Allow location"}
                 variant={locationAllowed ? "outline" : "caramel"}
-                onPress={() => setLocationAllowed(true)}
+                onPress={async () => {
+                  try {
+                    const { status } = await Location.requestForegroundPermissionsAsync();
+
+                    if (status === "granted") {
+                      setLocationAllowed(true);
+                    } else {
+                      setLocationAllowed(false);
+                      alert("Location permission is required to find nearby cafes.");
+                    }
+                  } catch (err) {
+                    console.error("Location error:", err);
+                  }
+                }}
               />
+
+              {locationAllowed && (
+                <View style={{ marginTop: 16 }}>
+                  <Text style={{ fontSize: 14, marginBottom: 8 }}>
+                    Search within
+                  </Text>
+
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    {[1, 3, 5, 10].map((d) => {
+                      const active = distance === d;
+
+                      return (
+                        <Pressable
+                          key={d}
+                          onPress={() => setDistance(d)}
+                          style={{
+                            paddingVertical: 8,
+                            paddingHorizontal: 12,
+                            borderWidth: 1,
+                            borderColor: active ? "#D4A373" : "#CCC",
+                            borderRadius: 20,
+                            backgroundColor: active ? "#FFF0E6" : "#FFF",
+                          }}
+                        >
+                          <Text style={{ color: active ? "#D4A373" : "#555" }}>
+                            {d} mi
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
             </View>
           )}
 
@@ -158,10 +271,42 @@ export default function CustomerOnboardingScreen() {
           <View style={styles.finishButton}>
             <Button
             title={step < preferenceCategories.length ? "Continue" : "Finish"}
-            onPress={() => {
+            onPress={async () => {
                 if (step < preferenceCategories.length) {
-                setStep((prev) => prev + 1); // can continue even if no prefs selected
+                  const hasSelection = selectedPrefs.length > 0;
+
+                  if (!hasSelection) {
+                    setError("Please select at least one option or choose 'No preference'");
+                    return;
+                  }
+
+                  setError("");
+                  setStep((prev) => prev + 1);
                 } else {
+                  const preferences = buildPreferences();
+
+                  const {
+                    data: { user },
+                    error: userError,
+                  } = await supabase.auth.getUser();
+
+                  if (userError || !user) {
+                    console.error("User not found:", userError);
+                    return;
+                  }
+
+                  const { error } = await supabase
+                    .from("user_preferences")
+                    .upsert({
+                      user_id: user.id,
+                      ...preferences,
+                    });
+
+                  if (error) {
+                    console.error("Error saving preferences:", error);
+                    return;
+                  }
+
                   setRole("customer");
                   navigation.navigate("Home");
                 }
@@ -217,4 +362,10 @@ const styles = StyleSheet.create({
   locationTitle: { fontWeight: "500", fontSize: moderateScale(16) },
   locationDesc: { fontSize: moderateScale(12), color: "#555", marginBottom: scale(12) },
   finishButton: { marginBottom: scale(24) },
+
+  errorText: {
+  color: "#D9534F",
+  marginTop: 8,
+  fontSize: 13,
+  },
 });
