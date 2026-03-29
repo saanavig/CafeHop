@@ -22,6 +22,7 @@ const customerNavItems: NavItem[] = [
 
 const cafeNavItems: NavItem[] = [
   { icon: Home, label: "Home", route: "Home" },
+  { icon: Compass, label: "Explore", route: "Explore" },
   { icon: BarChart2, label: "Analytics", route: "Analytics" },
   { icon: Gift, label: "Rewards", route: "Rewards" },
   { icon: User, label: "Profile", route: "Profile" },
@@ -31,33 +32,34 @@ const cafeNavItems: NavItem[] = [
 const BottomNav: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
-  const { role, toggleRole } = useRole();
+  // const { role, toggleRole } = useRole();
+  const { role } = useRole();
 
   const navItems = role === "cafe" ? cafeNavItems : customerNavItems;
 
   // Animated scale for the active toggle pill
-  const pillScale = useRef(new Animated.Value(1)).current;
+  // const pillScale = useRef(new Animated.Value(1)).current;
 
-  const handleToggle = () => {
-    // Spring bounce on the pill
-    Animated.sequence([
-      Animated.timing(pillScale, { toValue: 0.92, duration: 80, useNativeDriver: true }),
-      Animated.spring(pillScale, { toValue: 1, useNativeDriver: true, friction: 5 }),
-    ]).start();
+  // const handleToggle = () => {
+  //   // Spring bounce on the pill
+  //   Animated.sequence([
+  //     Animated.timing(pillScale, { toValue: 0.92, duration: 80, useNativeDriver: true }),
+  //     Animated.spring(pillScale, { toValue: 1, useNativeDriver: true, friction: 5 }),
+  //   ]).start();
 
-    toggleRole();
-    const newRole = role === "customer" ? "cafe" : "customer";
-    if (route.name === "Explore" && newRole === "cafe") {
-      navigation.navigate("Analytics");
-    } else if (route.name === "Analytics" && newRole === "customer") {
-      navigation.navigate("Explore");
-    }
-  };
+  //   toggleRole();
+  //   const newRole = role === "customer" ? "cafe" : "customer";
+  //   if (route.name === "Explore" && newRole === "cafe") {
+  //     navigation.navigate("Analytics");
+  //   } else if (route.name === "Analytics" && newRole === "customer") {
+  //     navigation.navigate("Explore");
+  //   }
+  // };
 
   return (
     <View style={styles.container}>
       {/* Role Toggle */}
-      <Animated.View style={[styles.toggleRow, { transform: [{ scale: pillScale }] }]}>
+      {/* <Animated.View style={[styles.toggleRow, { transform: [{ scale: pillScale }] }]}>
         <Pressable
           style={[styles.togglePill, role === "customer" && styles.togglePillActive]}
           onPress={() => role !== "customer" && handleToggle()}
@@ -76,7 +78,7 @@ const BottomNav: React.FC = () => {
             Cafe Owner
           </Text>
         </Pressable>
-      </Animated.View>
+      </Animated.View> */}
 
       {/* Nav Items */}
       <View style={styles.navWrapper}>
