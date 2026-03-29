@@ -23,6 +23,7 @@ const preferenceCategories = [
       { label: "Cozy", icon: "☕" },
       { label: "Lively", icon: "👥" },
       { label: "Outdoor seating", icon: "☀️" },
+      { label: "Pet Friendly", icon: "🐕" },
       { label: "No preference", icon: "➖" },
     ],
   },
@@ -113,7 +114,7 @@ export default function CustomerOnboardingScreen() {
       // preferred_price_level: null,
 
       atmosphere: selectedPrefs.filter((p) =>
-        ["Quiet", "Cozy", "Lively", "Outdoor seating"].includes(p)
+        ["Quiet", "Cozy", "Lively", "Outdoor seating", "Pet Friendly"].includes(p)
       ),
 
       work_preferences: selectedPrefs.filter((p) =>
