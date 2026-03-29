@@ -123,6 +123,12 @@ export default function CafeOnboarding({ navigation }: any) {
 
       console.log("Cafe created:", data);
 
+      await supabase.auth.updateUser({
+      data: {
+        display_name: cafeName,
+      },
+    });
+
       setRole("cafe");
       navigation.navigate("Home");
 
