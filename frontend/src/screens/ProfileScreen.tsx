@@ -1,5 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 
+
 import {
   Animated,
   FlatList,
@@ -21,13 +22,14 @@ import { deviceWidth, moderateScale, scale } from "../utils/responsive";
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
 import { useRole } from "../context/RoleContext";
+import { supabase } from "../api/supabaseClient";
 
 const SCREEN_WIDTH = deviceWidth;
 
 type Comment = { text: string };
 type Post = {
   id: number;
-  images: string[];       // up to 5 images per post
+  images: string[];
   likes: number;
   liked: boolean;
   comments: Comment[];
@@ -40,11 +42,47 @@ export default function ProfileScreen() {
   const { role } = useRole();
   const isCafe = role === "cafe";
 
+  const [profileName, setProfileName] = useState("");
+
+
+  useEffect(() => {
+    if (isCafe) return;
+
+    const fetchUserName = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        const token = session?.access_token;
+        if (!token) return;
+
+        const res = await fetch("http://127.0.0.1:3001/api/users/me/name", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await res.json();
+        setProfileName(data.name || "");
+      } catch (err) {
+        console.error("Error fetching user name:", err);
+      }
+    };
+
+    fetchUserName();
+  }, [isCafe]);
+
+  useEffect(() => {
+    if (!isCafe) {
+      setEditableName(profileName || "Harry Potter");
+    }
+  }, [profileName, isCafe]);
   const contentWidth = Math.min(deviceWidth * 0.9, 480);
   const photoSize = (contentWidth - 6) / 3;
 
   const profile = {
-    name: isCafe ? "Bean & Bloom Café" : "Harry Potter",
+    name: isCafe ? "Bean & Bloom Café" : profileName || "Harry Potter",
     bio: isCafe
       ? "Cozy neighbourhood café in Brooklyn ☕ | Mon–Sun 7am–8pm"
       : "Exploring NYC cafés ☕✨",
@@ -52,6 +90,7 @@ export default function ProfileScreen() {
       ? { posts: 42, visits: 5420, rating: 4.8 }
       : { posts: 27, visits: 340, favorites: 12 },
   };
+
 
   const [activeTab, setActiveTab] = useState<"photos" | "reviews" | "saved">("photos");
 
