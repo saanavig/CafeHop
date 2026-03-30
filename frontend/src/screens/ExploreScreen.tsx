@@ -1,28 +1,44 @@
-import React, { useState, useRef, useEffect } from "react";
 import {
-  View,
+  Animated,
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  PanResponder,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  FlatList,
-  Image,
-  StyleSheet,
-  Dimensions,
-  Animated,
-  StatusBar,
-  PanResponder,
-  Modal,
+  View,
 } from "react-native";
+import {
+  Bookmark,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Coffee,
+  Gift,
+  Globe,
+  Instagram,
+  MapPin,
+  Navigation,
+  Phone,
+  Search,
+  Share2,
+  Star,
+  Wifi,
+  X,
+  Zap,
+} from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { moderateScale, scale } from "../utils/responsive";
+
+import BottomNav from "../components/ui/BottomNav";
+import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
-import BottomNav from "../components/ui/BottomNav";
-import {
-  Search, Star, Wifi, Zap, Coffee, Clock, X,
-  Navigation, Gift, Phone, Globe, Bookmark, Share2,
-  MapPin, ChevronDown, ChevronUp, Instagram,
-} from "lucide-react-native";
-import { scale, moderateScale } from "../utils/responsive";
 
 const { width: RAW_WIDTH, height: RAW_HEIGHT } = Dimensions.get("window");
 const width  = Math.min(RAW_WIDTH,  430);
@@ -141,6 +157,7 @@ const FILTER_OPTIONS = [
 ];
 
 const SHEET_HEIGHT = height * 0.52;
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ExploreScreen() {
@@ -148,13 +165,27 @@ export default function ExploreScreen() {
   const navigation = useNavigation<any>();
 
   const [search, setSearch]               = useState("");
-  const [selectedCafe, setSelectedCafe]   = useState<(typeof allCafes)[0] | null>(null);
+  const [selectedCafe, setSelectedCafe] = useState<Cafe | null>(null);
   const [activeFilters, setActiveFilters] = useState<string[]>(["open"]);
   const [activeTab, setActiveTab]         = useState<"info" | "rewards" | "reviews">("info");
   const [detailVisible, setDetailVisible] = useState(false);
   const [photoIndex, setPhotoIndex]       = useState(0);
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [saved, setSaved]                 = useState<number[]>([]);
+
+  type Cafe = {
+    id: string;
+    name: string;
+    image_url?: string;
+    rating?: number;
+    distance?: string;
+    vibes?: string[];
+    isOpen?: boolean;
+    pin?: { x: number; y: number };
+  };
+
+  const [cafes, setCafes] = useState<Cafe[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const tabFade     = useRef(new Animated.Value(1)).current;
   const detailSlide = useRef(new Animated.Value(height)).current;
@@ -190,6 +221,23 @@ export default function ExploreScreen() {
   const pulseOpacity = useRef(allCafes.map(() => new Animated.Value(0.6))).current;
 
   useEffect(() => {
+    fetchCafes();
+  }, []);
+
+  const fetchCafes = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/cafe/all`);
+      const data = await res.json();
+
+      setCafes(data);
+    } catch (err) {
+      console.error("Error fetching cafes:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     allCafes.forEach((_, i) => {
       const loop = Animated.loop(
         Animated.sequence([
@@ -208,7 +256,7 @@ export default function ExploreScreen() {
     });
   }, []);
 
-  const filteredCafes = allCafes.filter((c) =>
+  const filteredCafes = cafes.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -291,15 +339,34 @@ export default function ExploreScreen() {
         {filteredCafes.map((cafe, i) => (
           <TouchableOpacity
             key={cafe.id}
-            style={[styles.pinWrap, { top: `${cafe.pin.y * 100}%` as any, left: `${cafe.pin.x * 100}%` as any }]}
+            style={[
+              styles.pinWrap,
+              {
+                top: `${(cafe.pin?.y ?? Math.random() * 0.8) * 100}%`,
+                left: `${(cafe.pin?.x ?? Math.random() * 0.8) * 100}%`,
+              },
+            ]}
             onPress={() => openDetail(cafe)}
             activeOpacity={0.8}
           >
             <Animated.View
-              style={[styles.pinRing, { transform: [{ scale: pulseScales[i] }], opacity: pulseOpacity[i] }]}
+              style={[
+                styles.pinRing,
+                {
+                  transform: [{ scale: pulseScales[i] }],
+                  opacity: pulseOpacity[i],
+                },
+              ]}
             />
-            <View style={[styles.pin, selectedCafe?.id === cafe.id && styles.pinSelected]}>
-              <Text style={styles.pinText}>{cafe.name.split(" ")[0]}</Text>
+            <View
+              style={[
+                styles.pin,
+                selectedCafe?.id === cafe.id && styles.pinSelected,
+              ]}
+            >
+              <Text style={styles.pinText}>
+                {cafe.name?.split(" ")[0] ?? "Cafe"}
+              </Text>
             </View>
           </TouchableOpacity>
         ))}
@@ -362,7 +429,15 @@ export default function ExploreScreen() {
               onPress={() => openDetail(cafe)}
               activeOpacity={0.9}
             >
-              <Image source={cafe.image} style={styles.cafeCardImage} resizeMode="cover" />
+              <Image
+                source={
+                  cafe.image_url
+                    ? { uri: cafe.image_url }
+                    : require("../assets/cafe-1.jpg")
+                }
+                style={styles.cafeCardImage}
+                resizeMode="cover"
+              />
               <View style={[styles.openPip, cafe.isOpen ? styles.openPipGreen : styles.openPipRed]}>
                 <Text style={[styles.openPipText, cafe.isOpen ? { color: "#2E7D32" } : { color: "#C62828" }]}>
                   {cafe.isOpen ? "Open" : "Closed"}
@@ -375,7 +450,7 @@ export default function ExploreScreen() {
               <View style={styles.cafeCardTextArea}>
                 <Text style={styles.cafeCardName}>{cafe.name}</Text>
                 <View style={styles.cafeCardMeta}>
-                  <Text style={styles.cafeCardSub}>{cafe.vibes.join(" · ")}</Text>
+                  <Text style={styles.cafeCardSub}>{(cafe.vibes ?? []).join(" · ")}</Text>
                   <Text style={styles.cafeCardDist}>{cafe.distance}</Text>
                 </View>
               </View>

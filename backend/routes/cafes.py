@@ -164,3 +164,33 @@ def get_my_cafes():
     except Exception as e:
         print("Error fetching cafes:", str(e))
         return jsonify({"error": "Internal server error"}), 500
+
+@cafe_bp.route("/cafe/all", methods=["GET"])
+def get_all_cafes():
+    try:
+        cafes_response = supabase.table("cafes").select("*").execute()
+        cafes = cafes_response.data or []
+
+        structured_response = []
+
+        for cafe in cafes:
+            cafe_id = cafe["id"]
+
+            # get hours
+            hours_response = supabase.table("cafe_hours") \
+                .select("day_of_week, open_time, close_time") \
+                .eq("cafe_id", cafe_id) \
+                .execute()
+
+            hours = hours_response.data or []
+
+            structured_response.append({
+                **cafe,
+                "hours": hours
+            })
+
+        return jsonify(structured_response), 200
+
+    except Exception as e:
+        print("Error fetching all cafes:", str(e))
+        return jsonify({"error": "Internal server error"}), 500
