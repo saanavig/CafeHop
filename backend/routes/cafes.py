@@ -54,6 +54,7 @@ def register_cafe():
             "owner_id": owner_id,
             "name": data["name"],
             "address": data.get("address"),
+            "image_url": data.get("image_url"),
             "latitude": data.get("latitude"),
             "longitude": data.get("longitude"),
             "contact_email": data.get("contact_email"),

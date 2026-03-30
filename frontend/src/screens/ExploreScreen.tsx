@@ -54,7 +54,6 @@ const FILTERS = [
   "$$",
   "$$$",
   "Nearby",
-  "Study-friendly",
   "WiFi",
 ];
 
