@@ -1,28 +1,44 @@
-import React, { useState, useRef, useEffect } from "react";
 import {
-  View,
+  Animated,
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  PanResponder,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  FlatList,
-  Image,
-  StyleSheet,
-  Dimensions,
-  Animated,
-  StatusBar,
-  PanResponder,
-  Modal,
+  View,
 } from "react-native";
+import {
+  Bookmark,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Coffee,
+  Gift,
+  Globe,
+  Instagram,
+  MapPin,
+  Navigation,
+  Phone,
+  Search,
+  Share2,
+  Star,
+  Wifi,
+  X,
+  Zap,
+} from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { moderateScale, scale } from "../utils/responsive";
+
+import BottomNav from "../components/ui/BottomNav";
+import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
-import BottomNav from "../components/ui/BottomNav";
-import {
-  Search, Star, Wifi, Zap, Coffee, Clock, X,
-  Navigation, Gift, Phone, Globe, Bookmark, Share2,
-  MapPin, ChevronDown, ChevronUp, Instagram,
-} from "lucide-react-native";
-import { scale, moderateScale } from "../utils/responsive";
 
 const { width: RAW_WIDTH, height: RAW_HEIGHT } = Dimensions.get("window");
 const width  = Math.min(RAW_WIDTH,  430);
@@ -30,6 +46,11 @@ const height = Math.min(RAW_HEIGHT, 932);
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const FILTERS = [
+  "All",
+  "Open Now",
+];
 
 const allCafes = [
   {
@@ -133,14 +154,15 @@ const allCafes = [
   },
 ];
 
-const FILTER_OPTIONS = [
-  { id: "open",    label: "Open Now",     Icon: Clock   },
-  { id: "wifi",    label: "Wi-Fi",        Icon: Wifi    },
-  { id: "outlets", label: "Outlets",      Icon: Zap     },
-  { id: "coffee",  label: "Great Coffee", Icon: Coffee  },
-];
+// const FILTER_OPTIONS = [
+//   { id: "open",    label: "Open Now",     Icon: Clock   },
+//   { id: "wifi",    label: "Wi-Fi",        Icon: Wifi    },
+//   { id: "outlets", label: "Outlets",      Icon: Zap     },
+//   { id: "coffee",  label: "Great Coffee", Icon: Coffee  },
+// ];
 
 const SHEET_HEIGHT = height * 0.52;
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ExploreScreen() {
@@ -148,13 +170,41 @@ export default function ExploreScreen() {
   const navigation = useNavigation<any>();
 
   const [search, setSearch]               = useState("");
-  const [selectedCafe, setSelectedCafe]   = useState<(typeof allCafes)[0] | null>(null);
-  const [activeFilters, setActiveFilters] = useState<string[]>(["open"]);
+  const [selectedCafe, setSelectedCafe] = useState<Cafe | null>(null);
+  // const [activeFilters, setActiveFilters] = useState<string[]>(["open"]);
   const [activeTab, setActiveTab]         = useState<"info" | "rewards" | "reviews">("info");
   const [detailVisible, setDetailVisible] = useState(false);
   const [photoIndex, setPhotoIndex]       = useState(0);
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [saved, setSaved]                 = useState<number[]>([]);
+  const [selectedFilter, setSelectedFilter] = useState("All");
+
+  type Cafe = {
+    id: string;
+    name: string;
+
+    // backend
+    attributes?: string[];
+    price_level?: number;
+    isOpen?: boolean;
+    latitude?: number;
+    longitude?: number;
+    image_url?: string;
+
+    // frontend-only
+    pin?: { x: number; y: number };
+    rating?: number;
+    vibes?: string[];
+    distance?: string;
+  };
+
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+
+  const [cafes, setCafes] = useState<Cafe[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const tabFade     = useRef(new Animated.Value(1)).current;
   const detailSlide = useRef(new Animated.Value(height)).current;
@@ -190,6 +240,66 @@ export default function ExploreScreen() {
   const pulseOpacity = useRef(allCafes.map(() => new Animated.Value(0.6))).current;
 
   useEffect(() => {
+    fetchCafes();
+  }, []);
+
+  const fetchCafes = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/cafe/all`);
+      const data = await res.json();
+      console.log("FILTER INPUT:", data);
+
+      const cleaned = data.map((c: any) => ({
+        ...c,
+
+        attributes: Array.isArray(c.attributes)
+          ? c.attributes.map((a: string) => a.toLowerCase())
+          : typeof c.attributes === "string"
+          ? c.attributes.toLowerCase().split(",").map((a: string) => a.trim())
+          : [],
+
+        price_level: c.price_level ? Number(c.price_level) : null,
+        latitude: c.latitude ? Number(c.latitude) : null,
+        longitude: c.longitude ? Number(c.longitude) : null,
+
+        isOpen: c.isOpen ?? false,
+      }));
+
+      console.log("CLEANED CAFES:", cleaned);
+
+      setCafes(cleaned);
+    } catch (err) {
+      console.error("Error fetching cafes:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+
+  const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      setUserLocation({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+      });
+    });
+  }, []);
+
+  useEffect(() => {
     allCafes.forEach((_, i) => {
       const loop = Animated.loop(
         Animated.sequence([
@@ -208,11 +318,44 @@ export default function ExploreScreen() {
     });
   }, []);
 
-  const filteredCafes = allCafes.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const mergedCafes = cafes.map((cafe) => ({
+    ...cafe,
+    pin: {
+      x: Math.random() * 0.8,
+      y: Math.random() * 0.8,
+    },
+  }));
 
-  const openDetail = (cafe: (typeof allCafes)[0]) => {
+  const normalizeAttributes = (attrs: any): string[] => {
+    if (!attrs) return [];
+
+    if (Array.isArray(attrs)) {
+      return attrs.map((a) => a.toLowerCase());
+    }
+
+    if (typeof attrs === "string") {
+      return attrs.toLowerCase().split(",").map((a) => a.trim());
+    }
+
+    return [];
+  };
+
+  const filteredCafes: Cafe[] = mergedCafes.filter((c) => {
+    const matchesSearch = c.name
+      ?.toLowerCase()
+      .includes(search.toLowerCase());
+
+    if (selectedFilter === "All") {
+      return matchesSearch;
+    }
+
+    if (selectedFilter === "Open Now") {
+      return matchesSearch && c.isOpen === true;
+    }
+    return matchesSearch;
+  });
+
+  const openDetail = (cafe: Cafe) => {
     setSelectedCafe(cafe);
     setActiveTab("info");
     setPhotoIndex(0);
@@ -236,10 +379,10 @@ export default function ExploreScreen() {
     });
   };
 
-  const toggleFilter = (id: string) =>
-    setActiveFilters((prev) =>
-      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
-    );
+  // const toggleFilter = (id: string) =>
+  //   setActiveFilters((prev) =>
+  //     prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+  //   );
 
   const toggleSave = (id: number) =>
     setSaved((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
@@ -291,15 +434,34 @@ export default function ExploreScreen() {
         {filteredCafes.map((cafe, i) => (
           <TouchableOpacity
             key={cafe.id}
-            style={[styles.pinWrap, { top: `${cafe.pin.y * 100}%` as any, left: `${cafe.pin.x * 100}%` as any }]}
+            style={[
+              styles.pinWrap,
+              {
+                top: `${(cafe.pin?.y ?? Math.random() * 0.8) * 100}%`,
+                left: `${(cafe.pin?.x ?? Math.random() * 0.8) * 100}%`,
+              },
+            ]}
             onPress={() => openDetail(cafe)}
             activeOpacity={0.8}
           >
             <Animated.View
-              style={[styles.pinRing, { transform: [{ scale: pulseScales[i] }], opacity: pulseOpacity[i] }]}
+              style={[
+                styles.pinRing,
+                {
+                  transform: [{ scale: pulseScales[i] }],
+                  opacity: pulseOpacity[i],
+                },
+              ]}
             />
-            <View style={[styles.pin, selectedCafe?.id === cafe.id && styles.pinSelected]}>
-              <Text style={styles.pinText}>{cafe.name.split(" ")[0]}</Text>
+            <View
+              style={[
+                styles.pin,
+                selectedCafe?.id === cafe.id && styles.pinSelected,
+              ]}
+            >
+              <Text style={styles.pinText}>
+                {cafe.name?.split(" ")[0] ?? "Cafe"}
+              </Text>
             </View>
           </TouchableOpacity>
         ))}
@@ -312,7 +474,7 @@ export default function ExploreScreen() {
         <View style={styles.searchContainer}>
           <Search size={15} color="#999" />
           <TextInput
-            placeholder="Search cafés near you…"
+            placeholder="Search cafes near you…"
             placeholderTextColor="#BBB"
             style={styles.searchInput}
             value={search}
@@ -327,7 +489,7 @@ export default function ExploreScreen() {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
           <View style={styles.listHeader}>
-            <Text style={styles.listTitle}>Cafés Near You</Text>
+            <Text style={styles.listTitle}>Cafes Near You</Text>
             <View style={styles.listCountChip}>
               <Navigation size={11} color="#D4A373" />
               <Text style={styles.listCountText}>{filteredCafes.length} places</Text>
@@ -339,17 +501,30 @@ export default function ExploreScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingBottom: 16 }}
           >
-            {FILTER_OPTIONS.map((f) => {
-              const active = activeFilters.includes(f.id);
-              const Icon = f.Icon;
+            {FILTERS.map((filter) => {
+              const isActive = selectedFilter === filter;
+
               return (
                 <TouchableOpacity
-                  key={f.id}
-                  style={[styles.filterChip, active && styles.filterChipActive]}
-                  onPress={() => toggleFilter(f.id)}
+                  key={filter}
+                  onPress={() => setSelectedFilter(filter)}
+                  activeOpacity={0.7}
                 >
-                  <Icon size={12} color={active ? "#FFF" : "#666"} />
-                  <Text style={[styles.filterChipText, active && { color: "#FFF" }]}>{f.label}</Text>
+                  <View
+                    style={[
+                      styles.filterChip,
+                      isActive && styles.filterChipActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        isActive && { color: "#FFF" },
+                      ]}
+                    >
+                      {filter}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -362,7 +537,15 @@ export default function ExploreScreen() {
               onPress={() => openDetail(cafe)}
               activeOpacity={0.9}
             >
-              <Image source={cafe.image} style={styles.cafeCardImage} resizeMode="cover" />
+              <Image
+                source={
+                  cafe.image_url
+                    ? { uri: cafe.image_url }
+                    : require("../assets/cafe-1.jpg")
+                }
+                style={styles.cafeCardImage}
+                resizeMode="cover"
+              />
               <View style={[styles.openPip, cafe.isOpen ? styles.openPipGreen : styles.openPipRed]}>
                 <Text style={[styles.openPipText, cafe.isOpen ? { color: "#2E7D32" } : { color: "#C62828" }]}>
                   {cafe.isOpen ? "Open" : "Closed"}
@@ -375,7 +558,7 @@ export default function ExploreScreen() {
               <View style={styles.cafeCardTextArea}>
                 <Text style={styles.cafeCardName}>{cafe.name}</Text>
                 <View style={styles.cafeCardMeta}>
-                  <Text style={styles.cafeCardSub}>{cafe.vibes.join(" · ")}</Text>
+                  <Text style={styles.cafeCardSub}>{(cafe.vibes ?? []).join(" · ")}</Text>
                   <Text style={styles.cafeCardDist}>{cafe.distance}</Text>
                 </View>
               </View>
