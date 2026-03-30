@@ -1,3 +1,4 @@
+//recueptuploadscreen.tsx
 import React, { useState } from "react";
 import { supabase } from "../api/supabaseClient";
 import {
@@ -189,7 +190,7 @@ export default function ReceiptUploadScreen({
       setUploadState("success");
       setSuccessMessage("Receipt uploaded successfully.");
       setOcrText(data?.data?.ocrText || "");
-      setEarnedPoints(150);
+      setEarnedPoints(data.data.points_earned);
     } catch (error: any) {
       setUploadState("error");
       setErrorMessage(error.message || "Something went wrong.");

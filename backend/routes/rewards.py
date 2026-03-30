@@ -5,11 +5,10 @@ from database.supabase_client import supabase_admin as supabase
 
 rewards_bp = Blueprint("rewards_bp", __name__)
 
-# user points
-@rewards_bp.route("/users/<user_id>/points", methods=["GET"])
-def user_points(user_id):
-
-    print("user_id received:", user_id)
+@rewards_bp.route("/users/me/points", methods=["GET"])
+@require_auth
+def user_points():
+    user_id = g.user["id"]
 
     points = get_user_points(user_id)
 
@@ -18,9 +17,10 @@ def user_points(user_id):
         "points": points
     }), 200
 
-# user point history
-@rewards_bp.route("/users/<user_id>/points/history", methods=["GET"])
-def user_points_history(user_id):
+@rewards_bp.route("/users/me/points/history", methods=["GET"])
+@require_auth
+def user_points_history():
+    user_id = g.user["id"]
 
     history = get_user_points_history(user_id)
 
@@ -29,12 +29,10 @@ def user_points_history(user_id):
         "history": history
     }), 200
 
-# reward setup for cafes
 @rewards_bp.route("/cafes/<cafe_id>/rewards", methods=["POST"])
 @require_auth
 @require_role("cafe_owner")
 def create_reward(cafe_id):
-
     data = request.get_json()
 
     if not data or "title" not in data or "points_required" not in data:
@@ -49,7 +47,6 @@ def create_reward(cafe_id):
         if not cafe.data or cafe.data[0]["owner_id"] != g.user["id"]:
             return jsonify({"error": "Forbidden"}), 403
 
-        # create reward
         response = supabase.table("rewards").insert({
             "cafe_id": cafe_id,
             "title": data["title"],
