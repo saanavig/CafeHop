@@ -1,3 +1,5 @@
+import * as ImagePicker from "expo-image-picker";
+
 import { CheckCircle, Coffee } from "lucide-react-native";
 import {
   Dimensions,
@@ -12,6 +14,7 @@ import React, { useState } from "react";
 
 import { Alert } from "react-native";
 import Button from "../components/ui/Button";
+import { Image } from "react-native";
 import { apiFetch } from "../api/client";
 import { supabase } from "../api/supabaseClient";
 import { useRole } from "../context/RoleContext";
@@ -26,7 +29,6 @@ const ATTRIBUTE_OPTIONS = [
   "Specialty Drinks", "Great Pastries", "Vegan Options", "Study-friendly", "Good for Meetings",
   "Instagrammable", "Late-night", "Early morning"
 ];
-
 type DayHours = { open: boolean; start: string; end: string };
 
 const defaultHours: Record<string, DayHours> = Object.fromEntries(
@@ -45,6 +47,7 @@ export default function CafeOnboarding({ navigation }: any) {
   const [contact, setContact] = useState("");
   const [hours, setHours] = useState<Record<string, DayHours>>(defaultHours);
   const [tagError, setTagError] = useState("");
+  const [image, setImage] = useState<string | null>(null);
   // const [posType, setPosType] = useState<"manual" | "square" | null>(null);
   // const [linkedPOS, setLinkedPOS] = useState<"Square" | null>(null);
   // const [posEmail, setPosEmail] = useState("");
@@ -67,6 +70,24 @@ export default function CafeOnboarding({ navigation }: any) {
     });
   };
 
+  const pickImage = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert("Permission required", "We need access to your photos");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
+  };
+
   const next = () => setStep((prev) => Math.min(prev + 1, TOTAL_STEPS));
   const back = () => setStep((prev) => Math.max(prev - 1, 1));
 
@@ -77,6 +98,33 @@ export default function CafeOnboarding({ navigation }: any) {
   const maxWidth = 480;
 
   const handleFinishSetup = async () => {
+    let imageUrl = null;
+
+    if (image) {
+      const fileName = `cafe-${Date.now()}-${Math.random()}.jpg`;
+
+      const response = await fetch(image);
+      const blob = await response.blob();
+
+      const { data, error } = await supabase.storage
+        .from("images")
+        .upload(fileName, blob, {
+          contentType: "image/jpeg",
+        });
+
+      if (error) {
+        console.error("Upload error:", error);
+        Alert.alert("Error", "Image upload failed");
+        return; 
+      } else {
+        const { data: publicUrlData } = supabase.storage
+          .from("images")
+          .getPublicUrl(fileName);
+
+        imageUrl = publicUrlData.publicUrl;
+      }
+    }
+
     try {
       const payload = {
         name: cafeName,
@@ -84,6 +132,7 @@ export default function CafeOnboarding({ navigation }: any) {
         contact,
         hours,
         price_range: priceRange,
+        image_url: imageUrl,
         // pos_type: posType,
       };
 
@@ -181,6 +230,13 @@ export default function CafeOnboarding({ navigation }: any) {
                 onChangeText={setContact}
                 keyboardType="email-address"
               />
+              <Pressable onPress={pickImage} style={styles.imageUploadBox}>
+                {image ? (
+                  <Image source={{ uri: image }} style={styles.imagePreview} />
+                ) : (
+                  <Text style={styles.imageUploadText}>Upload Cafe Photo</Text>
+                )}
+              </Pressable>
               <Button
                 title="Continue"
                 variant="caramel"
@@ -532,4 +588,25 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   timeSep: { fontSize: 18, color: "#CCC", marginTop: 16 },
+  imageUploadBox: {
+  height: 140,
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: "#CCC",
+  justifyContent: "center",
+  alignItems: "center",
+  marginBottom: 16,
+  backgroundColor: "#FAFAFA",
+  overflow: "hidden",
+},
+
+  imageUploadText: {
+    color: "#888",
+    fontSize: 14,
+  },
+
+  imagePreview: {
+    width: "100%",
+    height: "100%",
+  },
 });

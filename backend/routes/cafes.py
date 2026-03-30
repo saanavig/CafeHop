@@ -4,6 +4,7 @@ from supabase import create_client
 import os
 from dotenv import load_dotenv
 from database.supabase_client import supabase_admin as supabase
+from datetime import datetime
 
 load_dotenv()
 
@@ -54,8 +55,10 @@ def register_cafe():
             "owner_id": owner_id,
             "name": data["name"],
             "address": data.get("address"),
+            "image_url": data.get("image_url"),
             "latitude": data.get("latitude"),
             "longitude": data.get("longitude"),
+            "price_level": int(data.get("price_level")) if data.get("price_level") else None,
             "contact_email": data.get("contact_email"),
             "contact_phone": data.get("contact_phone"),
             "website_url": data.get("website_url"),
@@ -156,7 +159,8 @@ def get_my_cafes():
             structured_response.append({
                 **cafe,
                 "hours": hours,
-                "rewards": rewards
+                "rewards": rewards,
+                "isOpen": is_cafe_open(hours) 
             })
 
         return jsonify(structured_response), 200
@@ -164,3 +168,45 @@ def get_my_cafes():
     except Exception as e:
         print("Error fetching cafes:", str(e))
         return jsonify({"error": "Internal server error"}), 500
+
+@cafe_bp.route("/cafe/all", methods=["GET"])
+def get_all_cafes():
+    try:
+        cafes_response = supabase.table("cafes").select("*").execute()
+        cafes = cafes_response.data or []
+
+        structured_response = []
+
+        for cafe in cafes:
+            cafe_id = cafe["id"]
+
+            # get hours
+            hours_response = supabase.table("cafe_hours") \
+                .select("day_of_week, open_time, close_time") \
+                .eq("cafe_id", cafe_id) \
+                .execute()
+
+            hours = hours_response.data or []
+
+            structured_response.append({
+                **cafe,
+                "hours": hours,
+                "isOpen": is_cafe_open(hours)
+            })
+
+        return jsonify(structured_response), 200
+
+    except Exception as e:
+        print("Error fetching all cafes:", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+
+def is_cafe_open(hours):
+    now = datetime.now()
+    day = now.weekday()  # 0 = Monday
+    current_time = now.strftime("%H:%M:%S")
+
+    for h in hours:
+        if h["day_of_week"] == day:
+            if h["open_time"] <= current_time <= h["close_time"]:
+                return True
+    return False
