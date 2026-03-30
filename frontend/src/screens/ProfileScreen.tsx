@@ -116,7 +116,7 @@ export default function ProfileScreen() {
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [commentInput, setCommentInput] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-  const [editableName, setEditableName] = useState(profile.name);
+  const [editableName, setEditableName] = useState("");
   const [editableBio, setEditableBio] = useState(profile.bio);
   const [showAddPost, setShowAddPost] = useState(false);
   const [newPostCaption, setNewPostCaption] = useState("");
@@ -245,6 +245,43 @@ export default function ProfileScreen() {
     setSelectedImages([]);
     setShowAddPost(false);
   };
+  const handleSaveProfile = async () => {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const token = session?.access_token;
+    if (!token) return;
+
+    // split full name → first + last
+    const parts = editableName.trim().split(" ");
+    const first_name = parts[0] || "";
+    const last_name = parts.slice(1).join(" ") || "";
+
+    const res = await fetch("http://127.0.0.1:3001/api/users/me/name", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        first_name,
+        last_name,
+      }),
+    });
+
+    const data = await res.json();
+    console.log("update response:", data);
+
+    // update local state
+    setProfileName(editableName);
+    setIsEditing(false);
+
+  } catch (err) {
+    console.error("Error updating name:", err);
+  }
+};
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
@@ -289,9 +326,18 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.buttonRow}>
-              <Button style={{ flex: 1, marginRight: scale(8) }} onPress={() => setIsEditing(!isEditing)}>
-                {isEditing ? "Save" : "Edit Profile"}
-              </Button>
+              <Button
+                  style={{ flex: 1, marginRight: scale(8) }}
+                  onPress={() => {
+                    if (isEditing) {
+                      handleSaveProfile(); // save to backend
+                    } else {
+                      setIsEditing(true);
+                    }
+                  }}
+                >
+                  {isEditing ? "Save" : "Edit Profile"}
+                </Button>
               <Button style={{ flex: 1 }} onPress={() => setShowAddPost(true)}>
                 Add Post
               </Button>
