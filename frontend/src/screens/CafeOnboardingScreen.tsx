@@ -15,6 +15,23 @@ import Button from "../components/ui/Button";
 import { apiFetch } from "../api/client";
 import { supabase } from "../api/supabaseClient";
 import { useRole } from "../context/RoleContext";
+import * as Location from "expo-location";
+
+const requestLocation = async () => {
+    const result = await Location.requestForegroundPermissionsAsync();
+    if (result.status !== "granted") {
+      throw new Error("Location permission denied");
+    }
+
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+
+    return {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
+  };
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const TOTAL_STEPS = 4;
@@ -78,18 +95,23 @@ export default function CafeOnboarding({ navigation }: any) {
 
   const handleFinishSetup = async () => {
     try {
+      const { latitude, longitude } = await requestLocation();
+
       const payload = {
         name: cafeName,
         address,
         contact,
+        latitude,
+        longitude,
         hours,
         price_range: priceRange,
-        // pos_type: posType,
       };
 
       console.log("Sending cafe:", payload);
 
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
       if (!session) {
         Alert.alert("Error", "You are not logged in");
@@ -124,14 +146,13 @@ export default function CafeOnboarding({ navigation }: any) {
       console.log("Cafe created:", data);
 
       await supabase.auth.updateUser({
-      data: {
-        display_name: cafeName,
-      },
-    });
+        data: {
+          display_name: cafeName,
+        },
+      });
 
       setRole("cafe");
       navigation.navigate("Home");
-
     } catch (err) {
       console.error("CRASH:", err);
       Alert.alert("Error", "Something went wrong");
