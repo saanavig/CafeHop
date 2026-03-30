@@ -16,29 +16,54 @@ export default function NameScreen() {
     });
 
     const handleContinue = async () => {
-        const newErrors = {
-            firstName: !firstName.trim(),
-            lastName: !lastName.trim(),
-        };
+    const newErrors = {
+        firstName: !firstName.trim(),
+        lastName: !lastName.trim(),
+    };
 
-        setErrors(newErrors);
+    setErrors(newErrors);
 
-        if (newErrors.firstName || newErrors.lastName) return;
+    if (newErrors.firstName || newErrors.lastName) return;
 
-        const { error } = await supabase.auth.updateUser({
-            data: {
-            first_name: firstName,
-            last_name: lastName,
-            },
+    // 1. Save to auth metadata
+    const { error: authError } = await supabase.auth.updateUser({
+        data: {
+        first_name: firstName,
+        last_name: lastName,
+        },
+    });
+
+    if (authError) {
+        console.error("Auth update error:", authError);
+        return;
+    }
+
+    const {
+        data: { user },
+        error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+        console.error("User fetch error:", userError);
+        return;
+    }
+
+    const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert({
+        id: user.id,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        full_name: `${firstName.trim()} ${lastName.trim()}`,
         });
 
-        if (error) {
-            console.error(error);
-            return;
-        }
+    if (profileError) {
+        console.error("Profile save error:", profileError);
+        return;
+    }
 
-        navigation.navigate("CustomerOnboarding");
-        };
+    navigation.navigate("CustomerOnboarding");
+    };
 
     return (
         <View style={styles.container}>
