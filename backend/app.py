@@ -5,7 +5,7 @@ from pydantic import ValidationError
 from services.ocr_services import ocr_image
 from services.gemini_services import parse_purchase_from_image
 from services.cafe_matcher import lookup_cafe_id
-from services.purchase_repo import insert_purchase
+from services.purchase_repo import insert_purchase, add_points_to_user
 from services.receipt_validator import validate_receipt_submission
 from database.auth_middleware import require_auth
 from routes.auth import require_role
@@ -199,12 +199,14 @@ def receipt_upload():
             user_id=user_id,
             cafe_id=cafe_id,
             amount=gemini_purchase.amount,
-            status="Approved",
+            status="approved",
             latitude=latitude,
             longitude=longitude,
             submission_token=submission_token,
             receipt_timestamp=receipt_timestamp,
         )
+        points_earned = purchase_row["points_earned"]
+        new_total = add_points_to_user(user_id, points_earned)
     except Exception as e:
         return error("Database insert failed", 500, extra=str(e))
 
@@ -215,6 +217,8 @@ def receipt_upload():
             "gemini": gemini_purchase.model_dump(),
             "purchase_insert": purchase_row,
             "saved": saved,
+            "points_earned": points_earned,
+            "total_points": new_total,
         },
         status=200,
     )

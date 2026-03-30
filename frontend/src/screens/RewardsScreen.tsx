@@ -1,3 +1,4 @@
+//rewardscreen.tsx
 import {
   Animated,
   Dimensions,
@@ -11,7 +12,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { moderateScale, scale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
@@ -64,7 +66,7 @@ const cafePrograms: CafeProgram[] = [
   { id: 2, name: "Loyalty Points", description: "Earn points on every £1 spent", pointsPerVisit: 50, totalIssued: 15230, redemptions: 890, active: true },
   { id: 3, name: "Weekend Bonus", description: "2× points every Saturday & Sunday", pointsPerVisit: 200, totalIssued: 3100, redemptions: 140, active: false },
 ];
-const API_URL = process.env.EXPO_PUBLIC_API_URL!;
+const API_URL = "http://127.0.0.1:3001";
 
 interface RecentRedemption {
   customer: string;
@@ -135,8 +137,8 @@ export default function RewardsScreen({ navigation }) {
       const token = sessionData.session?.access_token;
       const userId = sessionData.session?.user.id;
 
-      const res = await fetch(`${API_URL}/api/users/${userId}/points`, {
-      headers: {
+      const res = await fetch(`${API_URL}/api/users/me/points`, {
+        headers: {
           Authorization: `Bearer ${token}`,
         },
       });
@@ -148,12 +150,17 @@ export default function RewardsScreen({ navigation }) {
     }
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchPoints();
+    }, [])
+  );
+
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 380, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 380, useNativeDriver: true }),
     ]).start();
-    fetchPoints();
   }, []);
 
   // Customer state
