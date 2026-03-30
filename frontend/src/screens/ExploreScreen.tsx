@@ -50,11 +50,6 @@ const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const FILTERS = [
   "All",
   "Open Now",
-  "$",
-  "$$",
-  "$$$",
-  "Nearby",
-  "WiFi",
 ];
 
 const allCafes = [
@@ -159,12 +154,12 @@ const allCafes = [
   },
 ];
 
-const FILTER_OPTIONS = [
-  { id: "open",    label: "Open Now",     Icon: Clock   },
-  { id: "wifi",    label: "Wi-Fi",        Icon: Wifi    },
-  { id: "outlets", label: "Outlets",      Icon: Zap     },
-  { id: "coffee",  label: "Great Coffee", Icon: Coffee  },
-];
+// const FILTER_OPTIONS = [
+//   { id: "open",    label: "Open Now",     Icon: Clock   },
+//   { id: "wifi",    label: "Wi-Fi",        Icon: Wifi    },
+//   { id: "outlets", label: "Outlets",      Icon: Zap     },
+//   { id: "coffee",  label: "Great Coffee", Icon: Coffee  },
+// ];
 
 const SHEET_HEIGHT = height * 0.52;
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -176,7 +171,7 @@ export default function ExploreScreen() {
 
   const [search, setSearch]               = useState("");
   const [selectedCafe, setSelectedCafe] = useState<Cafe | null>(null);
-  const [activeFilters, setActiveFilters] = useState<string[]>(["open"]);
+  // const [activeFilters, setActiveFilters] = useState<string[]>(["open"]);
   const [activeTab, setActiveTab]         = useState<"info" | "rewards" | "reviews">("info");
   const [detailVisible, setDetailVisible] = useState(false);
   const [photoIndex, setPhotoIndex]       = useState(0);
@@ -187,11 +182,20 @@ export default function ExploreScreen() {
   type Cafe = {
     id: string;
     name: string;
-    attributes?: string[] | string;
-    price_level?: number; // 1, 2, 3
+
+    // backend
+    attributes?: string[];
+    price_level?: number;
     isOpen?: boolean;
     latitude?: number;
     longitude?: number;
+    image_url?: string;
+
+    // frontend-only
+    pin?: { x: number; y: number };
+    rating?: number;
+    vibes?: string[];
+    distance?: string;
   };
 
   const [userLocation, setUserLocation] = useState<{
@@ -243,8 +247,27 @@ export default function ExploreScreen() {
     try {
       const res = await fetch(`${API_URL}/api/cafe/all`);
       const data = await res.json();
+      console.log("FILTER INPUT:", data);
 
-      setCafes(data);
+      const cleaned = data.map((c: any) => ({
+        ...c,
+
+        attributes: Array.isArray(c.attributes)
+          ? c.attributes.map((a: string) => a.toLowerCase())
+          : typeof c.attributes === "string"
+          ? c.attributes.toLowerCase().split(",").map((a: string) => a.trim())
+          : [],
+
+        price_level: c.price_level ? Number(c.price_level) : null,
+        latitude: c.latitude ? Number(c.latitude) : null,
+        longitude: c.longitude ? Number(c.longitude) : null,
+
+        isOpen: c.isOpen ?? false,
+      }));
+
+      console.log("CLEANED CAFES:", cleaned);
+
+      setCafes(cleaned);
     } catch (err) {
       console.error("Error fetching cafes:", err);
     } finally {
@@ -295,14 +318,27 @@ export default function ExploreScreen() {
     });
   }, []);
 
-  const mergedCafes = cafes.map((cafe, i) => ({
-    ...allCafes[i % allCafes.length],
+  const mergedCafes = cafes.map((cafe) => ({
     ...cafe,
     pin: {
       x: Math.random() * 0.8,
       y: Math.random() * 0.8,
     },
   }));
+
+  const normalizeAttributes = (attrs: any): string[] => {
+    if (!attrs) return [];
+
+    if (Array.isArray(attrs)) {
+      return attrs.map((a) => a.toLowerCase());
+    }
+
+    if (typeof attrs === "string") {
+      return attrs.toLowerCase().split(",").map((a) => a.trim());
+    }
+
+    return [];
+  };
 
   const filteredCafes: Cafe[] = mergedCafes.filter((c) => {
     const matchesSearch = c.name
@@ -316,45 +352,10 @@ export default function ExploreScreen() {
     if (selectedFilter === "Open Now") {
       return matchesSearch && c.isOpen === true;
     }
-
-    if (["$", "$$", "$$$"].includes(selectedFilter)) {
-      const priceMap: any = { $: 1, $$: 2, $$$: 3 };
-      return matchesSearch && c.price_level === priceMap[selectedFilter];
-    }
-
-    if (selectedFilter === "WiFi") {
-      const hasWifi = Array.isArray(c.attributes)
-        ? c.attributes.includes("WiFi")
-        : (c.attributes ?? "").includes("WiFi");
-
-      return matchesSearch && hasWifi;
-    }
-
-    if (selectedFilter === "Study-friendly") {
-      const hasStudy = Array.isArray(c.attributes)
-        ? c.attributes.includes("Study-friendly")
-        : (c.attributes ?? "").includes("Study-friendly");
-
-      return matchesSearch && hasStudy;
-    }
-
-    if (selectedFilter === "Nearby" && userLocation) {
-      if (c.latitude && c.longitude) {
-        const dist = getDistance(
-          userLocation.lat,
-          userLocation.lng,
-          c.latitude,
-          c.longitude
-        );
-        return matchesSearch && dist < 2;
-      }
-      return false;
-    }
-
     return matchesSearch;
   });
 
-  const openDetail = (cafe: (typeof allCafes)[0]) => {
+  const openDetail = (cafe: Cafe) => {
     setSelectedCafe(cafe);
     setActiveTab("info");
     setPhotoIndex(0);
@@ -378,10 +379,10 @@ export default function ExploreScreen() {
     });
   };
 
-  const toggleFilter = (id: string) =>
-    setActiveFilters((prev) =>
-      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
-    );
+  // const toggleFilter = (id: string) =>
+  //   setActiveFilters((prev) =>
+  //     prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+  //   );
 
   const toggleSave = (id: number) =>
     setSaved((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
