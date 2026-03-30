@@ -75,14 +75,14 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (!isCafe) {
-      setEditableName(profileName || "Harry Potter");
+      setEditableName(profileName);
     }
   }, [profileName, isCafe]);
   const contentWidth = Math.min(deviceWidth * 0.9, 480);
   const photoSize = (contentWidth - 6) / 3;
 
   const profile = {
-    name: isCafe ? "Bean & Bloom Café" : profileName || "Harry Potter",
+    name: isCafe ? "Bean & Bloom Café" : profileName ,
     bio: isCafe
       ? "Cozy neighbourhood café in Brooklyn ☕ | Mon–Sun 7am–8pm"
       : "Exploring NYC cafés ☕✨",
@@ -254,7 +254,7 @@ export default function ProfileScreen() {
     const token = session?.access_token;
     if (!token) return;
 
-    // split full name → first + last
+
     const parts = editableName.trim().split(" ");
     const first_name = parts[0] || "";
     const last_name = parts.slice(1).join(" ") || "";
@@ -274,7 +274,6 @@ export default function ProfileScreen() {
     const data = await res.json();
     console.log("update response:", data);
 
-    // update local state
     setProfileName(editableName);
     setIsEditing(false);
 
