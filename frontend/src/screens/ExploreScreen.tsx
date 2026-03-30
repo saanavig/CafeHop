@@ -47,6 +47,17 @@ const height = Math.min(RAW_HEIGHT, 932);
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+const FILTERS = [
+  "All",
+  "Open Now",
+  "$",
+  "$$",
+  "$$$",
+  "Nearby",
+  "Study-friendly",
+  "WiFi",
+];
+
 const allCafes = [
   {
     id: 1,
@@ -172,17 +183,22 @@ export default function ExploreScreen() {
   const [photoIndex, setPhotoIndex]       = useState(0);
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [saved, setSaved]                 = useState<number[]>([]);
+  const [selectedFilter, setSelectedFilter] = useState("All");
 
   type Cafe = {
     id: string;
     name: string;
-    image_url?: string;
-    rating?: number;
-    distance?: string;
-    vibes?: string[];
+    attributes?: string[] | string;
+    price_level?: number; // 1, 2, 3
     isOpen?: boolean;
-    pin?: { x: number; y: number };
+    latitude?: number;
+    longitude?: number;
   };
+
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   const [cafes, setCafes] = useState<Cafe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -237,6 +253,30 @@ export default function ExploreScreen() {
     }
   };
 
+  const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+
+  const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      setUserLocation({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+      });
+    });
+  }, []);
+
   useEffect(() => {
     allCafes.forEach((_, i) => {
       const loop = Animated.loop(
@@ -256,9 +296,64 @@ export default function ExploreScreen() {
     });
   }, []);
 
-  const filteredCafes = cafes.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const mergedCafes = cafes.map((cafe, i) => ({
+    ...allCafes[i % allCafes.length],
+    ...cafe,
+    pin: {
+      x: Math.random() * 0.8,
+      y: Math.random() * 0.8,
+    },
+  }));
+
+  const filteredCafes: Cafe[] = mergedCafes.filter((c) => {
+    const matchesSearch = c.name
+      ?.toLowerCase()
+      .includes(search.toLowerCase());
+
+    if (selectedFilter === "All") {
+      return matchesSearch;
+    }
+
+    if (selectedFilter === "Open Now") {
+      return matchesSearch && c.isOpen === true;
+    }
+
+    if (["$", "$$", "$$$"].includes(selectedFilter)) {
+      const priceMap: any = { $: 1, $$: 2, $$$: 3 };
+      return matchesSearch && c.price_level === priceMap[selectedFilter];
+    }
+
+    if (selectedFilter === "WiFi") {
+      const hasWifi = Array.isArray(c.attributes)
+        ? c.attributes.includes("WiFi")
+        : (c.attributes ?? "").includes("WiFi");
+
+      return matchesSearch && hasWifi;
+    }
+
+    if (selectedFilter === "Study-friendly") {
+      const hasStudy = Array.isArray(c.attributes)
+        ? c.attributes.includes("Study-friendly")
+        : (c.attributes ?? "").includes("Study-friendly");
+
+      return matchesSearch && hasStudy;
+    }
+
+    if (selectedFilter === "Nearby" && userLocation) {
+      if (c.latitude && c.longitude) {
+        const dist = getDistance(
+          userLocation.lat,
+          userLocation.lng,
+          c.latitude,
+          c.longitude
+        );
+        return matchesSearch && dist < 2;
+      }
+      return false;
+    }
+
+    return matchesSearch;
+  });
 
   const openDetail = (cafe: (typeof allCafes)[0]) => {
     setSelectedCafe(cafe);
@@ -379,7 +474,7 @@ export default function ExploreScreen() {
         <View style={styles.searchContainer}>
           <Search size={15} color="#999" />
           <TextInput
-            placeholder="Search cafés near you…"
+            placeholder="Search cafes near you…"
             placeholderTextColor="#BBB"
             style={styles.searchInput}
             value={search}
@@ -394,7 +489,7 @@ export default function ExploreScreen() {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
           <View style={styles.listHeader}>
-            <Text style={styles.listTitle}>Cafés Near You</Text>
+            <Text style={styles.listTitle}>Cafes Near You</Text>
             <View style={styles.listCountChip}>
               <Navigation size={11} color="#D4A373" />
               <Text style={styles.listCountText}>{filteredCafes.length} places</Text>
@@ -406,17 +501,30 @@ export default function ExploreScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingBottom: 16 }}
           >
-            {FILTER_OPTIONS.map((f) => {
-              const active = activeFilters.includes(f.id);
-              const Icon = f.Icon;
+            {FILTERS.map((filter) => {
+              const isActive = selectedFilter === filter;
+
               return (
                 <TouchableOpacity
-                  key={f.id}
-                  style={[styles.filterChip, active && styles.filterChipActive]}
-                  onPress={() => toggleFilter(f.id)}
+                  key={filter}
+                  onPress={() => setSelectedFilter(filter)}
+                  activeOpacity={0.7}
                 >
-                  <Icon size={12} color={active ? "#FFF" : "#666"} />
-                  <Text style={[styles.filterChipText, active && { color: "#FFF" }]}>{f.label}</Text>
+                  <View
+                    style={[
+                      styles.filterChip,
+                      isActive && styles.filterChipActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        isActive && { color: "#FFF" },
+                      ]}
+                    >
+                      {filter}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               );
             })}
