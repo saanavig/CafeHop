@@ -18,6 +18,7 @@ from routes.rewards import rewards_bp
 from routes.reviews import reviews_bp
 from routes.recommendation import recommendations_bp
 from routes.profile import profile_bp
+from routes.post import posts_bp
 
 
 app = Flask(__name__)
@@ -43,6 +44,7 @@ app.register_blueprint(preferences_bp, url_prefix="/api")
 app.register_blueprint(rewards_bp, url_prefix="/api")
 app.register_blueprint(recommendations_bp, url_prefix="/api")
 app.register_blueprint(profile_bp, url_prefix="/api")
+app.register_blueprint(posts_bp, url_prefix="/api")
 
 import re
 
