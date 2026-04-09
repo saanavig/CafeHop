@@ -751,57 +751,129 @@ export default function CafeProfileScreen() {
                                 </Text>
                                 )}
 
-                            {section.items.map((item: any, j: number) => (
-                            <View key={j} style={styles.menuItem}>
-                                {isEditing ? (
-                                <>
-                                    <TextInput
-                                    value={item.name}
-                                    onChangeText={(text) =>
-                                        handleEditItem(item.id, "name", text)
-                                    }
-                                    style={{
-                                        flex: 1,
-                                        backgroundColor: "#F3F0EC",
-                                        padding: 6,
-                                        borderRadius: 6,
-                                    }}
-                                    />
+                                {section.items.map((item: any, j: number) => (
+                                    <View key={j}>
+                                        {/* ROW */}
+                                        <View style={styles.menuItem}>
+                                            {isEditing ? (
+                                                <>
+                                                    <TextInput
+                                                        value={item.name}
+                                                        onChangeText={(text) =>
+                                                            handleEditItem(item.id, "name", text)
+                                                        }
+                                                        style={{
+                                                            flex: 1,
+                                                            backgroundColor: "#F3F0EC",
+                                                            padding: 6,
+                                                            borderRadius: 6,
+                                                        }}
+                                                    />
 
-                                    <TextInput
-                                    value={item.price}
-                                    onChangeText={(text) =>
-                                        handleEditItem(item.id, "price", text)
-                                    }
-                                    style={{
-                                        width: 60,
-                                        textAlign: "right",
-                                        backgroundColor: "#F3F0EC",
-                                        padding: 6,
-                                        borderRadius: 6,
-                                        marginLeft: 10,
-                                    }}
-                                    />
+                                                    <TextInput
+                                                        value={item.price}
+                                                        onChangeText={(text) =>
+                                                            handleEditItem(item.id, "price", text)
+                                                        }
+                                                        style={{
+                                                            width: 60,
+                                                            textAlign: "right",
+                                                            backgroundColor: "#F3F0EC",
+                                                            padding: 6,
+                                                            borderRadius: 6,
+                                                            marginLeft: 10,
+                                                        }}
+                                                    />
 
-                                    <TouchableOpacity
-                                    onPress={() => handleDeleteItem(item)}
-                                    style={{
-                                        marginLeft: 10,
-                                        width: 40,
-                                        alignItems: "flex-end",
-                                    }}
-                                    >
-                                    <Text style={{ fontSize: 16 }}>🗑</Text>
-                                    </TouchableOpacity>
-                                </>
-                                ) : (
-                                <>
-                                    <Text style={styles.menuItemName}>{item.name}</Text>
-                                    <Text style={styles.menuItemPrice}>{item.price}</Text>
-                                </>
-                                )}
-                            </View>
-                            ))}
+                                                    {/* ✏️ + 🗑 ICONS */}
+                                                    <View style={{ flexDirection: "row", marginLeft: 10 }}>
+                                                        <TouchableOpacity
+                                                            onPress={() => {
+                                                                setEditingItemId(item.id);
+                                                                setEditName(item.name);
+                                                                setEditPrice(item.price);
+                                                                setEditCategory(section.title);
+                                                            }}
+                                                            style={{ marginRight: 10 }}
+                                                        >
+                                                            <Text>✏️</Text>
+                                                        </TouchableOpacity>
+
+                                                        <TouchableOpacity onPress={() => handleDeleteItem(item)}>
+                                                            <Text>🗑</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Text style={styles.menuItemName}>{item.name}</Text>
+                                                    <Text style={styles.menuItemPrice}>{item.price}</Text>
+                                                </>
+                                            )}
+                                        </View>
+
+                                        {/* 🔥 EDIT POPUP — PASTE THIS RIGHT AFTER THE ROW */}
+                                        {editingItemId === item.id && (
+                                            <View
+                                                style={{
+                                                    backgroundColor: "#FFF",
+                                                    borderRadius: 10,
+                                                    padding: 10,
+                                                    marginTop: 8,
+                                                    borderWidth: 1,
+                                                    borderColor: "#E5DED6",
+                                                }}
+                                            >
+                                                <TextInput
+                                                    value={editName}
+                                                    onChangeText={setEditName}
+                                                    style={inputStyle}
+                                                />
+
+                                                <TextInput
+                                                    value={editPrice}
+                                                    onChangeText={(text) => {
+                                                        if (/^\d*$/.test(text)) setEditPrice(text);
+                                                    }}
+                                                    keyboardType="number-pad"
+                                                    style={inputStyle}
+                                                />
+
+                                                <TouchableOpacity
+                                                    onPress={async () => {
+                                                        await supabase
+                                                            .from("menu_items")
+                                                            .update({
+                                                                name: editName.trim(),
+                                                                price: editPrice,
+                                                            })
+                                                            .eq("id", item.id);
+
+                                                        setMenuItems((prev) =>
+                                                            prev.map((i) =>
+                                                                i.id === item.id
+                                                                    ? { ...i, name: editName, price: editPrice }
+                                                                    : i
+                                                            )
+                                                        );
+
+                                                        setEditingItemId(null);
+                                                    }}
+                                                    style={{
+                                                        backgroundColor: "#D4A373",
+                                                        padding: 10,
+                                                        borderRadius: 8,
+                                                    }}
+                                                >
+                                                    <Text style={{ color: "#fff", textAlign: "center" }}>
+                                                        Save Changes
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+
+                                    </View>
+                                ))}
                         </View>
                         ))}
                     </>
