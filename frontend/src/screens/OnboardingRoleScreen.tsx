@@ -2,10 +2,13 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { moderateScale, scale } from "../utils/responsive";
 
 import React from "react";
+import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
+import { useRole } from "../context/RoleContext";
 
 export default function OnboardingRoleScreen() {
   const navigation = useNavigation<any>();
+  const { setRole } = useRole();
 
   return (
     <View style={styles.container}>
@@ -15,7 +18,14 @@ export default function OnboardingRoleScreen() {
         {/* Customer */}
         <Pressable
           style={styles.button}
-          onPress={() => navigation.navigate("Name")}
+          onPress={async () => {
+            await supabase.auth.updateUser({
+              data: { role: "customer" },
+            });
+
+            setRole("customer");
+            navigation.navigate("Name");
+          }}
         >
           <Text style={styles.icon}>☕</Text>
           <Text style={styles.buttonText}>I’m a customer</Text>
@@ -24,7 +34,14 @@ export default function OnboardingRoleScreen() {
         {/* Cafe Owner */}
         <Pressable
           style={styles.button}
-          onPress={() => navigation.navigate("CafeOnboarding")}
+          onPress={async () => {
+            await supabase.auth.updateUser({
+              data: { role: "cafe" },
+            });
+
+            setRole("cafe");
+            navigation.navigate("CafeOnboarding");
+          }}
         >
           <Text style={styles.icon}>🏪</Text>
           <Text style={styles.buttonText}>I own a cafe</Text>

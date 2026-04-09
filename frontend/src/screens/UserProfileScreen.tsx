@@ -1,6 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
 
-
 import {
   Animated,
   FlatList,
@@ -21,8 +20,8 @@ import { deviceWidth, moderateScale, scale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
-import { useRole } from "../context/RoleContext";
 import { supabase } from "../api/supabaseClient";
+import { useRole } from "../context/RoleContext";
 
 const SCREEN_WIDTH = deviceWidth;
 
@@ -38,7 +37,7 @@ type Post = {
   location?: string;
 };
 
-export default function ProfileScreen() {
+export default function UserProfileScreen() {
   const { role } = useRole();
   const isCafe = role === "cafe";
 
