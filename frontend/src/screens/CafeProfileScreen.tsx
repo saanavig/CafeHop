@@ -9,11 +9,13 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { BookOpen, Bookmark, Grid3X3, Heart, Layers, MapPin, Star, Store, X } from "lucide-react-native";
+import { BookOpen, Bookmark, Grid3X3, Heart, Layers, MapPin, Pencil, Star, Store, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { deviceWidth, moderateScale, scale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
+import { TextInput } from "react-native";
+import { supabase } from "../api/supabaseClient";
 
 const SCREEN_WIDTH = deviceWidth;
 
@@ -29,9 +31,14 @@ const SCREEN_WIDTH = deviceWidth;
     saved?: boolean;
     };
 
-    export default function CafeProfileScreen() {
+export default function CafeProfileScreen() {
     const contentWidth = Math.min(deviceWidth * 0.9, 480);
     const photoSize = (contentWidth - 6) / 3;
+    const cafeId = "YOUR_CAFE_ID";
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newName, setNewName] = useState("");
+    const [newPrice, setNewPrice] = useState("");
+    const [newCategory, setNewCategory] = useState("");
 
     const cafe = {
         name: "Bean & Bloom Cafe",
@@ -47,6 +54,45 @@ const SCREEN_WIDTH = deviceWidth;
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(18)).current;
     const tabFadeAnim = useRef(new Animated.Value(1)).current;
+
+    const [menuItems, setMenuItems] = useState<any[]>([]);
+    useEffect(() => {
+        const fetchMenu = async () => {
+            const { data, error } = await supabase
+            .from("menu_items")
+            .select("*")
+            .eq("cafe_id", cafeId);
+
+            if (error) {
+            console.error("Error fetching menu:", error);
+            } else {
+            setMenuItems(data);
+            }
+        };
+
+        fetchMenu();
+        }, []);
+
+    const groupMenuByCategory = (items: any[]) => {
+        const grouped: any = {};
+
+        items.forEach((item) => {
+            if (!grouped[item.category]) {
+            grouped[item.category] = [];
+            }
+
+            grouped[item.category].push({
+            name: item.name,
+            price: item.price,
+            });
+        });
+
+        return Object.keys(grouped).map((category) => ({
+            title: category,
+            items: grouped[category],
+        }));
+    };
+    const menuSections = groupMenuByCategory(menuItems);
 
     useEffect(() => {
         Animated.parallel([
@@ -74,23 +120,63 @@ const SCREEN_WIDTH = deviceWidth;
         }))
     );
 
-    const menuSections = [
-    {
-        title: "Drinks",
-        items: [
-        { name: "Latte", price: "$5" },
-        { name: "Matcha", price: "$6" },
-        { name: "Espresso", price: "$4" },
-        ],
-    },
-    {
-        title: "Pastries",
-        items: [
-        { name: "Croissant", price: "$4" },
-        { name: "Banana Bread", price: "$5" },
-        ],
-    },
-    ];
+    const handleAddItem = async () => {
+    if (!newName || !newPrice || !newCategory) return;
+
+    const { error } = await supabase.from("menu_items").insert([
+        {
+        cafe_id: cafeId,
+        name: newName,
+        price: newPrice,
+        category: newCategory,
+        },
+    ]);
+
+    if (error) {
+        console.error(error);
+    } else {
+        setMenuItems((prev) => [
+        ...prev,
+        {
+            name: newName,
+            price: newPrice,
+            category: newCategory,
+        },
+        ]);
+
+        // reset + close
+        setNewName("");
+        setNewPrice("");
+        setNewCategory("");
+        setShowAddModal(false);
+    }
+    };
+
+    const inputStyle = {
+        borderWidth: 1,
+        borderColor: "#ddd",
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 10,
+    };
+
+    // const menuSections = [
+    // {
+    //     title: "Drinks",
+    //     items: [
+    //     { name: "Latte", price: "$5" },
+    //     { name: "Matcha", price: "$6" },
+    //     { name: "Espresso", price: "$4" },
+    //     ],
+    // },
+    // {
+    //     title: "Pastries",
+    //     items: [
+    //     { name: "Croissant", price: "$4" },
+    //     { name: "Banana Bread", price: "$5" },
+    //     ],
+    // },
+    // ];
 
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
     const [carouselIndex, setCarouselIndex] = useState(0);
@@ -193,16 +279,32 @@ const SCREEN_WIDTH = deviceWidth;
                 {/* MENU */}
                 {activeTab === "menu" && (
                 <View style={styles.section}>
+
+                    {/* EDIT ICON */}
+                    <TouchableOpacity
+                    onPress={() => setShowAddModal(true)}
+                    style={{
+                        position: "absolute",
+                        right: 8,
+                        top: 10,
+                        padding: 8,
+                        backgroundColor: "#fff",
+                        borderRadius: 20,
+                        elevation: 3,
+                        zIndex: 10,
+                    }}
+                    >
+                    <Pencil size={18} color="#D4A373" />
+                    </TouchableOpacity>
+
+                    {/* MENU CONTENT */}
                     {menuSections.map((section, i) => (
                     <View key={i} style={{ marginBottom: scale(16) }}>
-                        
-                        {/* Section Title */}
                         <Text style={styles.menuSectionTitle}>
                         {section.title}
                         </Text>
 
-                        {/* Items */}
-                        {section.items.map((item, j) => (
+                        {section.items.map((item: any, j: number) => (
                         <View key={j} style={styles.menuItem}>
                             <Text style={styles.menuItemName}>{item.name}</Text>
                             <Text style={styles.menuItemPrice}>{item.price}</Text>
@@ -210,6 +312,7 @@ const SCREEN_WIDTH = deviceWidth;
                         ))}
                     </View>
                     ))}
+
                 </View>
                 )}
 
@@ -256,6 +359,64 @@ const SCREEN_WIDTH = deviceWidth;
                 </View>
             </View>
             )}
+        </Modal>
+        <Modal visible={showAddModal} animationType="slide" transparent>
+        <View style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            padding: 20,
+        }}>
+            <View style={{
+            backgroundColor: "#fff",
+            borderRadius: 12,
+            padding: 16,
+            }}>
+
+            <Text style={{ fontWeight: "700", fontSize: 16, marginBottom: 10 }}>
+                Add Menu Item
+            </Text>
+
+            <TextInput
+                placeholder="Name (e.g. Latte)"
+                value={newName}
+                onChangeText={setNewName}
+                style={inputStyle}
+            />
+
+            <TextInput
+                placeholder="Price (e.g. $5)"
+                value={newPrice}
+                onChangeText={setNewPrice}
+                style={inputStyle}
+            />
+
+            <TextInput
+                placeholder="Category (e.g. Drinks)"
+                value={newCategory}
+                onChangeText={setNewCategory}
+                style={inputStyle}
+            />
+        </View>/
+
+            {/* ACTIONS */}
+            <View style={{ flexDirection: "row", marginTop: 12 }}>
+                <TouchableOpacity
+                onPress={handleAddItem}
+                style={{ flex: 1, backgroundColor: "#D4A373", padding: 10, borderRadius: 8, marginRight: 6 }}
+                >
+                <Text style={{ color: "#fff", textAlign: "center" }}>Add</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                onPress={() => setShowAddModal(false)}
+                style={{ flex: 1, backgroundColor: "#ddd", padding: 10, borderRadius: 8 }}
+                >
+                <Text style={{ textAlign: "center" }}>Cancel</Text>
+                </TouchableOpacity>
+            </View>
+
+            </View>
         </Modal>
         <BottomNav />
         </View>
