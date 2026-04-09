@@ -39,6 +39,8 @@ export default function CafeProfileScreen() {
     const [editingCategory, setEditingCategory] = useState<string | null>(null);
     const [newCategoryName, setNewCategoryName] = useState("");
     const [addingItemCategory, setAddingItemCategory] = useState<string | null>(null);
+    const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+    const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
 
     const cafe = {
         name: "Bean & Bloom Cafe",
@@ -120,6 +122,7 @@ export default function CafeProfileScreen() {
     };
     const rawSections = groupMenuByCategory(menuItems);
     const hasMenu = rawSections.length > 0;
+    const categories = rawSections.map((section) => section.title);
 
     const menuSections = rawSections;
 
@@ -139,7 +142,7 @@ export default function CafeProfileScreen() {
 
     const handleCreateMenu = () => {
         setIsEditing(true);
-        setAddingItemCategory(null);
+        setAddingItemCategory('GLOBAL');
     };
 
     const [posts, setPosts] = useState<Post[]>(
@@ -225,7 +228,7 @@ export default function CafeProfileScreen() {
         cafe_id: cafeId,
         name: newName,
         price: newPrice,
-        category: newCategory || "General",
+        category: newCategory,
         },
     ]);
 
@@ -492,84 +495,6 @@ export default function CafeProfileScreen() {
                         </View>
                         )}
 
-                        {isEditing && !hasMenu && (
-                        <View
-                            style={{
-                            backgroundColor: "#FFF",
-                            borderRadius: 12,
-                            padding: 14,
-                            marginBottom: 16,
-                            borderWidth: 1,
-                            borderColor: "#E5DED6",
-                            }}
-                        >
-                            <Text style={{ fontWeight: "600", marginBottom: 10 }}>
-                            Add Your Menu Item
-                            </Text>
-
-                            <TextInput
-                            placeholder="Item name"
-                            value={newName}
-                            onChangeText={setNewName}
-                            style={inputStyle}
-                            />
-
-                            <TextInput
-                            placeholder="Price"
-                            value={newPrice}
-                            onChangeText={(text) => {
-                                const numeric = text.replace(/[^0-9]/g, "");
-                                setNewPrice(numeric);
-                            }}
-                            keyboardType="numeric"
-                            style={inputStyle}
-                            />
-
-                            <TextInput
-                            placeholder="Category (e.g. Drinks)"
-                            value={newCategory}
-                            onChangeText={setNewCategory}
-                            style={inputStyle}
-                            />
-
-                            <TouchableOpacity
-                            onPress={async () => {
-                                if (!newName || !newPrice || !newCategory) return;
-
-                                const { data } = await supabase
-                                .from("menu_items")
-                                .insert([
-                                    {
-                                    cafe_id: cafeId,
-                                    name: newName,
-                                    price: newPrice,
-                                    category: newCategory,
-                                    },
-                                ])
-                                .select();
-
-                                if (data) {
-                                setMenuItems((prev) => [...prev, data[0]]);
-                                }
-
-                                setNewName("");
-                                setNewPrice("");
-                                setNewCategory("");
-                                setAddingItemCategory(null);
-                            }}
-                            style={{
-                                backgroundColor: "#D4A373",
-                                padding: 12,
-                                borderRadius: 10,
-                            }}
-                            >
-                            <Text style={{ color: "#fff", textAlign: "center" }}>
-                                Add First Item
-                            </Text>
-                            </TouchableOpacity>
-                        </View>
-                        )}
-
                         {isEditing && addingItemCategory === "GLOBAL" && (
                         <View
                             style={{
@@ -585,6 +510,7 @@ export default function CafeProfileScreen() {
                             Add Item
                             </Text>
 
+                            {/* NAME */}
                             <TextInput
                             placeholder="Item name"
                             value={newName}
@@ -592,6 +518,7 @@ export default function CafeProfileScreen() {
                             style={inputStyle}
                             />
 
+                            {/* PRICE */}
                             <TextInput
                             placeholder="Price"
                             value={newPrice}
@@ -603,13 +530,111 @@ export default function CafeProfileScreen() {
                             style={inputStyle}
                             />
 
-                            <TextInput
-                            placeholder="Category (e.g. Drinks)"
-                            value={newCategory}
-                            onChangeText={setNewCategory}
-                            style={inputStyle}
-                            />
+                            {/* CATEGORY DROPDOWN */}
+                            <View style={{ marginBottom: 10 }}>
+                            {/* Dropdown trigger */}
+                            <TouchableOpacity
+                                onPress={() => setShowCategoryDropdown((prev) => !prev)}
+                                style={{
+                                borderWidth: 1,
+                                borderColor: "#ddd",
+                                borderRadius: 8,
+                                padding: 10,
+                                backgroundColor: "#fff",
+                                }}
+                            >
+                                <Text style={{ color: newCategory ? "#000" : "#888" }}>
+                                {newCategory || "Select Category"}
+                                </Text>
+                            </TouchableOpacity>
 
+                            {/* Dropdown list */}
+                            {showCategoryDropdown && (
+                                <View
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: "#ddd",
+                                    borderRadius: 8,
+                                    marginTop: 6,
+                                    backgroundColor: "#fff",
+                                    elevation: 4,
+                                    zIndex: 10,
+                                }}
+                                >
+                                {categories.length > 0 ? (
+                                    categories.map((cat, index) => (
+                                    <TouchableOpacity
+                                        key={index}
+                                        onPress={() => {
+                                        setNewCategory(cat);
+                                        setShowCategoryDropdown(false);
+                                        }}
+                                        style={{ padding: 10 }}
+                                    >
+                                        <Text>{cat}</Text>
+                                    </TouchableOpacity>
+                                    ))
+                                ) : (
+                                    <Text style={{ padding: 10, color: "#888" }}>
+                                    No categories yet
+                                    </Text>
+                                )}
+
+                                {/* Add new category button */}
+                                <TouchableOpacity
+                                    onPress={() => setIsAddingNewCategory(true)}
+                                    style={{
+                                    padding: 10,
+                                    borderTopWidth: 1,
+                                    borderTopColor: "#eee",
+                                    }}
+                                >
+                                    <Text style={{ color: "#D4A373" }}>
+                                    + Add new category
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {/* New category input */}
+                                {isAddingNewCategory && (
+                                    <View style={{ padding: 10 }}>
+                                    <TextInput
+                                        placeholder="New category name"
+                                        value={newCategory}
+                                        onChangeText={setNewCategory}
+                                        autoFocus
+                                        style={{
+                                        borderWidth: 1,
+                                        borderColor: "#ddd",
+                                        borderRadius: 6,
+                                        padding: 8,
+                                        }}
+                                    />
+
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                        if (!newCategory) return;
+
+                                        setIsAddingNewCategory(false);
+                                        setShowCategoryDropdown(false);
+                                        }}
+                                        style={{
+                                        marginTop: 8,
+                                        backgroundColor: "#D4A373",
+                                        padding: 8,
+                                        borderRadius: 6,
+                                        }}
+                                    >
+                                        <Text style={{ color: "#fff", textAlign: "center" }}>
+                                        Add Category
+                                        </Text>
+                                    </TouchableOpacity>
+                                    </View>
+                                )}
+                                </View>
+                            )}
+                            </View>
+
+                            {/* ADD ITEM BUTTON (OUTSIDE DROPDOWN) */}
                             <TouchableOpacity
                             onPress={async () => {
                                 if (!newName || !newPrice || !newCategory) return;
@@ -736,88 +761,6 @@ export default function CafeProfileScreen() {
                                 )}
                             </View>
                             ))}
-
-                            {/* {isEditing && addingItemCategory === section.title && (
-                            <View
-                                style={{
-                                backgroundColor: "#FFF",
-                                borderRadius: 12,
-                                padding: 14,
-                                marginTop: 10,
-                                marginBottom: 10,
-                                borderWidth: 1,
-                                borderColor: "#E5DED6",
-                                }}
-                            >
-                                <Text style={{ fontWeight: "600", marginBottom: 10 }}>
-                                Add Item
-                                </Text>
-
-                                <TextInput
-                                placeholder="Item name"
-                                value={newName}
-                                onChangeText={setNewName}
-                                style={inputStyle}
-                                />
-
-                                <TextInput
-                                placeholder="Price"
-                                value={newPrice}
-                                onChangeText={(text) => {
-                                    const numeric = text.replace(/[^0-9]/g, "");
-                                    setNewPrice(numeric);
-                                }}
-                                keyboardType="numeric"
-                                style={inputStyle}
-                                />
-
-                                <TextInput
-                                placeholder="Category"
-                                value={newCategory || section.title}
-                                onChangeText={setNewCategory}
-                                style={inputStyle}
-                                />
-
-                                <TouchableOpacity
-                                onPress={async () => {
-                                    if (!newName || !newPrice) return;
-
-                                    await supabase.from("menu_items").insert([
-                                    {
-                                        cafe_id: cafeId,
-                                        name: newName,
-                                        price: newPrice,
-                                        category: newCategory || section.title,
-                                    },
-                                    ]);
-
-                                    setMenuItems((prev) => [
-                                    ...prev,
-                                    {
-                                        id: Math.random().toString(),
-                                        name: newName,
-                                        price: newPrice,
-                                        category: newCategory || section.title,
-                                    },
-                                    ]);
-
-                                    setNewName("");
-                                    setNewPrice("");
-                                    setNewCategory("");
-                                    setAddingItemCategory(null);
-                                }}
-                                style={{
-                                    backgroundColor: "#D4A373",
-                                    padding: 12,
-                                    borderRadius: 10,
-                                }}
-                                >
-                                <Text style={{ color: "#fff", textAlign: "center" }}>
-                                    Add Item
-                                </Text>
-                                </TouchableOpacity>
-                            </View>
-                            )} */}
                         </View>
                         ))}
                     </>
