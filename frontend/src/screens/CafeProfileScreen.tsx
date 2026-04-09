@@ -49,6 +49,7 @@ export default function CafeProfileScreen() {
     const [editPrice, setEditPrice] = useState("");
     const [editCategory, setEditCategory] = useState("");
     const [newImage, setNewImage] = useState<string | null>(null);
+    const [editImage, setEditImage] = useState<string | null>(null);
 
     const cafe = {
         name: "Bean & Bloom Cafe",
@@ -849,6 +850,21 @@ export default function CafeProfileScreen() {
                                         <View style={styles.menuItem}>
                                             {isEditing ? (
                                                 <>
+                                                <Image
+                                                    source={
+                                                        item.image_url
+                                                            ? { uri: item.image_url }
+                                                            : undefined
+                                                    }
+                                                    style={{
+                                                        width: 30,
+                                                        height: 30,
+                                                        borderRadius: 6,
+                                                        backgroundColor: "#E8DFD5",
+                                                        marginRight: 8,
+                                                    }}
+                                                />
+
                                                     <TextInput
                                                         value={item.name}
                                                         onChangeText={(text) =>
@@ -885,6 +901,7 @@ export default function CafeProfileScreen() {
                                                                 setEditName(item.name);
                                                                 setEditPrice(item.price);
                                                                 setEditCategory(section.title);
+                                                                setEditImage(item.image_url || null); 
                                                             }}
                                                             style={{ marginRight: 10 }}
                                                         >
@@ -952,23 +969,75 @@ export default function CafeProfileScreen() {
                                                 />
 
                                                 <TouchableOpacity
+                                                onPress={async () => {
+                                                    const result = await ImagePicker.launchImageLibraryAsync({
+                                                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                                        quality: 0.7,
+                                                    });
+
+                                                    if (!result.canceled) {
+                                                        setEditImage(result.assets[0].uri);
+                                                    }
+                                                }}
+                                                style={{
+                                                    backgroundColor: "#F3F0EC",
+                                                    padding: 10,
+                                                    borderRadius: 8,
+                                                    marginBottom: 10,
+                                                    alignItems: "center",
+                                                }}
+                                            >
+                                                <Text>{editImage ? "Change Image" : "Add Image"}</Text>
+                                            </TouchableOpacity>
+
+                                            {/* PREVIEW */}
+                                            {editImage && (
+                                                <Image
+                                                    source={{ uri: editImage }}
+                                                    style={{ width: "100%", height: 120, borderRadius: 8, marginBottom: 10 }}
+                                                />
+                                            )}
+
+                                            {/* REMOVE */}
+                                            {editImage && (
+                                                <TouchableOpacity onPress={() => setEditImage(null)}>
+                                                    <Text style={{ color: "red", textAlign: "center", marginBottom: 10 }}>
+                                                        Remove Image
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            )}
+
+                                                <TouchableOpacity
                                                     onPress={async () => {
+                                                        let imageUrl = editImage;
+
+                                                        // if new image selected (local file)
+                                                        if (editImage && editImage.startsWith("file")) {
+                                                            imageUrl = await uploadImage(editImage);
+                                                        }
+
+                                                        // if removed
+                                                        if (!editImage) {
+                                                            imageUrl = null;
+                                                        }
+
                                                         await supabase
                                                             .from("menu_items")
                                                             .update({
                                                                 name: editName.trim(),
                                                                 price: editPrice,
+                                                                image_url: imageUrl,
                                                             })
                                                             .eq("id", item.id);
 
+                                                        // update UI
                                                         setMenuItems((prev) =>
                                                             prev.map((i) =>
                                                                 i.id === item.id
-                                                                    ? { ...i, name: editName, price: editPrice }
+                                                                    ? { ...i, name: editName, price: editPrice, image_url: imageUrl }
                                                                     : i
                                                             )
                                                         );
-
                                                         setEditingItemId(null);
                                                     }}
                                                     style={{
