@@ -41,6 +41,7 @@ export default function CafeProfileScreen() {
     const [addingItemCategory, setAddingItemCategory] = useState<string | null>(null);
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
+    const [formError, setFormError] = useState("");
 
     const cafe = {
         name: "Bean & Bloom Cafe",
@@ -520,14 +521,20 @@ export default function CafeProfileScreen() {
 
                             {/* PRICE */}
                             <TextInput
-                            placeholder="Price"
-                            value={newPrice}
-                            onChangeText={(text) => {
-                                const numeric = text.replace(/[^0-9]/g, "");
-                                setNewPrice(numeric);
-                            }}
-                            keyboardType="numeric"
-                            style={inputStyle}
+                                placeholder="Price"
+                                value={newPrice}
+                                onChangeText={(text) => {
+                                    setNewPrice(text);
+
+                                    // validate live
+                                    if (text && isNaN(Number(text))) {
+                                        setFormError("Price must be a numberic value only");
+                                    } else {
+                                        setFormError("");
+                                    }
+                                }}
+                                keyboardType="numeric"
+                                style={inputStyle}
                             />
 
                             {/* CATEGORY DROPDOWN */}
@@ -543,9 +550,12 @@ export default function CafeProfileScreen() {
                                 backgroundColor: "#fff",
                                 }}
                             >
+                                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                                 <Text style={{ color: newCategory ? "#000" : "#888" }}>
-                                {newCategory || "Select Category"}
+                                    {newCategory || "Select Category"}
                                 </Text>
+                                <Text>▼</Text>
+                                </View>
                             </TouchableOpacity>
 
                             {/* Dropdown list */}
@@ -568,6 +578,7 @@ export default function CafeProfileScreen() {
                                         onPress={() => {
                                         setNewCategory(cat);
                                         setShowCategoryDropdown(false);
+                                        setIsAddingNewCategory(false);
                                         }}
                                         style={{ padding: 10 }}
                                     >
@@ -634,10 +645,35 @@ export default function CafeProfileScreen() {
                             )}
                             </View>
 
-                            {/* ADD ITEM BUTTON (OUTSIDE DROPDOWN) */}
+                            {formError ? (
+                            <Text style={{ color: "red", marginBottom: 8 }}>
+                                {formError}
+                            </Text>
+                            ) : null}
+
                             <TouchableOpacity
                             onPress={async () => {
-                                if (!newName || !newPrice || !newCategory) return;
+                                if (!newName || !newPrice || !newCategory) {
+                                    setFormError("Please fill out all fields");
+                                    return;
+                                }
+
+                                const exists = menuItems.some((item) => {
+                                return (
+                                    item.category?.trim().toLowerCase() === newCategory.trim().toLowerCase() &&
+                                    item.name?.trim().toLowerCase() === newName.trim().toLowerCase()
+                                );
+                                });
+
+                                if (exists) {
+                                    setFormError("This item already exists in this category");
+                                    return;
+                                }
+
+                                if (isNaN(Number(newPrice))) {
+                                    setFormError("Price must be a valid number");
+                                    return;
+                                }
 
                                 const { data } = await supabase
                                 .from("menu_items")
@@ -654,6 +690,7 @@ export default function CafeProfileScreen() {
                                 if (data) {
                                 setMenuItems((prev) => [...prev, data[0]]);
                                 }
+                                setFormError("");
 
                                 setNewName("");
                                 setNewPrice("");
