@@ -50,6 +50,7 @@ export default function CafeProfileScreen() {
     const [editCategory, setEditCategory] = useState("");
     const [newImage, setNewImage] = useState<string | null>(null);
     const [editImage, setEditImage] = useState<string | null>(null);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
 
     const cafe = {
         name: "Bean & Bloom Cafe",
@@ -917,6 +918,13 @@ export default function CafeProfileScreen() {
                                                 <View style={{ flexDirection: "row", alignItems: "center", width: "100%" }}>
                                                 {/* LEFT SIDE: IMAGE + NAME */}
                                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                                    <TouchableOpacity
+                                                    onPress={() => {
+                                                        if (item.image_url) {
+                                                            setPreviewImage(item.image_url);
+                                                        }
+                                                    }}
+                                                >
                                                     <Image
                                                         source={
                                                             item.image_url
@@ -930,6 +938,7 @@ export default function CafeProfileScreen() {
                                                             backgroundColor: "#E8DFD5",
                                                         }}
                                                     />
+                                                </TouchableOpacity>
 
                                                     <Text style={styles.menuItemName}>{item.name}</Text>
                                                 </View>
@@ -1081,6 +1090,35 @@ export default function CafeProfileScreen() {
             </Animated.View>
             </View>
         </Animated.ScrollView>
+
+        {previewImage && (
+        <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setPreviewImage(null)}
+            style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(0,0,0,0.8)",
+                justifyContent: "center",
+                alignItems: "center",
+                zIndex: 100,
+            }}
+        >
+            <Image
+                source={{ uri: previewImage }}
+                style={{
+                    width: "90%",
+                    height: "60%",
+                    borderRadius: 12,
+                }}
+                resizeMode="contain"
+            />
+        </TouchableOpacity>
+    )}
+
         <BottomNav />
         </View>
     );
