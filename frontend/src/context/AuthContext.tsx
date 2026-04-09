@@ -8,6 +8,7 @@ import React, {
 
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { supabase } from "../api/supabaseClient";
+import { useRole } from "../context/RoleContext";
 
 type AuthContextType = {
     user: SupabaseUser | null;
@@ -26,6 +27,7 @@ type AuthContextType = {
     const [user, setUser] = useState<SupabaseUser | null>(null);
     const [loading, setLoading] = useState(true);
     const [onboarded, setOnboarded] = useState(false);
+    const { setRole } = useRole();
 
     useEffect(() => {
         const initializeUser = async () => {
@@ -41,6 +43,10 @@ type AuthContextType = {
 
         setUser(user);
         setOnboarded(isOnboarded);
+
+        const roleFromAuth = user?.user_metadata?.role || "customer";
+        setRole(roleFromAuth);
+
         setLoading(false);
         };
 
@@ -62,6 +68,8 @@ type AuthContextType = {
 
             setUser(user);
             setOnboarded(isOnboarded);
+            const roleFromAuth = user?.user_metadata?.role || "customer";
+            setRole(roleFromAuth);
         } else {
             setUser(null);
             setOnboarded(false);

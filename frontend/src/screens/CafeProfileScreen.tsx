@@ -1,0 +1,893 @@
+import {
+    Animated,
+    FlatList,
+    Image,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { BookOpen, Bookmark, Grid3X3, Heart, Layers, MapPin, Pencil, Star, Store, X } from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { deviceWidth, moderateScale, scale } from "../utils/responsive";
+
+import BottomNav from "../components/ui/BottomNav";
+import { TextInput } from "react-native";
+import { supabase } from "../api/supabaseClient";
+
+const SCREEN_WIDTH = deviceWidth;
+
+    type Comment = { text: string };
+    type Post = {
+    id: number;
+    images: string[];
+    likes: number;
+    liked: boolean;
+    comments: Comment[];
+    caption?: string;
+    location?: string;
+    saved?: boolean;
+    };
+
+export default function CafeProfileScreen() {
+    const contentWidth = Math.min(deviceWidth * 0.9, 480);
+    const photoSize = (contentWidth - 6) / 3;
+    const [cafeId, setCafeId] = useState<string | null>(null);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newName, setNewName] = useState("");
+    const [newPrice, setNewPrice] = useState("");
+    const [newCategory, setNewCategory] = useState("");
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingCategory, setEditingCategory] = useState<string | null>(null);
+    const [newCategoryName, setNewCategoryName] = useState("");
+
+    const cafe = {
+        name: "Bean & Bloom Cafe",
+        rating: 4.8,
+        visits: 5420,
+        location: "Brooklyn, NY",
+        open: "Open until 8:00 PM",
+        tags: ["Aesthetic", "Study Spot"],
+    };
+
+    const [activeTab, setActiveTab] = useState<"posts" | "menu" | "reviews">("posts");
+
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(18)).current;
+    const tabFadeAnim = useRef(new Animated.Value(1)).current;
+
+    const handleDeleteItem = async (item: any) => {
+    await supabase
+        .from("menu_items")
+        .delete()
+        .eq("id", item.id);
+
+    setMenuItems((prev) =>
+        prev.filter((i) => i.id !== item.id)
+    );
+    };
+
+    useEffect(() => {
+    const fetchCafe = async () => {
+        const { data, error } = await supabase
+        .from("cafes")
+        .select("id")
+        .limit(1)
+        .single();
+
+        if (!error && data) {
+        setCafeId(data.id);
+        }
+    };
+
+    fetchCafe();
+    }, []);
+
+    const [menuItems, setMenuItems] = useState<any[]>([]);
+    useEffect(() => {
+        if (!cafeId) return;
+
+        const fetchMenu = async () => {
+            const { data } = await supabase
+            .from("menu_items")
+            .select("*")
+            .eq("cafe_id", cafeId);
+
+            if (data) setMenuItems(data);
+        };
+
+        fetchMenu();
+        }, [cafeId]);
+
+    const groupMenuByCategory = (items: any[]) => {
+        const grouped: any = {};
+
+        items.forEach((item) => {
+            if (!grouped[item.category]) {
+            grouped[item.category] = [];
+            }
+
+            grouped[item.category].push({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            });
+        });
+
+        return Object.keys(grouped).map((category) => ({
+            title: category,
+            items: grouped[category],
+        }));
+    };
+    const menuSections = groupMenuByCategory(menuItems);
+    const hasMenu = menuSections.length > 0;
+
+    useEffect(() => {
+        Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 380, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 380, useNativeDriver: true }),
+        ]).start();
+    }, []);
+
+    const switchTab = (tab: "posts" | "menu" | "reviews") => {
+        Animated.timing(tabFadeAnim, { toValue: 0, duration: 120, useNativeDriver: true }).start(() => {
+        setActiveTab(tab);
+        Animated.timing(tabFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+        });
+    };
+
+    const handleCreateMenu = () => {
+        setShowAddModal(true);
+    };
+
+    // const handleCreateMenu = async () => {
+    //     if (!cafeId) return;
+
+    //     const { data, error } = await supabase
+    //         .from("menu_items")
+    //         .insert([
+    //         {
+    //             cafe_id: cafeId,
+    //             name: "New Item",
+    //             price: "$0",
+    //             category: "New Category",
+    //         },
+    //         ])
+    //         .select();
+
+    //     if (!error && data) {
+    //         setMenuItems((prev) => [...prev, ...data]);
+    //         setIsEditing(true); // auto enter edit mode
+    // }
+    // };
+
+    const [posts, setPosts] = useState<Post[]>(
+        Array.from({ length: 9 }).map((_, i) => ({
+        id: i,
+        images: [`https://picsum.photos/seed/cafe${i}/400`],
+        likes: Math.floor(Math.random() * 200),
+        liked: false,
+        comments: [{ text: "Looks amazing!" }],
+        caption: "Cozy vibes ☕",
+        location: "Brooklyn, NY",
+        }))
+    );
+
+    
+    const handleCreateCategory = async () => {
+    const newCategory = "New Category";
+
+    const { data, error } = await supabase
+        .from("menu_items")
+        .insert([
+        {
+            cafe_id: cafeId,
+            name: "New Item",
+            price: "$0",
+            category: newCategory,
+        },
+        ])
+        .select();
+
+    if (!error && data) {
+        setMenuItems((prev) => [...prev, data[0]]);
+    }
+    };
+
+    const handleRenameCategory = async (oldCategory: string) => {
+    if (!newCategoryName || newCategoryName === oldCategory) {
+        setEditingCategory(null);
+        return;
+    }
+
+    // update DB
+    const { error } = await supabase
+        .from("menu_items")
+        .update({ category: newCategoryName })
+        .eq("category", oldCategory)
+        .eq("cafe_id", cafeId);
+
+    if (error) {
+        console.error(error);
+    } else {
+        // update UI instantly
+        setMenuItems((prev) =>
+        prev.map((item) =>
+            item.category === oldCategory
+            ? { ...item, category: newCategoryName }
+            : item
+        )
+        );
+    }
+
+    setEditingCategory(null);
+    };
+
+    const handleEditItem = async (id: string, field: string, value: string) => {
+        setMenuItems((prev) =>
+            prev.map((item) =>
+            item.id === id ? { ...item, [field]: value } : item
+            )
+        );
+
+        // update database
+        await supabase
+            .from("menu_items")
+            .update({ [field]: value })
+            .eq("id", id);
+        };
+
+    const handleAddItem = async () => {
+    if (!newName || !newPrice) return;
+
+    const { error } = await supabase.from("menu_items").insert([
+        {
+        cafe_id: cafeId,
+        name: newName,
+        price: newPrice,
+        category: newCategory || "General",
+        },
+    ]);
+
+    if (error) {
+        console.error(error);
+    } else {
+        setMenuItems((prev) => [
+        ...prev,
+        {
+            name: newName,
+            price: newPrice,
+            category: newCategory,
+        },
+        ]);
+        setIsEditing(true); 
+
+        // reset + close
+        setNewName("");
+        setNewPrice("");
+        setNewCategory("");
+        setShowAddModal(false);
+    }
+    };
+
+    const inputStyle = {
+        borderWidth: 1,
+        borderColor: "#ddd",
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 10,
+    };
+
+    // const menuSections = [
+    // {
+    //     title: "Drinks",
+    //     items: [
+    //     { name: "Latte", price: "$5" },
+    //     { name: "Matcha", price: "$6" },
+    //     { name: "Espresso", price: "$4" },
+    //     ],
+    // },
+    // {
+    //     title: "Pastries",
+    //     items: [
+    //     { name: "Croissant", price: "$4" },
+    //     { name: "Banana Bread", price: "$5" },
+    //     ],
+    // },
+    // ];
+
+    const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+    const [carouselIndex, setCarouselIndex] = useState(0);
+
+    const handleLike = (id: number) => {
+        setPosts((prev) =>
+        prev.map((p) =>
+            p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p
+        )
+        );
+    };
+
+    const handleAddItemWithCategory = async (category: string) => {
+    const newItem = {
+        cafe_id: cafeId,
+        name: "New Item",
+        price: "$0",
+        category,
+    };
+
+    const { data, error } = await supabase
+        .from("menu_items")
+        .insert([newItem])
+        .select();
+
+    if (!error && data) {
+        setMenuItems((prev) => [...prev, data[0]]);
+    }
+    };
+
+    return (
+        <View style={styles.container}>
+        <Animated.ScrollView
+            contentContainerStyle={{ paddingBottom: scale(100) }}
+            style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
+        >
+            {/* HERO */}
+            <View style={styles.hero}>
+            <Image source={{ uri: "https://picsum.photos/800" }} style={styles.heroImage} />
+            <View style={styles.heroOverlay}>
+                <Text style={styles.heroTitle}>{cafe.name}</Text>
+                <Text style={styles.heroSubtitle}>
+                ⭐ {cafe.rating} • {cafe.location}
+                </Text>
+            </View>
+            </View>
+
+            {/* CONTENT WRAPPER */}
+            <View style={{ width: contentWidth, alignSelf: "center" }}>
+
+            <View style={styles.header}>
+                <View style={styles.avatar}>
+                <Store size={scale(44)} color="#888" />
+                </View>
+
+                <Text style={styles.name}>{cafe.name}</Text>
+                <Text style={styles.bio}>
+                {cafe.tags.join(" • ")} • {cafe.open}
+                </Text>
+
+            <View style={styles.statsRow}>
+                <View style={styles.stat}>
+                    <Text style={styles.statNumber}>{posts.length}</Text>
+                    <Text style={styles.statLabel}>Posts</Text>
+                </View>
+
+                <View style={styles.stat}>
+                    <Text style={styles.statNumber}>{cafe.visits}</Text>
+                    <Text style={styles.statLabel}>Visits</Text>
+                </View>
+
+                <View style={styles.stat}>
+                    <Text style={styles.statNumber}>{cafe.rating}</Text>
+                    <Text style={styles.statLabel}>Rating</Text>
+                </View>
+
+                <View style={styles.stat}>
+                    <Text style={styles.statNumber}>$$</Text>
+                    <Text style={styles.statLabel}>Price</Text>
+                </View>
+                </View>
+            </View>
+
+            {/* ICON TABS (MATCH USER PROFILE) */}
+            <View style={styles.tabs}>
+                <TouchableOpacity onPress={() => switchTab("posts")}>
+                <Grid3X3 size={22} color={activeTab === "posts" ? "#D4A373" : "#777"} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => switchTab("menu")}>
+                <BookOpen size={22} color={activeTab === "menu" ? "#D4A373" : "#777"} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => switchTab("reviews")}>
+                <Star size={22} color={activeTab === "reviews" ? "#D4A373" : "#777"} />
+                </TouchableOpacity>
+            </View>
+
+            <Animated.View style={{ opacity: tabFadeAnim }}>
+
+                {/* POSTS */}
+                {activeTab === "posts" && (
+                <View style={styles.grid}>
+                    {posts.map((post) => (
+                    <TouchableOpacity key={post.id} onPress={() => setSelectedPost(post)}>
+                        <Image
+                        source={{ uri: post.images[0] }}
+                        style={{
+                            width: photoSize,
+                            height: photoSize,
+                            margin: 1,
+                            borderRadius: scale(4),
+                        }}
+                        />
+                    </TouchableOpacity>
+                    ))}
+                </View>
+                )}
+
+                {/* MENU */}
+                {activeTab === "menu" && (
+                <View style={styles.section}>
+
+                {/* EMPTY STATE */}
+                {!hasMenu && (
+                <View style={{ marginTop: 40, alignItems: "center" }}>
+                    <Text style={{ color: "#777", marginBottom: 12 }}>
+                    No menu yet
+                    </Text>
+
+                    <TouchableOpacity
+                    onPress={handleCreateMenu}
+                    style={{
+                        backgroundColor: "#D4A373",
+                        paddingHorizontal: 18,
+                        paddingVertical: 12,
+                        borderRadius: 10,
+                    }}
+                    >
+                    <Text style={{ color: "#fff", fontWeight: "600" }}>
+                        Create Menu
+                    </Text>
+                    </TouchableOpacity>
+
+                </View>
+                )}
+                {hasMenu && (
+                <>
+                    {/* EDIT ICON */}
+                    <TouchableOpacity
+                    onPress={() => setIsEditing((prev) => !prev)}
+                    style={{
+                        position: "absolute",
+                        right: 8,
+                        top: 10,
+                        padding: 8,
+                        backgroundColor: "#fff",
+                        borderRadius: 20,
+                        elevation: 3,
+                        zIndex: 10,
+                    }}
+                    >
+                    <Pencil size={18} color="#D4A373" />
+                    </TouchableOpacity>
+
+                    {/* {activeTab === "menu" && ( */}
+                    {/* <View style={styles.section}> */}
+
+                        {/* EDIT ICON */}
+                        {/* {hasMenu && (
+                            <TouchableOpacity
+                            onPress={() => setIsEditing((prev) => !prev)}
+                            style={{
+                                position: "absolute",
+                                right: 8,
+                                top: 10,
+                                padding: 8,
+                                backgroundColor: "#fff",
+                                borderRadius: 20,
+                                elevation: 3,
+                                zIndex: 10,
+                            }}
+                            >
+                            <Pencil size={18} color={isEditing ? "#000" : "#D4A373"} />
+                            </TouchableOpacity>
+                        )} */}
+
+                        {/* EDIT MODE LABEL */}
+                        {isEditing && (
+                        <Text style={{ marginBottom: 10, color: "#D4A373" }}>
+                            Editing Mode
+                        </Text>
+                        )}
+
+                        {/* MENU CONTENT */}
+                        {isEditing && (
+                        <View
+                            style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            marginBottom: 6,
+                            paddingBottom: 4,
+                            borderBottomWidth: 1,
+                            borderBottomColor: "#DDD",
+                            }}
+                        >
+                            <Text style={{ flex: 1, fontWeight: "600", color: "#888" }}>
+                            Item
+                            </Text>
+                            <Text style={{ width: 60, textAlign: "right", color: "#888" }}>
+                            Price
+                            </Text>
+                            <Text style={{ width: 40, textAlign: "right", color: "#888" }}>
+                            Edit
+                            </Text>
+                        </View>
+                        )}
+
+                        {/* {menuSections.length === 0 && (
+                        <View style={{ marginTop: 30, alignItems: "center" }}>
+                            <Text style={{ color: "#777", marginBottom: 10 }}>
+                            No menu yet
+                            </Text>
+
+                            <TouchableOpacity
+                            onPress={() => setIsEditing(true)}
+                            style={{
+                                backgroundColor: "#D4A373",
+                                paddingHorizontal: 16,
+                                paddingVertical: 10,
+                                borderRadius: 8,
+                            }}
+                            >
+                            <Text style={{ color: "#fff", fontWeight: "600" }}>
+                                Create Menu
+                            </Text>
+                            </TouchableOpacity>
+
+                        </View>
+                        )} */}
+
+                        {menuSections.map((section, i) => (
+                        <View key={i} style={{ marginBottom: scale(16) }}>
+                            {isEditing ? (
+                                editingCategory === section.title ? (
+                                    <TextInput
+                                    value={newCategoryName}
+                                    onChangeText={setNewCategoryName}
+                                    onBlur={() => handleRenameCategory(section.title)}
+                                    autoFocus
+                                    style={{
+                                        fontSize: moderateScale(14),
+                                        fontWeight: "700",
+                                        color: "#1A1A1A",
+                                        backgroundColor: "#F3F0EC",
+                                        padding: 6,
+                                        borderRadius: 6,
+                                        marginBottom: scale(8),
+                                    }}
+                                    />
+                                ) : (
+                                    <TouchableOpacity
+                                    onPress={() => {
+                                        setEditingCategory(section.title);
+                                        setNewCategoryName(section.title);
+                                    }}
+                                    >
+                                    <Text style={styles.menuSectionTitle}>
+                                        {section.title}
+                                    </Text>
+                                    </TouchableOpacity>
+                                )
+                                ) : (
+                                <Text style={styles.menuSectionTitle}>
+                                    {section.title}
+                                </Text>
+                                )}
+
+                            {section.items.map((item: any, j: number) => (
+                            <View key={j} style={styles.menuItem}>
+                                {isEditing ? (
+                                <>
+                                    <TextInput
+                                    value={item.name}
+                                    onChangeText={(text) =>
+                                        handleEditItem(item.id, "name", text)
+                                    }
+                                    style={{
+                                        flex: 1,
+                                        backgroundColor: "#F3F0EC",
+                                        padding: 6,
+                                        borderRadius: 6,
+                                    }}
+                                    />
+
+                                    <TextInput
+                                    value={item.price}
+                                    onChangeText={(text) =>
+                                        handleEditItem(item.id, "price", text)
+                                    }
+                                    style={{
+                                        width: 60,
+                                        textAlign: "right",
+                                        backgroundColor: "#F3F0EC",
+                                        padding: 6,
+                                        borderRadius: 6,
+                                        marginLeft: 10,
+                                    }}
+                                    />
+
+                                    <TouchableOpacity
+                                    onPress={() => handleDeleteItem(item)}
+                                    style={{
+                                        marginLeft: 10,
+                                        width: 40,
+                                        alignItems: "flex-end",
+                                    }}
+                                    >
+                                    <Text style={{ fontSize: 16 }}>🗑</Text>
+                                    </TouchableOpacity>
+                                </>
+                                ) : (
+                                <>
+                                    <Text style={styles.menuItemName}>{item.name}</Text>
+                                    <Text style={styles.menuItemPrice}>{item.price}</Text>
+                                </>
+                                )}
+                            </View>
+                            ))}
+
+                            {isEditing && (
+                            <TouchableOpacity
+                                onPress={() => handleCreateCategory()}
+                                style={{ marginTop: 20 }}
+                            >
+                                <Text style={{ color: "#D4A373", fontSize: 14 }}>
+                                + Add Category
+                                </Text>
+                            </TouchableOpacity>
+                            )}
+
+                            {/* ADD ITEM */}
+                            {isEditing && (
+                            <TouchableOpacity
+                                onPress={() =>
+                                handleAddItemWithCategory(section.title)
+                                }
+                                style={{ marginTop: 8 }}
+                            >
+                                <Text style={{ color: "#D4A373" }}>
+                                + Add Item
+                                </Text>
+                            </TouchableOpacity>
+                            )}
+                        </View>
+                        ))}
+                    </>
+                    )}
+                    </View>
+                    )}
+
+                {/* REVIEWS */}
+                {activeTab === "reviews" && (
+                <View style={styles.section}>
+                    {[1, 2, 3].map((_, i) => (
+                    <View key={i} style={styles.card}>
+                        <Text style={styles.cardTitle}>Amazing coffee!</Text>
+                        <View style={{ flexDirection: "row", marginTop: 4 }}>
+                        {Array.from({ length: 5 }).map((__, j) => (
+                            <Star key={j} size={14} color={j < 4 ? "#D4A373" : "#ddd"} fill={j < 4 ? "#D4A373" : "transparent"} />
+                        ))}
+                        </View>
+                    </View>
+                    ))}
+                </View>
+                )}
+
+            </Animated.View>
+            </View>
+        </Animated.ScrollView>
+
+        {/* MODAL (unchanged behavior) */}
+        <Modal visible={!!selectedPost} animationType="slide">
+            {selectedPost && (
+            <View style={{ flex: 1, backgroundColor: "#FFF" }}>
+                <TouchableOpacity onPress={() => setSelectedPost(null)} style={styles.closeBtn}>
+                <X size={20} />
+                </TouchableOpacity>
+
+                <FlatList
+                data={selectedPost.images}
+                horizontal
+                pagingEnabled
+                renderItem={({ item }) => (
+                    <Image source={{ uri: item }} style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }} />
+                )}
+                />
+
+                <View style={styles.modalContent}>
+                <Text>{selectedPost.caption}</Text>
+                <Text>{selectedPost.likes} likes</Text>
+                </View>
+            </View>
+            )}
+        </Modal>
+        <Modal visible={showAddModal} animationType="slide" transparent>
+        <View style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            padding: 20,
+        }}>
+            <View style={{
+            backgroundColor: "#fff",
+            borderRadius: 12,
+            padding: 16,
+            }}>
+
+            <Text style={{ fontWeight: "700", fontSize: 16, marginBottom: 10 }}>
+                Add Menu Item
+            </Text>
+
+            <TextInput
+                placeholder="Name (e.g. Latte)"
+                value={newName}
+                onChangeText={setNewName}
+                style={inputStyle}
+            />
+
+            <TextInput
+                placeholder="Price (e.g. $5)"
+                value={newPrice}
+                onChangeText={setNewPrice}
+                style={inputStyle}
+            />
+
+            <TextInput
+                placeholder="Category (e.g. Drinks)"
+                value={newCategory}
+                onChangeText={setNewCategory}
+                style={inputStyle}
+            />
+        </View>
+
+            {/* ACTIONS */}
+            <View style={{ flexDirection: "row", marginTop: 12 }}>
+                <TouchableOpacity
+                onPress={handleAddItem}
+                style={{ flex: 1, backgroundColor: "#D4A373", padding: 10, borderRadius: 8, marginRight: 6 }}
+                >
+                <Text style={{ color: "#fff", textAlign: "center" }}>Add</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                onPress={() => setShowAddModal(false)}
+                style={{ flex: 1, backgroundColor: "#ddd", padding: 10, borderRadius: 8 }}
+                >
+                <Text style={{ textAlign: "center" }}>Cancel</Text>
+                </TouchableOpacity>
+            </View>
+
+            </View>
+        </Modal>
+        <BottomNav />
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: "#F7F3F0" },
+
+    // HERO
+    hero: { position: "relative" },
+    heroImage: { width: "100%", height: scale(200) },
+    heroOverlay: {
+        position: "absolute",
+        bottom: scale(12),
+        left: scale(12),
+        right: scale(12),
+    },
+    heroTitle: { color: "#FFF", fontSize: 18, fontWeight: "700" },
+    heroSubtitle: { color: "#FFF", fontSize: 12, marginTop: 4 },
+
+    header: { padding: scale(16), alignItems: "center" },
+    avatar: {
+        width: scale(100),
+        height: scale(100),
+        borderRadius: scale(50),
+        backgroundColor: "#E8DFD5",
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: scale(12),
+    },
+    name: {
+        fontSize: moderateScale(18),
+        fontWeight: "700",
+        color: "#1A1A1A",
+        marginTop: scale(4),
+    },
+    bio: {
+        fontSize: moderateScale(13),
+        color: "#777",
+        textAlign: "center",
+        marginTop: scale(4),
+        lineHeight: moderateScale(18),
+    },
+
+    statsRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        width: "100%",
+        marginVertical: scale(14),
+    },
+    stat: { alignItems: "center" },
+    statNumber: {
+        fontSize: moderateScale(18),
+        fontWeight: "700",
+        color: "#1A1A1A",
+    },
+    statLabel: {
+        fontSize: moderateScale(12),
+        color: "#888",
+        marginTop: scale(2),
+    },
+
+    // TABS
+    tabs: {
+        flexDirection: "row",
+        justifyContent: "space-around",
+        paddingVertical: scale(12),
+        borderBottomWidth: 1,
+        borderBottomColor: "#DDD",
+    },
+
+    // GRID
+    grid: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        marginTop: scale(2),
+    },
+
+    // SECTIONS
+    section: { padding: scale(16) },
+
+    // CARDS (match user profile)
+    card: {
+        backgroundColor: "#FFF",
+        padding: scale(14),
+        borderRadius: scale(12),
+        marginBottom: scale(12),
+        borderWidth: 1,
+        borderColor: "#EEE",
+    },
+    cardTitle: {
+        fontWeight: "600",
+        fontSize: moderateScale(14),
+        color: "#1A1A1A",
+    },
+    cardSubtitle: {
+        color: "#777",
+        marginTop: 4,
+    },
+
+    closeBtn: {
+        position: "absolute",
+        top: 40,
+        right: 20,
+        zIndex: 10,
+    },
+    modalContent: { padding: 12 },
+
+    menuSectionTitle: {
+        fontSize: moderateScale(14),
+        fontWeight: "700",
+        color: "#1A1A1A",
+        marginBottom: scale(8),
+        },
+
+        menuItem: {
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: scale(10),
+            borderBottomWidth: 1,
+            borderBottomColor: "#EEE",
+        },
+
+        menuItemName: {
+        fontSize: moderateScale(13),
+        color: "#333",
+        },
+
+        menuItemPrice: {
+        fontSize: moderateScale(13),
+        color: "#777",
+        },
+});

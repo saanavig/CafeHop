@@ -16,7 +16,7 @@ const customerNavItems: NavItem[] = [
   { icon: Home, label: "Home", route: "Home" },
   { icon: Compass, label: "Explore", route: "Explore" },
   { icon: Gift, label: "Rewards", route: "Rewards" },
-  { icon: User, label: "Profile", route: "Profile" },
+  { icon: User, label: "Profile", route: "UserProfile" },
   { icon: Settings, label: "Settings", route: "Settings" },
 ];
 
@@ -25,7 +25,8 @@ const cafeNavItems: NavItem[] = [
   { icon: Compass, label: "Explore", route: "Explore" },
   { icon: BarChart2, label: "Analytics", route: "Analytics" },
   { icon: Gift, label: "Rewards", route: "Rewards" },
-  { icon: User, label: "Profile", route: "Profile" },
+  // { icon: User, label: "Profile", route: "Profile" },
+  { icon: User, label: "Profile", route: "CafeProfile" },
   { icon: Settings, label: "Settings", route: "Settings" },
 ];
 

@@ -1,48 +1,69 @@
-import React, { useState, useRef, useEffect } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
   Animated,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import {
-  TrendingUp,
-  Users,
-  DollarSign,
-  Gift,
   Clock,
   Coffee,
+  DollarSign,
+  Gift,
+  TrendingUp,
+  Users,
 } from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { deviceWidth, moderateScale, scale } from "../utils/responsive";
+
 import BottomNav from "../components/ui/BottomNav";
-import { scale, moderateScale, deviceWidth } from "../utils/responsive";
 
-const contentWidth = deviceWidth - 40; // 20px padding on each side
+const contentWidth = deviceWidth - 40;
 
-const PEAK_HOURS = [
-  { label: "8am", value: 30 },
-  { label: "9am", value: 65 },
-  { label: "10am", value: 50 },
-  { label: "11am", value: 40 },
-  { label: "12pm", value: 90 },
-  { label: "1pm", value: 75 },
-  { label: "2pm", value: 55 },
-  { label: "3pm", value: 70 },
-  { label: "4pm", value: 85 },
-  { label: "5pm", value: 60 },
-  { label: "6pm", value: 45 },
-  { label: "7pm", value: 25 },
-];
+// const PEAK_HOURS = [
+//   { label: "8am", value: 30 },
+//   { label: "9am", value: 65 },
+//   { label: "10am", value: 50 },
+//   { label: "11am", value: 40 },
+//   { label: "12pm", value: 90 },
+//   { label: "1pm", value: 75 },
+//   { label: "2pm", value: 55 },
+//   { label: "3pm", value: 70 },
+//   { label: "4pm", value: 85 },
+//   { label: "5pm", value: 60 },
+//   { label: "6pm", value: 45 },
+//   { label: "7pm", value: 25 },
+// ];
 
-const recentVisitors = [
-  { name: "Sarah M.", time: "2h ago", spent: "$8.50", pts: 85 },
-  { name: "Alex K.", time: "3h ago", spent: "$12.00", pts: 120 },
-  { name: "Jamie L.", time: "5h ago", spent: "$6.75", pts: 68 },
-  { name: "Riley P.", time: "Yesterday", spent: "$15.00", pts: 150 },
-  { name: "Morgan T.", time: "Yesterday", spent: "$9.25", pts: 93 },
-];
+// const recentVisitors = [
+//   { name: "Sarah M.", time: "2h ago", spent: "$8.50", pts: 85 },
+//   { name: "Alex K.", time: "3h ago", spent: "$12.00", pts: 120 },
+//   { name: "Jamie L.", time: "5h ago", spent: "$6.75", pts: 68 },
+//   { name: "Riley P.", time: "Yesterday", spent: "$15.00", pts: 150 },
+//   { name: "Morgan T.", time: "Yesterday", spent: "$9.25", pts: 93 },
+// ];
 
 type Period = "Today" | "This Week" | "This Month";
+
+type PeakHour = {
+  hour: number;
+  count: number;
+};
+
+type Visitor = {
+  name: string;
+  time: string;
+  pts?: number;
+};
+
+type AnalyticsData = {
+  visits: number;
+  revenue: number;
+  redeemed: number;
+  new_customers: number;
+  peak_hours: PeakHour[];
+  recent_visitors: Visitor[];
+};
 
 const statsByPeriod: Record<Period, { visits: number; revenue: string; redeemed: number; newCustomers: number }> = {
   Today: { visits: 47, revenue: "$423", redeemed: 8, newCustomers: 5 },
@@ -52,8 +73,31 @@ const statsByPeriod: Record<Period, { visits: number; revenue: string; redeemed:
 
 export default function AnalyticsScreen() {
   const [period, setPeriod] = useState<Period>("Today");
-  const stats = statsByPeriod[period];
-  const maxBar = Math.max(...PEAK_HOURS.map((h) => h.value));
+  // const stats = statsByPeriod[period];
+  // const maxBar = Math.max(...PEAK_HOURS.map((h) => h.value));
+
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+
+  const fetchAnalytics = async (selectedPeriod: string) => {
+    try {
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/analytics/overview?cafe_id=1&period=${selectedPeriod}`
+      );
+      const data = await res.json();
+
+      console.log("DATA:", data);
+      setAnalytics(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const peakHours = analytics?.peak_hours || [];
+  const maxBar = Math.max(...peakHours.map((h) => h.count), 1);
+
+  useEffect(() => {
+    fetchAnalytics("today");
+  }, []);
 
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(18)).current;
@@ -63,6 +107,12 @@ export default function AnalyticsScreen() {
       Animated.timing(slideAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
     ]).start();
   }, []);
+
+  const formatHour = (hour: number) => {
+  const suffix = hour >= 12 ? "pm" : "am";
+  const h = hour % 12 || 12;
+    return `${h}${suffix}`;
+  };
 
   return (
     <View style={styles.container}>
@@ -85,7 +135,17 @@ export default function AnalyticsScreen() {
               <Pressable
                 key={p}
                 style={[styles.periodPill, period === p && styles.periodPillActive]}
-                onPress={() => setPeriod(p)}
+                onPress={() => {
+                  setPeriod(p);
+
+                  const map = {
+                    "Today": "today",
+                    "This Week": "week",
+                    "This Month": "month",
+                  };
+
+                  fetchAnalytics(map[p]);
+                }}
               >
                 <Text style={[styles.periodText, period === p && styles.periodTextActive]}>
                   {p}
@@ -100,28 +160,28 @@ export default function AnalyticsScreen() {
               <View style={[styles.statIcon, { backgroundColor: "#FFF0E6" }]}>
                 <Users size={20} color="#D4A373" />
               </View>
-              <Text style={styles.statValue}>{stats.visits}</Text>
+              <Text style={styles.statValue}> {analytics?.visits ?? 0}</Text>
               <Text style={styles.statLabel}>Visits</Text>
             </View>
             <View style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: "#E8F5E9" }]}>
                 <DollarSign size={20} color="#4CAF50" />
               </View>
-              <Text style={styles.statValue}>{stats.revenue}</Text>
+  <Text style={styles.statValue}> ${analytics?.revenue ?? 0} </Text>
               <Text style={styles.statLabel}>Revenue</Text>
             </View>
             <View style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: "#FCE4EC" }]}>
                 <Gift size={20} color="#E91E63" />
               </View>
-              <Text style={styles.statValue}>{stats.redeemed}</Text>
+              <Text style={styles.statValue}>{analytics?.redeemed ?? 0}</Text>
               <Text style={styles.statLabel}>Redeemed</Text>
             </View>
             <View style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: "#E3F2FD" }]}>
                 <TrendingUp size={20} color="#2196F3" />
               </View>
-              <Text style={styles.statValue}>{stats.newCustomers}</Text>
+              <Text style={styles.statValue}>{analytics?.new_customers ?? 0}</Text>
               <Text style={styles.statLabel}>New Customers</Text>
             </View>
           </View>
@@ -133,18 +193,20 @@ export default function AnalyticsScreen() {
               <Text style={styles.sectionTitle}>Peak Hours</Text>
             </View>
             <View style={styles.chartContainer}>
-              {PEAK_HOURS.map((hour) => (
-                <View key={hour.label} style={styles.barGroup}>
+              {peakHours.map((hour) => (
+                <View key={hour.hour} style={styles.barGroup}>
                   <View style={styles.barTrack}>
                     <View
                       style={[
                         styles.bar,
-                        { height: (hour.value / maxBar) * 80 },
-                        hour.value === maxBar && styles.barPeak,
+                        { height: (hour.count / maxBar) * 80 },
+                        hour.count === maxBar && styles.barPeak,
                       ]}
                     />
                   </View>
-                  <Text style={styles.barLabel}>{hour.label}</Text>
+                  <Text style={styles.barLabel}>
+                    {formatHour(hour.hour)}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -157,17 +219,17 @@ export default function AnalyticsScreen() {
               <Text style={styles.sectionTitle}>Recent Visitors</Text>
             </View>
             <View style={styles.visitorsList}>
-              {recentVisitors.map((v, i) => (
+              {(analytics?.recent_visitors || []).map((v, i) => (
                 <View key={i} style={styles.visitorRow}>
                   <View style={styles.visitorAvatar}>
                     <Text style={styles.visitorInitial}>{v.name[0]}</Text>
                   </View>
                   <View style={styles.visitorInfo}>
                     <Text style={styles.visitorName}>{v.name}</Text>
-                    <Text style={styles.visitorTime}>{v.time} • {v.spent}</Text>
+                    <Text style={styles.visitorTime}>{v.time}</Text>
                   </View>
                   <View style={styles.ptsBadge}>
-                    <Text style={styles.ptsText}>+{v.pts} pts</Text>
+                    <Text style={styles.ptsText}>+{v.pts ?? 0} pts</Text>
                   </View>
                 </View>
               ))}
