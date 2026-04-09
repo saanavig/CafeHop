@@ -1,3 +1,5 @@
+import * as ImagePicker from "expo-image-picker";
+
 import {
     Animated,
     Image,
@@ -46,6 +48,7 @@ export default function CafeProfileScreen() {
     const [editName, setEditName] = useState("");
     const [editPrice, setEditPrice] = useState("");
     const [editCategory, setEditCategory] = useState("");
+    const [newImage, setNewImage] = useState<string | null>(null);
 
     const cafe = {
         name: "Bean & Bloom Cafe",
@@ -54,6 +57,17 @@ export default function CafeProfileScreen() {
         location: "Brooklyn, NY",
         open: "Open until 8:00 PM",
         tags: ["Aesthetic", "Study Spot"],
+    };
+
+    const pickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.7,
+        });
+
+        if (!result.canceled) {
+            setNewImage(result.assets[0].uri);
+        }
     };
 
     const [activeTab, setActiveTab] = useState<"posts" | "menu" | "reviews">("posts");
@@ -117,6 +131,7 @@ export default function CafeProfileScreen() {
             id: item.id,
             name: item.name,
             price: item.price,
+            image_url: item.image_url, 
             });
         });
 
@@ -295,6 +310,30 @@ export default function CafeProfileScreen() {
     }
     };
 
+    const uploadImage = async (uri: string) => {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+
+        const fileName = `${Date.now()}.jpg`;
+
+        const { data, error } = await supabase.storage
+            .from("menu-images")
+            .upload(fileName, blob, {
+                contentType: "image/jpeg",
+            });
+
+        if (error) {
+            console.error("Upload error:", error);
+            return null;
+        }
+
+        const { data: publicUrlData } = supabase.storage
+            .from("menu-images")
+            .getPublicUrl(fileName);
+
+        return publicUrlData.publicUrl;
+    };
+
     return (
         <View style={styles.container}>
         <Animated.ScrollView
@@ -458,7 +497,6 @@ export default function CafeProfileScreen() {
                         </Text>
                         </View>
 
-
                         {/* ADD ITEM */}
                         {isEditing && (
                         <TouchableOpacity
@@ -532,6 +570,7 @@ export default function CafeProfileScreen() {
                                 setNewName("");
                                 setNewPrice("");
                                 setNewCategory("");
+                                setNewImage(null);
                             }}
                             style={{
                                 padding: 6,
@@ -568,6 +607,25 @@ export default function CafeProfileScreen() {
                                 keyboardType="numeric"
                                 style={inputStyle}
                             />
+
+                            <TouchableOpacity
+                                onPress={pickImage}
+                                style={{
+                                    backgroundColor: "#F3F0EC",
+                                    padding: 10,
+                                    borderRadius: 8,
+                                    marginBottom: 10,
+                                    alignItems: "center",
+                                }}
+                            >
+                                <Text>{newImage ? "Change Image" : "Add Image"}</Text>
+                            </TouchableOpacity>
+                            {newImage && (
+                            <Image
+                                source={{ uri: newImage }}
+                                style={{ width: "100%", height: 120, borderRadius: 8, marginBottom: 10 }}
+                            />
+                            )}
 
                             {/* CATEGORY DROPDOWN */}
                             <View style={{ marginBottom: 10 }}>
@@ -707,6 +765,11 @@ export default function CafeProfileScreen() {
                                     return;
                                 }
 
+                                let imageUrl = null;
+                                if (newImage) {
+                                    imageUrl = await uploadImage(newImage);
+                                }
+
                                 const { data } = await supabase
                                 .from("menu_items")
                                 .insert([
@@ -715,6 +778,7 @@ export default function CafeProfileScreen() {
                                     name: newName,
                                     price: newPrice,
                                     category: newCategory,
+                                    image_url: imageUrl,
                                     },
                                 ])
                                 .select();
@@ -833,14 +897,34 @@ export default function CafeProfileScreen() {
                                                     </View>
                                                 </>
                                             ) : (
-                                                <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%" }}>
+                                                <View style={{ flexDirection: "row", alignItems: "center", width: "100%" }}>
+                                                {/* LEFT SIDE: IMAGE + NAME */}
+                                                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                                    <Image
+                                                        source={
+                                                            item.image_url
+                                                                ? { uri: item.image_url }
+                                                                : undefined
+                                                        }
+                                                        style={{
+                                                            width: 40,
+                                                            height: 40,
+                                                            borderRadius: 8,
+                                                            backgroundColor: "#E8DFD5",
+                                                        }}
+                                                    />
+
                                                     <Text style={styles.menuItemName}>{item.name}</Text>
-                                                    <Text style={styles.menuItemPrice}>${item.price}</Text>
                                                 </View>
+
+                                                {/* RIGHT SIDE: PRICE */}
+                                                <View style={{ flex: 1 }} />
+
+                                                <Text style={styles.menuItemPrice}>${item.price}</Text>
+                                            </View>
                                             )}
                                         </View>
 
-                                        {/* 🔥 EDIT POPUP — PASTE THIS RIGHT AFTER THE ROW */}
                                         {editingItemId === item.id && (
                                             <View
                                                 style={{
