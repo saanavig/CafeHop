@@ -34,11 +34,14 @@ const SCREEN_WIDTH = deviceWidth;
 export default function CafeProfileScreen() {
     const contentWidth = Math.min(deviceWidth * 0.9, 480);
     const photoSize = (contentWidth - 6) / 3;
-    const cafeId = "YOUR_CAFE_ID";
+    const [cafeId, setCafeId] = useState<string | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [newName, setNewName] = useState("");
     const [newPrice, setNewPrice] = useState("");
     const [newCategory, setNewCategory] = useState("");
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingCategory, setEditingCategory] = useState<string | null>(null);
+    const [newCategoryName, setNewCategoryName] = useState("");
 
     const cafe = {
         name: "Bean & Bloom Cafe",
@@ -55,23 +58,48 @@ export default function CafeProfileScreen() {
     const slideAnim = useRef(new Animated.Value(18)).current;
     const tabFadeAnim = useRef(new Animated.Value(1)).current;
 
+    const handleDeleteItem = async (item: any) => {
+    await supabase
+        .from("menu_items")
+        .delete()
+        .eq("id", item.id);
+
+    setMenuItems((prev) =>
+        prev.filter((i) => i.id !== item.id)
+    );
+    };
+
+    useEffect(() => {
+    const fetchCafe = async () => {
+        const { data, error } = await supabase
+        .from("cafes")
+        .select("id")
+        .limit(1)
+        .single();
+
+        if (!error && data) {
+        setCafeId(data.id);
+        }
+    };
+
+    fetchCafe();
+    }, []);
+
     const [menuItems, setMenuItems] = useState<any[]>([]);
     useEffect(() => {
+        if (!cafeId) return;
+
         const fetchMenu = async () => {
-            const { data, error } = await supabase
+            const { data } = await supabase
             .from("menu_items")
             .select("*")
             .eq("cafe_id", cafeId);
 
-            if (error) {
-            console.error("Error fetching menu:", error);
-            } else {
-            setMenuItems(data);
-            }
+            if (data) setMenuItems(data);
         };
 
         fetchMenu();
-        }, []);
+        }, [cafeId]);
 
     const groupMenuByCategory = (items: any[]) => {
         const grouped: any = {};
@@ -82,6 +110,7 @@ export default function CafeProfileScreen() {
             }
 
             grouped[item.category].push({
+            id: item.id,
             name: item.name,
             price: item.price,
             });
@@ -93,6 +122,7 @@ export default function CafeProfileScreen() {
         }));
     };
     const menuSections = groupMenuByCategory(menuItems);
+    const hasMenu = menuSections.length > 0;
 
     useEffect(() => {
         Animated.parallel([
@@ -108,6 +138,31 @@ export default function CafeProfileScreen() {
         });
     };
 
+    const handleCreateMenu = () => {
+        setShowAddModal(true);
+    };
+
+    // const handleCreateMenu = async () => {
+    //     if (!cafeId) return;
+
+    //     const { data, error } = await supabase
+    //         .from("menu_items")
+    //         .insert([
+    //         {
+    //             cafe_id: cafeId,
+    //             name: "New Item",
+    //             price: "$0",
+    //             category: "New Category",
+    //         },
+    //         ])
+    //         .select();
+
+    //     if (!error && data) {
+    //         setMenuItems((prev) => [...prev, ...data]);
+    //         setIsEditing(true); // auto enter edit mode
+    // }
+    // };
+
     const [posts, setPosts] = useState<Post[]>(
         Array.from({ length: 9 }).map((_, i) => ({
         id: i,
@@ -120,15 +175,79 @@ export default function CafeProfileScreen() {
         }))
     );
 
+    
+    const handleCreateCategory = async () => {
+    const newCategory = "New Category";
+
+    const { data, error } = await supabase
+        .from("menu_items")
+        .insert([
+        {
+            cafe_id: cafeId,
+            name: "New Item",
+            price: "$0",
+            category: newCategory,
+        },
+        ])
+        .select();
+
+    if (!error && data) {
+        setMenuItems((prev) => [...prev, data[0]]);
+    }
+    };
+
+    const handleRenameCategory = async (oldCategory: string) => {
+    if (!newCategoryName || newCategoryName === oldCategory) {
+        setEditingCategory(null);
+        return;
+    }
+
+    // update DB
+    const { error } = await supabase
+        .from("menu_items")
+        .update({ category: newCategoryName })
+        .eq("category", oldCategory)
+        .eq("cafe_id", cafeId);
+
+    if (error) {
+        console.error(error);
+    } else {
+        // update UI instantly
+        setMenuItems((prev) =>
+        prev.map((item) =>
+            item.category === oldCategory
+            ? { ...item, category: newCategoryName }
+            : item
+        )
+        );
+    }
+
+    setEditingCategory(null);
+    };
+
+    const handleEditItem = async (id: string, field: string, value: string) => {
+        setMenuItems((prev) =>
+            prev.map((item) =>
+            item.id === id ? { ...item, [field]: value } : item
+            )
+        );
+
+        // update database
+        await supabase
+            .from("menu_items")
+            .update({ [field]: value })
+            .eq("id", id);
+        };
+
     const handleAddItem = async () => {
-    if (!newName || !newPrice || !newCategory) return;
+    if (!newName || !newPrice) return;
 
     const { error } = await supabase.from("menu_items").insert([
         {
         cafe_id: cafeId,
         name: newName,
         price: newPrice,
-        category: newCategory,
+        category: newCategory || "General",
         },
     ]);
 
@@ -143,6 +262,7 @@ export default function CafeProfileScreen() {
             category: newCategory,
         },
         ]);
+        setIsEditing(true); 
 
         // reset + close
         setNewName("");
@@ -187,6 +307,24 @@ export default function CafeProfileScreen() {
             p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p
         )
         );
+    };
+
+    const handleAddItemWithCategory = async (category: string) => {
+    const newItem = {
+        cafe_id: cafeId,
+        name: "New Item",
+        price: "$0",
+        category,
+    };
+
+    const { data, error } = await supabase
+        .from("menu_items")
+        .insert([newItem])
+        .select();
+
+    if (!error && data) {
+        setMenuItems((prev) => [...prev, data[0]]);
+    }
     };
 
     return (
@@ -280,9 +418,34 @@ export default function CafeProfileScreen() {
                 {activeTab === "menu" && (
                 <View style={styles.section}>
 
+                {/* EMPTY STATE */}
+                {!hasMenu && (
+                <View style={{ marginTop: 40, alignItems: "center" }}>
+                    <Text style={{ color: "#777", marginBottom: 12 }}>
+                    No menu yet
+                    </Text>
+
+                    <TouchableOpacity
+                    onPress={handleCreateMenu}
+                    style={{
+                        backgroundColor: "#D4A373",
+                        paddingHorizontal: 18,
+                        paddingVertical: 12,
+                        borderRadius: 10,
+                    }}
+                    >
+                    <Text style={{ color: "#fff", fontWeight: "600" }}>
+                        Create Menu
+                    </Text>
+                    </TouchableOpacity>
+
+                </View>
+                )}
+                {hasMenu && (
+                <>
                     {/* EDIT ICON */}
                     <TouchableOpacity
-                    onPress={() => setShowAddModal(true)}
+                    onPress={() => setIsEditing((prev) => !prev)}
                     style={{
                         position: "absolute",
                         right: 8,
@@ -297,24 +460,201 @@ export default function CafeProfileScreen() {
                     <Pencil size={18} color="#D4A373" />
                     </TouchableOpacity>
 
-                    {/* MENU CONTENT */}
-                    {menuSections.map((section, i) => (
-                    <View key={i} style={{ marginBottom: scale(16) }}>
-                        <Text style={styles.menuSectionTitle}>
-                        {section.title}
-                        </Text>
+                    {/* {activeTab === "menu" && ( */}
+                    {/* <View style={styles.section}> */}
 
-                        {section.items.map((item: any, j: number) => (
-                        <View key={j} style={styles.menuItem}>
-                            <Text style={styles.menuItemName}>{item.name}</Text>
-                            <Text style={styles.menuItemPrice}>{item.price}</Text>
+                        {/* EDIT ICON */}
+                        {/* {hasMenu && (
+                            <TouchableOpacity
+                            onPress={() => setIsEditing((prev) => !prev)}
+                            style={{
+                                position: "absolute",
+                                right: 8,
+                                top: 10,
+                                padding: 8,
+                                backgroundColor: "#fff",
+                                borderRadius: 20,
+                                elevation: 3,
+                                zIndex: 10,
+                            }}
+                            >
+                            <Pencil size={18} color={isEditing ? "#000" : "#D4A373"} />
+                            </TouchableOpacity>
+                        )} */}
+
+                        {/* EDIT MODE LABEL */}
+                        {isEditing && (
+                        <Text style={{ marginBottom: 10, color: "#D4A373" }}>
+                            Editing Mode
+                        </Text>
+                        )}
+
+                        {/* MENU CONTENT */}
+                        {isEditing && (
+                        <View
+                            style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            marginBottom: 6,
+                            paddingBottom: 4,
+                            borderBottomWidth: 1,
+                            borderBottomColor: "#DDD",
+                            }}
+                        >
+                            <Text style={{ flex: 1, fontWeight: "600", color: "#888" }}>
+                            Item
+                            </Text>
+                            <Text style={{ width: 60, textAlign: "right", color: "#888" }}>
+                            Price
+                            </Text>
+                            <Text style={{ width: 40, textAlign: "right", color: "#888" }}>
+                            Edit
+                            </Text>
+                        </View>
+                        )}
+
+                        {/* {menuSections.length === 0 && (
+                        <View style={{ marginTop: 30, alignItems: "center" }}>
+                            <Text style={{ color: "#777", marginBottom: 10 }}>
+                            No menu yet
+                            </Text>
+
+                            <TouchableOpacity
+                            onPress={() => setIsEditing(true)}
+                            style={{
+                                backgroundColor: "#D4A373",
+                                paddingHorizontal: 16,
+                                paddingVertical: 10,
+                                borderRadius: 8,
+                            }}
+                            >
+                            <Text style={{ color: "#fff", fontWeight: "600" }}>
+                                Create Menu
+                            </Text>
+                            </TouchableOpacity>
+
+                        </View>
+                        )} */}
+
+                        {menuSections.map((section, i) => (
+                        <View key={i} style={{ marginBottom: scale(16) }}>
+                            {isEditing ? (
+                                editingCategory === section.title ? (
+                                    <TextInput
+                                    value={newCategoryName}
+                                    onChangeText={setNewCategoryName}
+                                    onBlur={() => handleRenameCategory(section.title)}
+                                    autoFocus
+                                    style={{
+                                        fontSize: moderateScale(14),
+                                        fontWeight: "700",
+                                        color: "#1A1A1A",
+                                        backgroundColor: "#F3F0EC",
+                                        padding: 6,
+                                        borderRadius: 6,
+                                        marginBottom: scale(8),
+                                    }}
+                                    />
+                                ) : (
+                                    <TouchableOpacity
+                                    onPress={() => {
+                                        setEditingCategory(section.title);
+                                        setNewCategoryName(section.title);
+                                    }}
+                                    >
+                                    <Text style={styles.menuSectionTitle}>
+                                        {section.title}
+                                    </Text>
+                                    </TouchableOpacity>
+                                )
+                                ) : (
+                                <Text style={styles.menuSectionTitle}>
+                                    {section.title}
+                                </Text>
+                                )}
+
+                            {section.items.map((item: any, j: number) => (
+                            <View key={j} style={styles.menuItem}>
+                                {isEditing ? (
+                                <>
+                                    <TextInput
+                                    value={item.name}
+                                    onChangeText={(text) =>
+                                        handleEditItem(item.id, "name", text)
+                                    }
+                                    style={{
+                                        flex: 1,
+                                        backgroundColor: "#F3F0EC",
+                                        padding: 6,
+                                        borderRadius: 6,
+                                    }}
+                                    />
+
+                                    <TextInput
+                                    value={item.price}
+                                    onChangeText={(text) =>
+                                        handleEditItem(item.id, "price", text)
+                                    }
+                                    style={{
+                                        width: 60,
+                                        textAlign: "right",
+                                        backgroundColor: "#F3F0EC",
+                                        padding: 6,
+                                        borderRadius: 6,
+                                        marginLeft: 10,
+                                    }}
+                                    />
+
+                                    <TouchableOpacity
+                                    onPress={() => handleDeleteItem(item)}
+                                    style={{
+                                        marginLeft: 10,
+                                        width: 40,
+                                        alignItems: "flex-end",
+                                    }}
+                                    >
+                                    <Text style={{ fontSize: 16 }}>🗑</Text>
+                                    </TouchableOpacity>
+                                </>
+                                ) : (
+                                <>
+                                    <Text style={styles.menuItemName}>{item.name}</Text>
+                                    <Text style={styles.menuItemPrice}>{item.price}</Text>
+                                </>
+                                )}
+                            </View>
+                            ))}
+
+                            {isEditing && (
+                            <TouchableOpacity
+                                onPress={() => handleCreateCategory()}
+                                style={{ marginTop: 20 }}
+                            >
+                                <Text style={{ color: "#D4A373", fontSize: 14 }}>
+                                + Add Category
+                                </Text>
+                            </TouchableOpacity>
+                            )}
+
+                            {/* ADD ITEM */}
+                            {isEditing && (
+                            <TouchableOpacity
+                                onPress={() =>
+                                handleAddItemWithCategory(section.title)
+                                }
+                                style={{ marginTop: 8 }}
+                            >
+                                <Text style={{ color: "#D4A373" }}>
+                                + Add Item
+                                </Text>
+                            </TouchableOpacity>
+                            )}
                         </View>
                         ))}
+                    </>
+                    )}
                     </View>
-                    ))}
-
-                </View>
-                )}
+                    )}
 
                 {/* REVIEWS */}
                 {activeTab === "reviews" && (
@@ -397,7 +737,7 @@ export default function CafeProfileScreen() {
                 onChangeText={setNewCategory}
                 style={inputStyle}
             />
-        </View>/
+        </View>
 
             {/* ACTIONS */}
             <View style={{ flexDirection: "row", marginTop: 12 }}>
@@ -534,11 +874,11 @@ const styles = StyleSheet.create({
         },
 
         menuItem: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingVertical: scale(10),
-        borderBottomWidth: 1,
-        borderBottomColor: "#EEE",
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: scale(10),
+            borderBottomWidth: 1,
+            borderBottomColor: "#EEE",
         },
 
         menuItemName: {
