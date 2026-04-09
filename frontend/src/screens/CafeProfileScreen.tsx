@@ -13,6 +13,8 @@ import { BookOpen, Bookmark, Grid3X3, Heart, Layers, MapPin, Star, Store, X } fr
 import React, { useEffect, useRef, useState } from "react";
 import { deviceWidth, moderateScale, scale } from "../utils/responsive";
 
+import BottomNav from "../components/ui/BottomNav";
+
 const SCREEN_WIDTH = deviceWidth;
 
     type Comment = { text: string };
@@ -32,7 +34,7 @@ const SCREEN_WIDTH = deviceWidth;
     const photoSize = (contentWidth - 6) / 3;
 
     const cafe = {
-        name: "Bean & Bloom Café",
+        name: "Bean & Bloom Cafe",
         rating: 4.8,
         visits: 5420,
         location: "Brooklyn, NY",
@@ -255,6 +257,7 @@ const SCREEN_WIDTH = deviceWidth;
             </View>
             )}
         </Modal>
+        <BottomNav />
         </View>
     );
 }
