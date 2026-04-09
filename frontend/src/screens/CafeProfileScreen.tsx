@@ -42,6 +42,10 @@ export default function CafeProfileScreen() {
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
     const [formError, setFormError] = useState("");
+    const [editingItemId, setEditingItemId] = useState<string | null>(null);
+    const [editName, setEditName] = useState("");
+    const [editPrice, setEditPrice] = useState("");
+    const [editCategory, setEditCategory] = useState("");
 
     const cafe = {
         name: "Bean & Bloom Cafe",
