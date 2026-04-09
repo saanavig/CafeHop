@@ -20,6 +20,7 @@ from routes.recommendation import recommendations_bp
 from routes.profile import profile_bp
 from routes.post import posts_bp
 from routes.analytics import analytics_bp
+from routes.nearby import nearby_bp
 
 
 app = Flask(__name__)
@@ -47,6 +48,7 @@ app.register_blueprint(recommendations_bp, url_prefix="/api")
 app.register_blueprint(profile_bp, url_prefix="/api")
 app.register_blueprint(posts_bp, url_prefix="/api")
 app.register_blueprint(analytics_bp, url_prefix="/api")
+app.register_blueprint(nearby_bp, url_prefix="/api")
 
 import re
 
