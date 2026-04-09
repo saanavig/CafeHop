@@ -446,15 +446,15 @@ export default function CafeProfileScreen() {
                         >
                         <Text
                             style={{
-                            color: "#D4A373",
-                            fontWeight: "700",
-                            fontSize: moderateScale(16),
-                            textAlign: "center",
-                            width: "100%",
-                            marginBottom: 6,
+                                color: "#D4A373",
+                                fontWeight: "700",
+                                fontSize: moderateScale(16),
+                                textAlign: "center",
+                                width: "100%",
+                                marginBottom: 6,
                             }}
                         >
-                            Editing Menu
+                            {isEditing ? "Editing Menu" : "Menu"}
                         </Text>
                         </View>
 
@@ -502,19 +502,47 @@ export default function CafeProfileScreen() {
 
                         {isEditing && addingItemCategory === "GLOBAL" && (
                         <View
-                            style={{
+                        style={{
                             backgroundColor: "#FFF",
                             borderRadius: 12,
                             padding: 14,
                             marginBottom: 16,
                             borderWidth: 1,
                             borderColor: "#E5DED6",
+                        }}
+                    >
+
+                    {/* HEADER WITH X */}
+                    <View
+                        style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: 10,
+                        }}
+                    >
+                        <Text style={{ fontWeight: "600", fontSize: 16 }}>
+                            Add Item
+                        </Text>
+
+                        <TouchableOpacity
+                            onPress={() => {
+                                setAddingItemCategory(null);
+                                setFormError("");
+                                setNewName("");
+                                setNewPrice("");
+                                setNewCategory("");
+                            }}
+                            style={{
+                                padding: 6,
+                                backgroundColor: "#F3F0EC",
+                                borderRadius: 20,
                             }}
                         >
-                            <Text style={{ fontWeight: "600", marginBottom: 10 }}>
-                            Add Item
-                            </Text>
+                            <Text style={{ fontSize: 16, fontWeight: "600" }}>×</Text>
+                        </TouchableOpacity>
 
+                    </View>
                             {/* NAME */}
                             <TextInput
                             placeholder="Item name"
@@ -805,10 +833,10 @@ export default function CafeProfileScreen() {
                                                     </View>
                                                 </>
                                             ) : (
-                                                <>
+                                                <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%" }}>
                                                     <Text style={styles.menuItemName}>{item.name}</Text>
-                                                    <Text style={styles.menuItemPrice}>{item.price}</Text>
-                                                </>
+                                                    <Text style={styles.menuItemPrice}>${item.price}</Text>
+                                                </View>
                                             )}
                                         </View>
 
