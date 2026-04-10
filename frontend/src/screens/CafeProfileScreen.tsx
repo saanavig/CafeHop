@@ -61,6 +61,20 @@ export default function CafeProfileScreen() {
         tags: ["Aesthetic", "Study Spot"],
     };
 
+    const [userId, setUserId] = useState<string | null>(null);
+    const [ownerId, setOwnerId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const getUser = async () => {
+            const { data } = await supabase.auth.getUser();
+            setUserId(data.user?.id || null);
+        };
+
+        getUser();
+    }, []);
+
+    const isOwner = userId && ownerId && userId === ownerId;
+
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -93,12 +107,13 @@ export default function CafeProfileScreen() {
     const fetchCafe = async () => {
         const { data, error } = await supabase
         .from("cafes")
-        .select("id")
+        .select("id, owner_id")
         .limit(1)
         .single();
 
         if (!error && data) {
         setCafeId(data.id);
+        setOwnerId(data.owner_id);
         }
     };
 
@@ -243,6 +258,7 @@ export default function CafeProfileScreen() {
         };
 
     const handleAddItem = async () => {
+    if (!isOwner) return;
     if (!newName || !newPrice) return;
 
     const { error } = await supabase.from("menu_items").insert([
@@ -454,7 +470,10 @@ export default function CafeProfileScreen() {
                 <>
                     {/* EDIT ICON */}
                     <TouchableOpacity
-                    onPress={() => setIsEditing((prev) => !prev)}
+                    onPress={() => {
+                        if (!isOwner) return;
+                        setIsEditing((prev) => !prev);
+                    }}
                     style={{
                         position: "absolute",
                         right: 8,
