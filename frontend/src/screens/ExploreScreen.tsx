@@ -534,7 +534,7 @@ export default function ExploreScreen() {
             <TouchableOpacity
               key={cafe.id}
               style={styles.cafeCard}
-              onPress={() => openDetail(cafe)}
+              onPress={() => navigation.navigate("CafeProfile", { cafe })}
               activeOpacity={0.9}
             >
               <Image
