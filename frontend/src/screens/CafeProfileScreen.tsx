@@ -1,15 +1,14 @@
+import * as ImagePicker from "expo-image-picker";
+
 import {
     Animated,
-    FlatList,
     Image,
-    Modal,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
-import { BookOpen, Bookmark, Grid3X3, Heart, Layers, MapPin, Pencil, Star, Store, X } from "lucide-react-native";
+import { BookOpen, Grid3X3, Pencil, Star, Store } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { deviceWidth, moderateScale, scale } from "../utils/responsive";
 
@@ -35,13 +34,23 @@ export default function CafeProfileScreen() {
     const contentWidth = Math.min(deviceWidth * 0.9, 480);
     const photoSize = (contentWidth - 6) / 3;
     const [cafeId, setCafeId] = useState<string | null>(null);
-    const [showAddModal, setShowAddModal] = useState(false);
     const [newName, setNewName] = useState("");
     const [newPrice, setNewPrice] = useState("");
     const [newCategory, setNewCategory] = useState("");
     const [isEditing, setIsEditing] = useState(false);
     const [editingCategory, setEditingCategory] = useState<string | null>(null);
     const [newCategoryName, setNewCategoryName] = useState("");
+    const [addingItemCategory, setAddingItemCategory] = useState<string | null>(null);
+    const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+    const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
+    const [formError, setFormError] = useState("");
+    const [editingItemId, setEditingItemId] = useState<string | null>(null);
+    const [editName, setEditName] = useState("");
+    const [editPrice, setEditPrice] = useState("");
+    const [editCategory, setEditCategory] = useState("");
+    const [newImage, setNewImage] = useState<string | null>(null);
+    const [editImage, setEditImage] = useState<string | null>(null);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
 
     const cafe = {
         name: "Bean & Bloom Cafe",
@@ -50,6 +59,31 @@ export default function CafeProfileScreen() {
         location: "Brooklyn, NY",
         open: "Open until 8:00 PM",
         tags: ["Aesthetic", "Study Spot"],
+    };
+
+    const [userId, setUserId] = useState<string | null>(null);
+    const [ownerId, setOwnerId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const getUser = async () => {
+            const { data } = await supabase.auth.getUser();
+            setUserId(data.user?.id || null);
+        };
+
+        getUser();
+    }, []);
+
+    const isOwner = userId && ownerId && userId === ownerId;
+
+    const pickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.7,
+        });
+
+        if (!result.canceled) {
+            setNewImage(result.assets[0].uri);
+        }
     };
 
     const [activeTab, setActiveTab] = useState<"posts" | "menu" | "reviews">("posts");
@@ -73,12 +107,13 @@ export default function CafeProfileScreen() {
     const fetchCafe = async () => {
         const { data, error } = await supabase
         .from("cafes")
-        .select("id")
+        .select("id, owner_id")
         .limit(1)
         .single();
 
         if (!error && data) {
         setCafeId(data.id);
+        setOwnerId(data.owner_id);
         }
     };
 
@@ -113,6 +148,7 @@ export default function CafeProfileScreen() {
             id: item.id,
             name: item.name,
             price: item.price,
+            image_url: item.image_url, 
             });
         });
 
@@ -121,8 +157,11 @@ export default function CafeProfileScreen() {
             items: grouped[category],
         }));
     };
-    const menuSections = groupMenuByCategory(menuItems);
-    const hasMenu = menuSections.length > 0;
+    const rawSections = groupMenuByCategory(menuItems);
+    const hasMenu = rawSections.length > 0;
+    const categories = rawSections.map((section) => section.title);
+
+    const menuSections = rawSections;
 
     useEffect(() => {
         Animated.parallel([
@@ -139,29 +178,9 @@ export default function CafeProfileScreen() {
     };
 
     const handleCreateMenu = () => {
-        setShowAddModal(true);
+        setIsEditing(true);
+        setAddingItemCategory('GLOBAL');
     };
-
-    // const handleCreateMenu = async () => {
-    //     if (!cafeId) return;
-
-    //     const { data, error } = await supabase
-    //         .from("menu_items")
-    //         .insert([
-    //         {
-    //             cafe_id: cafeId,
-    //             name: "New Item",
-    //             price: "$0",
-    //             category: "New Category",
-    //         },
-    //         ])
-    //         .select();
-
-    //     if (!error && data) {
-    //         setMenuItems((prev) => [...prev, ...data]);
-    //         setIsEditing(true); // auto enter edit mode
-    // }
-    // };
 
     const [posts, setPosts] = useState<Post[]>(
         Array.from({ length: 9 }).map((_, i) => ({
@@ -175,7 +194,6 @@ export default function CafeProfileScreen() {
         }))
     );
 
-    
     const handleCreateCategory = async () => {
     const newCategory = "New Category";
 
@@ -240,6 +258,7 @@ export default function CafeProfileScreen() {
         };
 
     const handleAddItem = async () => {
+    if (!isOwner) return;
     if (!newName || !newPrice) return;
 
     const { error } = await supabase.from("menu_items").insert([
@@ -247,7 +266,7 @@ export default function CafeProfileScreen() {
         cafe_id: cafeId,
         name: newName,
         price: newPrice,
-        category: newCategory || "General",
+        category: newCategory,
         },
     ]);
 
@@ -268,7 +287,7 @@ export default function CafeProfileScreen() {
         setNewName("");
         setNewPrice("");
         setNewCategory("");
-        setShowAddModal(false);
+        // setShowAddModal(false);
     }
     };
 
@@ -279,24 +298,6 @@ export default function CafeProfileScreen() {
         padding: 10,
         marginBottom: 10,
     };
-
-    // const menuSections = [
-    // {
-    //     title: "Drinks",
-    //     items: [
-    //     { name: "Latte", price: "$5" },
-    //     { name: "Matcha", price: "$6" },
-    //     { name: "Espresso", price: "$4" },
-    //     ],
-    // },
-    // {
-    //     title: "Pastries",
-    //     items: [
-    //     { name: "Croissant", price: "$4" },
-    //     { name: "Banana Bread", price: "$5" },
-    //     ],
-    // },
-    // ];
 
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
     const [carouselIndex, setCarouselIndex] = useState(0);
@@ -325,6 +326,30 @@ export default function CafeProfileScreen() {
     if (!error && data) {
         setMenuItems((prev) => [...prev, data[0]]);
     }
+    };
+
+    const uploadImage = async (uri: string) => {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+
+        const fileName = `${Date.now()}.jpg`;
+
+        const { data, error } = await supabase.storage
+            .from("menu-images")
+            .upload(fileName, blob, {
+                contentType: "image/jpeg",
+            });
+
+        if (error) {
+            console.error("Upload error:", error);
+            return null;
+        }
+
+        const { data: publicUrlData } = supabase.storage
+            .from("menu-images")
+            .getPublicUrl(fileName);
+
+        return publicUrlData.publicUrl;
     };
 
     return (
@@ -419,10 +444,10 @@ export default function CafeProfileScreen() {
                 <View style={styles.section}>
 
                 {/* EMPTY STATE */}
-                {!hasMenu && (
+                {!hasMenu && !isEditing && (
                 <View style={{ marginTop: 40, alignItems: "center" }}>
                     <Text style={{ color: "#777", marginBottom: 12 }}>
-                    No menu yet
+                        {isEditing ? "No Menu Yet" : "No menu yet"}
                     </Text>
 
                     <TouchableOpacity
@@ -441,15 +466,18 @@ export default function CafeProfileScreen() {
 
                 </View>
                 )}
-                {hasMenu && (
+                {(hasMenu || isEditing) && (
                 <>
                     {/* EDIT ICON */}
                     <TouchableOpacity
-                    onPress={() => setIsEditing((prev) => !prev)}
+                    onPress={() => {
+                        if (!isOwner) return;
+                        setIsEditing((prev) => !prev);
+                    }}
                     style={{
                         position: "absolute",
                         right: 8,
-                        top: 10,
+                        top: 20,
                         padding: 8,
                         backgroundColor: "#fff",
                         borderRadius: 20,
@@ -457,36 +485,54 @@ export default function CafeProfileScreen() {
                         zIndex: 10,
                     }}
                     >
-                    <Pencil size={18} color="#D4A373" />
+                    {isEditing ? (
+                        <Text style={{ color: "#D4A373", fontWeight: "600" }}>
+                        Done
+                        </Text>
+                    ) : (
+                        <Pencil size={18} color="#D4A373" />
+                    )}
                     </TouchableOpacity>
 
-                    {/* {activeTab === "menu" && ( */}
-                    {/* <View style={styles.section}> */}
-
-                        {/* EDIT ICON */}
-                        {/* {hasMenu && (
-                            <TouchableOpacity
-                            onPress={() => setIsEditing((prev) => !prev)}
-                            style={{
-                                position: "absolute",
-                                right: 8,
-                                top: 10,
-                                padding: 8,
-                                backgroundColor: "#fff",
-                                borderRadius: 20,
-                                elevation: 3,
-                                zIndex: 10,
-                            }}
-                            >
-                            <Pencil size={18} color={isEditing ? "#000" : "#D4A373"} />
-                            </TouchableOpacity>
-                        )} */}
-
                         {/* EDIT MODE LABEL */}
-                        {isEditing && (
-                        <Text style={{ marginBottom: 10, color: "#D4A373" }}>
-                            Editing Mode
+                        <View
+                        style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            marginTop: 20, 
+                            alignItems: "center",
+                            marginBottom: 10,
+                        }}
+                        >
+                        <Text
+                            style={{
+                                color: "#D4A373",
+                                fontWeight: "700",
+                                fontSize: moderateScale(16),
+                                textAlign: "center",
+                                width: "100%",
+                                marginBottom: 6,
+                            }}
+                        >
+                            {isEditing ? "Editing Menu" : "Menu"}
                         </Text>
+                        </View>
+
+                        {/* ADD ITEM */}
+                        {isEditing && (
+                        <TouchableOpacity
+                            onPress={() => setAddingItemCategory("GLOBAL")}
+                            style={{
+                            backgroundColor: "#D4A373",
+                            paddingVertical: 10,
+                            borderRadius: 10,
+                            marginBottom: 12,
+                            }}
+                        >
+                            <Text style={{ color: "#fff", textAlign: "center", fontWeight: "600" }}>
+                            + Add Item
+                            </Text>
+                        </TouchableOpacity>
                         )}
 
                         {/* MENU CONTENT */}
@@ -513,28 +559,273 @@ export default function CafeProfileScreen() {
                         </View>
                         )}
 
-                        {/* {menuSections.length === 0 && (
-                        <View style={{ marginTop: 30, alignItems: "center" }}>
-                            <Text style={{ color: "#777", marginBottom: 10 }}>
-                            No menu yet
-                            </Text>
+                        {isEditing && addingItemCategory === "GLOBAL" && (
+                        <View
+                        style={{
+                            backgroundColor: "#FFF",
+                            borderRadius: 12,
+                            padding: 14,
+                            marginBottom: 16,
+                            borderWidth: 1,
+                            borderColor: "#E5DED6",
+                        }}
+                    >
+
+                    {/* HEADER WITH X */}
+                    <View
+                        style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: 10,
+                        }}
+                    >
+                        <Text style={{ fontWeight: "600", fontSize: 16 }}>
+                            Add Item
+                        </Text>
+
+                        <TouchableOpacity
+                            onPress={() => {
+                                setAddingItemCategory(null);
+                                setFormError("");
+                                setNewName("");
+                                setNewPrice("");
+                                setNewCategory("");
+                                setNewImage(null);
+                            }}
+                            style={{
+                                padding: 6,
+                                backgroundColor: "#F3F0EC",
+                                borderRadius: 20,
+                            }}
+                        >
+                            <Text style={{ fontSize: 16, fontWeight: "600" }}>×</Text>
+                        </TouchableOpacity>
+
+                    </View>
+                            {/* NAME */}
+                            <TextInput
+                            placeholder="Item name"
+                            value={newName}
+                            onChangeText={setNewName}
+                            style={inputStyle}
+                            />
+
+                            {/* PRICE */}
+                            <TextInput
+                                placeholder="Price"
+                                value={newPrice}
+                                onChangeText={(text) => {
+                                    setNewPrice(text);
+
+                                    // validate live
+                                    if (text && isNaN(Number(text))) {
+                                        setFormError("Price must be a numberic value only");
+                                    } else {
+                                        setFormError("");
+                                    }
+                                }}
+                                keyboardType="numeric"
+                                style={inputStyle}
+                            />
 
                             <TouchableOpacity
-                            onPress={() => setIsEditing(true)}
-                            style={{
-                                backgroundColor: "#D4A373",
-                                paddingHorizontal: 16,
-                                paddingVertical: 10,
-                                borderRadius: 8,
-                            }}
+                                onPress={pickImage}
+                                style={{
+                                    backgroundColor: "#F3F0EC",
+                                    padding: 10,
+                                    borderRadius: 8,
+                                    marginBottom: 10,
+                                    alignItems: "center",
+                                }}
                             >
-                            <Text style={{ color: "#fff", fontWeight: "600" }}>
-                                Create Menu
-                            </Text>
+                                <Text>{newImage ? "Change Image" : "Add Image"}</Text>
+                            </TouchableOpacity>
+                            {newImage && (
+                            <Image
+                                source={{ uri: newImage }}
+                                style={{ width: "100%", height: 120, borderRadius: 8, marginBottom: 10 }}
+                            />
+                            )}
+
+                            {/* CATEGORY DROPDOWN */}
+                            <View style={{ marginBottom: 10 }}>
+                            {/* Dropdown trigger */}
+                            <TouchableOpacity
+                                onPress={() => setShowCategoryDropdown((prev) => !prev)}
+                                style={{
+                                borderWidth: 1,
+                                borderColor: "#ddd",
+                                borderRadius: 8,
+                                padding: 10,
+                                backgroundColor: "#fff",
+                                }}
+                            >
+                                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                                <Text style={{ color: newCategory ? "#000" : "#888" }}>
+                                    {newCategory || "Select Category"}
+                                </Text>
+                                <Text>▼</Text>
+                                </View>
                             </TouchableOpacity>
 
+                            {/* Dropdown list */}
+                            {showCategoryDropdown && (
+                                <View
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: "#ddd",
+                                    borderRadius: 8,
+                                    marginTop: 6,
+                                    backgroundColor: "#fff",
+                                    elevation: 4,
+                                    zIndex: 10,
+                                }}
+                                >
+                                {categories.length > 0 ? (
+                                    categories.map((cat, index) => (
+                                    <TouchableOpacity
+                                        key={index}
+                                        onPress={() => {
+                                        setNewCategory(cat);
+                                        setShowCategoryDropdown(false);
+                                        setIsAddingNewCategory(false);
+                                        }}
+                                        style={{ padding: 10 }}
+                                    >
+                                        <Text>{cat}</Text>
+                                    </TouchableOpacity>
+                                    ))
+                                ) : (
+                                    <Text style={{ padding: 10, color: "#888" }}>
+                                    No categories yet
+                                    </Text>
+                                )}
+
+                                {/* Add new category button */}
+                                <TouchableOpacity
+                                    onPress={() => setIsAddingNewCategory(true)}
+                                    style={{
+                                    padding: 10,
+                                    borderTopWidth: 1,
+                                    borderTopColor: "#eee",
+                                    }}
+                                >
+                                    <Text style={{ color: "#D4A373" }}>
+                                    + Add new category
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {/* New category input */}
+                                {isAddingNewCategory && (
+                                    <View style={{ padding: 10 }}>
+                                    <TextInput
+                                        placeholder="New category name"
+                                        value={newCategory}
+                                        onChangeText={setNewCategory}
+                                        autoFocus
+                                        style={{
+                                        borderWidth: 1,
+                                        borderColor: "#ddd",
+                                        borderRadius: 6,
+                                        padding: 8,
+                                        }}
+                                    />
+
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                        if (!newCategory) return;
+
+                                        setIsAddingNewCategory(false);
+                                        setShowCategoryDropdown(false);
+                                        }}
+                                        style={{
+                                        marginTop: 8,
+                                        backgroundColor: "#D4A373",
+                                        padding: 8,
+                                        borderRadius: 6,
+                                        }}
+                                    >
+                                        <Text style={{ color: "#fff", textAlign: "center" }}>
+                                        Add Category
+                                        </Text>
+                                    </TouchableOpacity>
+                                    </View>
+                                )}
+                                </View>
+                            )}
+                            </View>
+
+                            {formError ? (
+                            <Text style={{ color: "red", marginBottom: 8 }}>
+                                {formError}
+                            </Text>
+                            ) : null}
+
+                            <TouchableOpacity
+                            onPress={async () => {
+                                if (!newName || !newPrice || !newCategory) {
+                                    setFormError("Please fill out all fields");
+                                    return;
+                                }
+
+                                const exists = menuItems.some((item) => {
+                                return (
+                                    item.category?.trim().toLowerCase() === newCategory.trim().toLowerCase() &&
+                                    item.name?.trim().toLowerCase() === newName.trim().toLowerCase()
+                                );
+                                });
+
+                                if (exists) {
+                                    setFormError("This item already exists in this category");
+                                    return;
+                                }
+
+                                if (isNaN(Number(newPrice))) {
+                                    setFormError("Price must be a valid number");
+                                    return;
+                                }
+
+                                let imageUrl = null;
+                                if (newImage) {
+                                    imageUrl = await uploadImage(newImage);
+                                }
+
+                                const { data } = await supabase
+                                .from("menu_items")
+                                .insert([
+                                    {
+                                    cafe_id: cafeId,
+                                    name: newName,
+                                    price: newPrice,
+                                    category: newCategory,
+                                    image_url: imageUrl,
+                                    },
+                                ])
+                                .select();
+
+                                if (data) {
+                                setMenuItems((prev) => [...prev, data[0]]);
+                                }
+                                setFormError("");
+
+                                setNewName("");
+                                setNewPrice("");
+                                setNewCategory("");
+                                setAddingItemCategory(null);
+                            }}
+                            style={{
+                                backgroundColor: "#D4A373",
+                                padding: 12,
+                                borderRadius: 10,
+                            }}
+                            >
+                            <Text style={{ color: "#fff", textAlign: "center" }}>
+                                Add Item
+                            </Text>
+                            </TouchableOpacity>
                         </View>
-                        )} */}
+                        )}
 
                         {menuSections.map((section, i) => (
                         <View key={i} style={{ marginBottom: scale(16) }}>
@@ -573,82 +864,225 @@ export default function CafeProfileScreen() {
                                 </Text>
                                 )}
 
-                            {section.items.map((item: any, j: number) => (
-                            <View key={j} style={styles.menuItem}>
-                                {isEditing ? (
-                                <>
-                                    <TextInput
-                                    value={item.name}
-                                    onChangeText={(text) =>
-                                        handleEditItem(item.id, "name", text)
-                                    }
-                                    style={{
-                                        flex: 1,
-                                        backgroundColor: "#F3F0EC",
-                                        padding: 6,
-                                        borderRadius: 6,
-                                    }}
-                                    />
+                                {section.items.map((item: any, j: number) => (
+                                    <View key={j}>
+                                        {/* ROW */}
+                                        <View style={styles.menuItem}>
+                                            {isEditing ? (
+                                                <>
+                                                <Image
+                                                    source={
+                                                        item.image_url
+                                                            ? { uri: item.image_url }
+                                                            : undefined
+                                                    }
+                                                    style={{
+                                                        width: 30,
+                                                        height: 30,
+                                                        borderRadius: 6,
+                                                        backgroundColor: "#E8DFD5",
+                                                        marginRight: 8,
+                                                    }}
+                                                />
 
-                                    <TextInput
-                                    value={item.price}
-                                    onChangeText={(text) =>
-                                        handleEditItem(item.id, "price", text)
-                                    }
-                                    style={{
-                                        width: 60,
-                                        textAlign: "right",
-                                        backgroundColor: "#F3F0EC",
-                                        padding: 6,
-                                        borderRadius: 6,
-                                        marginLeft: 10,
-                                    }}
-                                    />
+                                                    <TextInput
+                                                        value={item.name}
+                                                        onChangeText={(text) =>
+                                                            handleEditItem(item.id, "name", text)
+                                                        }
+                                                        style={{
+                                                            flex: 1,
+                                                            backgroundColor: "#F3F0EC",
+                                                            padding: 6,
+                                                            borderRadius: 6,
+                                                        }}
+                                                    />
 
-                                    <TouchableOpacity
-                                    onPress={() => handleDeleteItem(item)}
-                                    style={{
-                                        marginLeft: 10,
-                                        width: 40,
-                                        alignItems: "flex-end",
-                                    }}
-                                    >
-                                    <Text style={{ fontSize: 16 }}>🗑</Text>
-                                    </TouchableOpacity>
-                                </>
-                                ) : (
-                                <>
-                                    <Text style={styles.menuItemName}>{item.name}</Text>
-                                    <Text style={styles.menuItemPrice}>{item.price}</Text>
-                                </>
-                                )}
-                            </View>
-                            ))}
+                                                    <TextInput
+                                                        value={item.price}
+                                                        onChangeText={(text) =>
+                                                            handleEditItem(item.id, "price", text)
+                                                        }
+                                                        style={{
+                                                            width: 60,
+                                                            textAlign: "right",
+                                                            backgroundColor: "#F3F0EC",
+                                                            padding: 6,
+                                                            borderRadius: 6,
+                                                            marginLeft: 10,
+                                                        }}
+                                                    />
 
-                            {isEditing && (
-                            <TouchableOpacity
-                                onPress={() => handleCreateCategory()}
-                                style={{ marginTop: 20 }}
-                            >
-                                <Text style={{ color: "#D4A373", fontSize: 14 }}>
-                                + Add Category
-                                </Text>
-                            </TouchableOpacity>
-                            )}
+                                                    {/* ✏️ + 🗑 ICONS */}
+                                                    <View style={{ flexDirection: "row", marginLeft: 10 }}>
+                                                        <TouchableOpacity
+                                                            onPress={() => {
+                                                                setEditingItemId(item.id);
+                                                                setEditName(item.name);
+                                                                setEditPrice(item.price);
+                                                                setEditCategory(section.title);
+                                                                setEditImage(item.image_url || null); 
+                                                            }}
+                                                            style={{ marginRight: 10 }}
+                                                        >
+                                                            <Text>✏️</Text>
+                                                        </TouchableOpacity>
 
-                            {/* ADD ITEM */}
-                            {isEditing && (
-                            <TouchableOpacity
-                                onPress={() =>
-                                handleAddItemWithCategory(section.title)
-                                }
-                                style={{ marginTop: 8 }}
-                            >
-                                <Text style={{ color: "#D4A373" }}>
-                                + Add Item
-                                </Text>
-                            </TouchableOpacity>
-                            )}
+                                                        <TouchableOpacity onPress={() => handleDeleteItem(item)}>
+                                                            <Text>🗑</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </>
+                                            ) : (
+                                                <View style={{ flexDirection: "row", alignItems: "center", width: "100%" }}>
+                                                {/* LEFT SIDE: IMAGE + NAME */}
+                                                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                                    <TouchableOpacity
+                                                    onPress={() => {
+                                                        if (item.image_url) {
+                                                            setPreviewImage(item.image_url);
+                                                        }
+                                                    }}
+                                                >
+                                                    <Image
+                                                        source={
+                                                            item.image_url
+                                                                ? { uri: item.image_url }
+                                                                : undefined
+                                                        }
+                                                        style={{
+                                                            width: 40,
+                                                            height: 40,
+                                                            borderRadius: 8,
+                                                            backgroundColor: "#E8DFD5",
+                                                        }}
+                                                    />
+                                                </TouchableOpacity>
+
+                                                    <Text style={styles.menuItemName}>{item.name}</Text>
+                                                </View>
+
+                                                {/* RIGHT SIDE: PRICE */}
+                                                <View style={{ flex: 1 }} />
+
+                                                <Text style={styles.menuItemPrice}>${item.price}</Text>
+                                            </View>
+                                            )}
+                                        </View>
+
+                                        {editingItemId === item.id && (
+                                            <View
+                                                style={{
+                                                    backgroundColor: "#FFF",
+                                                    borderRadius: 10,
+                                                    padding: 10,
+                                                    marginTop: 8,
+                                                    borderWidth: 1,
+                                                    borderColor: "#E5DED6",
+                                                }}
+                                            >
+                                                <TextInput
+                                                    value={editName}
+                                                    onChangeText={setEditName}
+                                                    style={inputStyle}
+                                                />
+
+                                                <TextInput
+                                                    value={editPrice}
+                                                    onChangeText={(text) => {
+                                                        if (/^\d*$/.test(text)) setEditPrice(text);
+                                                    }}
+                                                    keyboardType="number-pad"
+                                                    style={inputStyle}
+                                                />
+
+                                                <TouchableOpacity
+                                                onPress={async () => {
+                                                    const result = await ImagePicker.launchImageLibraryAsync({
+                                                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                                        quality: 0.7,
+                                                    });
+
+                                                    if (!result.canceled) {
+                                                        setEditImage(result.assets[0].uri);
+                                                    }
+                                                }}
+                                                style={{
+                                                    backgroundColor: "#F3F0EC",
+                                                    padding: 10,
+                                                    borderRadius: 8,
+                                                    marginBottom: 10,
+                                                    alignItems: "center",
+                                                }}
+                                            >
+                                                <Text>{editImage ? "Change Image" : "Add Image"}</Text>
+                                            </TouchableOpacity>
+
+                                            {/* PREVIEW */}
+                                            {editImage && (
+                                                <Image
+                                                    source={{ uri: editImage }}
+                                                    style={{ width: "100%", height: 120, borderRadius: 8, marginBottom: 10 }}
+                                                />
+                                            )}
+
+                                            {/* REMOVE */}
+                                            {editImage && (
+                                                <TouchableOpacity onPress={() => setEditImage(null)}>
+                                                    <Text style={{ color: "red", textAlign: "center", marginBottom: 10 }}>
+                                                        Remove Image
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            )}
+
+                                                <TouchableOpacity
+                                                    onPress={async () => {
+                                                        let imageUrl = editImage;
+
+                                                        // if new image selected (local file)
+                                                        if (editImage && editImage.startsWith("file")) {
+                                                            imageUrl = await uploadImage(editImage);
+                                                        }
+
+                                                        // if removed
+                                                        if (!editImage) {
+                                                            imageUrl = null;
+                                                        }
+
+                                                        await supabase
+                                                            .from("menu_items")
+                                                            .update({
+                                                                name: editName.trim(),
+                                                                price: editPrice,
+                                                                image_url: imageUrl,
+                                                            })
+                                                            .eq("id", item.id);
+
+                                                        // update UI
+                                                        setMenuItems((prev) =>
+                                                            prev.map((i) =>
+                                                                i.id === item.id
+                                                                    ? { ...i, name: editName, price: editPrice, image_url: imageUrl }
+                                                                    : i
+                                                            )
+                                                        );
+                                                        setEditingItemId(null);
+                                                    }}
+                                                    style={{
+                                                        backgroundColor: "#D4A373",
+                                                        padding: 10,
+                                                        borderRadius: 8,
+                                                    }}
+                                                >
+                                                    <Text style={{ color: "#fff", textAlign: "center" }}>
+                                                        Save Changes
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+
+                                    </View>
+                                ))}
                         </View>
                         ))}
                     </>
@@ -676,88 +1110,34 @@ export default function CafeProfileScreen() {
             </View>
         </Animated.ScrollView>
 
-        {/* MODAL (unchanged behavior) */}
-        <Modal visible={!!selectedPost} animationType="slide">
-            {selectedPost && (
-            <View style={{ flex: 1, backgroundColor: "#FFF" }}>
-                <TouchableOpacity onPress={() => setSelectedPost(null)} style={styles.closeBtn}>
-                <X size={20} />
-                </TouchableOpacity>
-
-                <FlatList
-                data={selectedPost.images}
-                horizontal
-                pagingEnabled
-                renderItem={({ item }) => (
-                    <Image source={{ uri: item }} style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }} />
-                )}
-                />
-
-                <View style={styles.modalContent}>
-                <Text>{selectedPost.caption}</Text>
-                <Text>{selectedPost.likes} likes</Text>
-                </View>
-            </View>
-            )}
-        </Modal>
-        <Modal visible={showAddModal} animationType="slide" transparent>
-        <View style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            justifyContent: "center",
-            padding: 20,
-        }}>
-            <View style={{
-            backgroundColor: "#fff",
-            borderRadius: 12,
-            padding: 16,
-            }}>
-
-            <Text style={{ fontWeight: "700", fontSize: 16, marginBottom: 10 }}>
-                Add Menu Item
-            </Text>
-
-            <TextInput
-                placeholder="Name (e.g. Latte)"
-                value={newName}
-                onChangeText={setNewName}
-                style={inputStyle}
+        {previewImage && (
+        <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setPreviewImage(null)}
+            style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(0,0,0,0.8)",
+                justifyContent: "center",
+                alignItems: "center",
+                zIndex: 100,
+            }}
+        >
+            <Image
+                source={{ uri: previewImage }}
+                style={{
+                    width: "90%",
+                    height: "60%",
+                    borderRadius: 12,
+                }}
+                resizeMode="contain"
             />
+        </TouchableOpacity>
+    )}
 
-            <TextInput
-                placeholder="Price (e.g. $5)"
-                value={newPrice}
-                onChangeText={setNewPrice}
-                style={inputStyle}
-            />
-
-            <TextInput
-                placeholder="Category (e.g. Drinks)"
-                value={newCategory}
-                onChangeText={setNewCategory}
-                style={inputStyle}
-            />
-        </View>
-
-            {/* ACTIONS */}
-            <View style={{ flexDirection: "row", marginTop: 12 }}>
-                <TouchableOpacity
-                onPress={handleAddItem}
-                style={{ flex: 1, backgroundColor: "#D4A373", padding: 10, borderRadius: 8, marginRight: 6 }}
-                >
-                <Text style={{ color: "#fff", textAlign: "center" }}>Add</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                onPress={() => setShowAddModal(false)}
-                style={{ flex: 1, backgroundColor: "#ddd", padding: 10, borderRadius: 8 }}
-                >
-                <Text style={{ textAlign: "center" }}>Cancel</Text>
-                </TouchableOpacity>
-            </View>
-
-            </View>
-        </Modal>
         <BottomNav />
         </View>
     );
