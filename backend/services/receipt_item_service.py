@@ -162,10 +162,6 @@ def clean_receipt_item_row(row):
 
 
 def parse_receipt_items_from_purchase_model(purchase):
-    """
-    Works with GeminiPurchase objects after you expand them to include .items.
-    Also works with dict-like objects.
-    """
     raw_items = []
 
     if hasattr(purchase, "items"):
