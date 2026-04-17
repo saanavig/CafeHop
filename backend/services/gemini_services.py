@@ -5,8 +5,23 @@ from PIL import Image
 from pydantic import BaseModel, Field
 
 from config import gemini_model
-from models.gemini_purchase import GeminiPurchase
 from utils.text_utils import extract_json
+
+
+class ReceiptLineItem(BaseModel):
+    name: str
+    quantity: Optional[int] = None
+    price: Optional[float] = None
+    category: Optional[str] = None
+
+
+class GeminiPurchase(BaseModel):
+    merchant_name: Optional[str] = None
+    merchant_address: Optional[str] = None
+    amount: Optional[float] = None
+    receipt_timestamp: Optional[str] = None
+    receipt_number: Optional[str] = None
+    items: List[ReceiptLineItem] = Field(default_factory=list)
 
 
 def build_purchase_prompt_from_text(ocr_text: str) -> str:
@@ -22,6 +37,13 @@ Extract:
 - amount: number | null
 - receipt_timestamp: string | null
 - receipt_number: string | null
+- items: array of purchased line items
+
+Each item must use:
+- name: string
+- quantity: integer | null
+- price: number | null
+- category: string | null
 
 Rules for amount:
 - amount must be the FINAL amount paid as a JSON number.
@@ -43,6 +65,15 @@ Rules for address:
 - Use a merchant address only if clearly present.
 - Do not confuse coordinates with the merchant address.
 
+Rules for items:
+- Extract actual purchased menu items when visible.
+- Ignore subtotal, tax, tip, total, discounts, payment method, card digits, and loyalty lines.
+- Ignore clearly non-item metadata such as cashier name, order number, terminal ID, etc.
+- If quantity is shown, return it as an integer.
+- If an item price is shown, return it as a JSON number.
+- category should be a simple label like "drink", "food", "dessert", or null if unclear.
+- If no line items are visible, return an empty array.
+
 OCR TEXT:
 {ocr_text}
 
@@ -52,7 +83,15 @@ Return exactly:
   "merchant_address": string | null,
   "amount": number | null,
   "receipt_timestamp": string | null,
-  "receipt_number": string | null
+  "receipt_number": string | null,
+  "items": [
+    {{
+      "name": string,
+      "quantity": integer | null,
+      "price": number | null,
+      "category": string | null
+    }}
+  ]
 }}
 """.strip()
 
@@ -70,6 +109,13 @@ Extract:
 - amount: number | null
 - receipt_timestamp: string | null
 - receipt_number: string | null
+- items: array of purchased line items
+
+Each item must use:
+- name: string
+- quantity: integer | null
+- price: number | null
+- category: string | null
 
 Rules for amount:
 - amount must be the FINAL amount paid as a JSON number.
@@ -91,13 +137,30 @@ Rules for address:
 - Use a merchant address only if clearly present.
 - Do not confuse coordinates with the merchant address.
 
+Rules for items:
+- Extract actual purchased menu items when visible.
+- Ignore subtotal, tax, tip, total, discounts, payment method, card digits, and loyalty lines.
+- Ignore clearly non-item metadata such as cashier name, order number, terminal ID, etc.
+- If quantity is shown, return it as an integer.
+- If an item price is shown, return it as a JSON number.
+- category should be a simple label like "drink", "food", "dessert", or null if unclear.
+- If no line items are visible, return an empty array.
+
 Return exactly:
 {
   "merchant_name": string | null,
   "merchant_address": string | null,
   "amount": number | null,
   "receipt_timestamp": string | null,
-  "receipt_number": string | null
+  "receipt_number": string | null,
+  "items": [
+    {
+      "name": string,
+      "quantity": integer | null,
+      "price": number | null,
+      "category": string | null
+    }
+  ]
 }
 """.strip()
 
@@ -109,6 +172,10 @@ def parse_purchase_from_ocr(ocr_text: str) -> tuple[GeminiPurchase, str]:
     json_str = extract_json(raw)
 
     parsed = json.loads(json_str)
+
+    if "items" not in parsed or parsed["items"] is None:
+        parsed["items"] = []
+
     purchase = GeminiPurchase(**parsed)
     return purchase, raw
 
@@ -130,6 +197,10 @@ def parse_purchase_from_image(file) -> tuple[GeminiPurchase, str]:
     json_str = extract_json(raw)
 
     parsed = json.loads(json_str)
+
+    if "items" not in parsed or parsed["items"] is None:
+        parsed["items"] = []
+
     purchase = GeminiPurchase(**parsed)
     return purchase, raw
 
@@ -196,9 +267,12 @@ User preferences:
 {json.dumps({
     "max_distance_miles": user_prefs.get("max_distance_miles"),
     "wants_wifi": user_prefs.get("wants_wifi"),
-    "wants_outlets": user_prefs.get("wants_outlets"),
     "preferred_price_level": user_prefs.get("preferred_price_level"),
-    "preferred_noise_level": user_prefs.get("preferred_noise_level"),
+    "atmosphere": user_prefs.get("atmosphere"),
+    "vibe": user_prefs.get("vibe"),
+    "food_preferences": user_prefs.get("food_preferences"),
+    "work_preferences": user_prefs.get("work_preferences"),
+    "favorite_items": user_prefs.get("favorite_items"),
     "preferred_tags": user_tag_names
 }, indent=2)}
 
