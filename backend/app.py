@@ -23,6 +23,7 @@ from routes.analytics import analytics_bp
 from routes.nearby import nearby_bp
 from routes.menu import menu_bp
 from routes.receipt_items import receipt_items_bp
+from routes.ai_profile import ai_profile_bp
 
 app = Flask(__name__)
 CORS(
@@ -52,6 +53,7 @@ app.register_blueprint(analytics_bp, url_prefix="/api")
 app.register_blueprint(nearby_bp, url_prefix="/api")
 app.register_blueprint(menu_bp, url_prefix="/api")
 app.register_blueprint(receipt_items_bp, url_prefix="/api")
+app.register_blueprint(ai_profile_bp, url_prefix="/api")
 
 import re
 
