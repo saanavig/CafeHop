@@ -1,4 +1,5 @@
 import json
+import re
 from flask import Flask, request, jsonify, g as flask_g
 from flask_cors import CORS
 from pydantic import ValidationError
@@ -24,6 +25,9 @@ from routes.nearby import nearby_bp
 from routes.menu import menu_bp
 from routes.receipt_items import receipt_items_bp
 from routes.ai_profile import ai_profile_bp
+from routes.favorites import favorites_bp
+
+
 
 app = Flask(__name__)
 CORS(
@@ -54,8 +58,8 @@ app.register_blueprint(nearby_bp, url_prefix="/api")
 app.register_blueprint(menu_bp, url_prefix="/api")
 app.register_blueprint(receipt_items_bp, url_prefix="/api")
 app.register_blueprint(ai_profile_bp, url_prefix="/api")
+app.register_blueprint(favorites_bp, url_prefix="/api")
 
-import re
 
 def fallback_extract_total(ocr_text: str):
     patterns = [
