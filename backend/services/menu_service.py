@@ -358,3 +358,29 @@ def build_cafe_menu_profile(cafe_id: str):
         "matcha_items": list(dict.fromkeys([name for name in matcha_items if name])),
         "pastry_items": list(dict.fromkeys([name for name in pastry_items if name])),
     }
+def insert_menu_item(cafe_id: str, item: dict):
+    cleaned = clean_menu_item_row(item)
+
+    row = {
+        "cafe_id": cafe_id,
+        "name": item.get("name"),
+        "price": str(item.get("price") or ""),
+        "category": cleaned["category"],
+        "image_url": item.get("image_url"),
+    }
+
+    if item.get("description") is not None:
+        row["description"] = item.get("description")
+    if cleaned.get("normalized_name") is not None:
+        row["normalized_name"] = cleaned["normalized_name"]
+    if cleaned.get("price_numeric") is not None:
+        row["price_numeric"] = cleaned["price_numeric"]
+    if cleaned.get("attributes") is not None:
+        row["attributes"] = cleaned["attributes"]
+
+    response = supabase.table("menu_items").insert(row).execute()
+    return response.data[0] if response.data else None
+
+def delete_menu_item(item_id: str):
+    response = supabase.table("menu_items").delete().eq("id", item_id).execute()
+    return response.data or []
