@@ -212,12 +212,11 @@ def is_cafe_open(hours):
     return False
 
 # comments 
-
-@cafe_bp.route("/cafes/<int:cafe_id>/comments", methods=["GET"])
+@cafe_bp.route("/cafes/<cafe_id>/comments", methods=["GET"])
 def get_comments(cafe_id):
     try:
         response = supabase.table("comments") \
-            .select("id, content, created_at, user_id, profiles(username)") \
+            .select("id, content, created_at, user_id") \
             .eq("cafe_id", cafe_id) \
             .order("created_at", desc=True) \
             .execute()
@@ -227,8 +226,9 @@ def get_comments(cafe_id):
     except Exception as e:
         print("Error fetching comments:", str(e))
         return jsonify({"error": "Failed to fetch comments"}), 500
-    
-@cafe_bp.route("/cafes/<int:cafe_id>/comments", methods=["POST"])
+
+
+@cafe_bp.route("/cafes/<cafe_id>/comments", methods=["POST"])
 @require_auth
 def create_comment(cafe_id):
     data = request.get_json()
@@ -252,7 +252,7 @@ def create_comment(cafe_id):
         print("Error creating comment:", str(e))
         return jsonify({"error": "Failed to create comment"}), 500
     
-@cafe_bp.route("/comments/<int:comment_id>", methods=["DELETE"])
+@cafe_bp.route("/comments/<comment_id>", methods=["DELETE"])
 @require_auth
 def delete_comment(comment_id):
     user_id = g.user["id"]
