@@ -1,20 +1,22 @@
-import React, { useState, useRef } from "react";
 import {
-  View,
-  Text,
-  Image,
-  StyleSheet,
-  TextInput,
-  FlatList,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
   Animated,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { Bookmark, Heart, MapPin, MessageCircle, X } from "lucide-react-native";
+import React, { useRef, useState } from "react";
+import { deviceHeight, deviceWidth, moderateScale, scale } from "../../utils/responsive";
+
 import Button from "./Button";
-import { Heart, Bookmark, MessageCircle, MapPin, X } from "lucide-react-native";
-import { scale, moderateScale, deviceWidth, deviceHeight } from "../../utils/responsive";
+import { apiFetch } from "../../api/client";
 
 // 88% of screen width → consistent proportional side padding on all devices
 const CARD_WIDTH = deviceWidth * 0.88;
@@ -25,6 +27,7 @@ export interface Comment {
 }
 
 export interface Post {
+  id: string;
   cafeName: string;
   image: any;
   caption: string;
@@ -51,13 +54,26 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
   const [saved, setSaved] = useState(false);
 
   const [showComments, setShowComments] = useState(false);
-  const [commentsState, setCommentsState] = useState(post.commentList || []);
+  const [commentsState, setCommentsState] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
 
   const slideAnim = useRef(new Animated.Value(deviceHeight)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
+  const fetchComments = async () => {
+    try {
+      const res = await apiFetch(`/posts/${post.id}/comments`);
+      const data = await res.json();
+
+      console.log("COMMENTS:", data);
+      setCommentsState(data);
+    } catch (err) {
+      console.error("Fetch error:", err);
+    }
+  };
+  
   const openComments = () => {
+    fetchComments();
     setShowComments(true);
     onModalToggle?.(true);
     Animated.parallel([
@@ -81,10 +97,24 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
     setLikesState(likesState + (liked ? -1 : 1));
   };
 
-  const handlePostComment = () => {
+  const handlePostComment = async () => {
     if (!newComment.trim()) return;
-    setCommentsState([...commentsState, { user: "You", text: newComment }]);
-    setNewComment("");
+
+    try {
+      const res = await apiFetch(`/posts/${post.id}/comments`, {
+        method: "POST",
+        body: JSON.stringify({
+          content: newComment,
+        }),
+      });
+
+      const data = await res.json();
+
+      setCommentsState((prev: any) => [data, ...prev]);
+      setNewComment("");
+    } catch (err) {
+      console.error("Post error:", err);
+    }
   };
 
   return (
@@ -176,8 +206,8 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
               keyExtractor={(_, i) => i.toString()}
               renderItem={({ item }) => (
                 <Text style={styles.commentText}>
-                  <Text style={{ fontWeight: "bold" }}>{item.user}: </Text>
-                  {item.text}
+                  <Text style={{ fontWeight: "bold" }}>{item.user_id}: </Text>
+                  {item.content}
                 </Text>
               )}
               style={{ flex: 1 }}

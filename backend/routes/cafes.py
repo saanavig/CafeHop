@@ -210,3 +210,147 @@ def is_cafe_open(hours):
             if h["open_time"] <= current_time <= h["close_time"]:
                 return True
     return False
+
+# comments 
+@cafe_bp.route("/cafes/<cafe_id>/comments", methods=["GET"])
+def get_comments(cafe_id):
+    try:
+        response = supabase.table("comments") \
+            .select("id, content, created_at, user_id") \
+            .eq("cafe_id", cafe_id) \
+            .order("created_at", desc=True) \
+            .execute()
+
+        return jsonify(response.data), 200
+
+    except Exception as e:
+        print("Error fetching comments:", str(e))
+        return jsonify({"error": "Failed to fetch comments"}), 500
+
+
+@cafe_bp.route("/cafes/<cafe_id>/comments", methods=["POST"])
+@require_auth
+def create_comment(cafe_id):
+    data = request.get_json()
+    user_id = g.user["id"]
+
+    content = data.get("content")
+
+    if not content or content.strip() == "":
+        return jsonify({"error": "Comment cannot be empty"}), 400
+
+    try:
+        response = supabase.table("comments").insert({
+            "cafe_id": cafe_id,
+            "user_id": user_id,
+            "content": content.strip()
+        }).execute()
+
+        return jsonify(response.data[0]), 201
+
+    except Exception as e:
+        print("Error creating comment:", str(e))
+        return jsonify({"error": "Failed to create comment"}), 500
+    
+@cafe_bp.route("/comments/<comment_id>", methods=["DELETE"])
+@require_auth
+def delete_comment(comment_id):
+    user_id = g.user["id"]
+
+    try:
+        # Step 1: get comment
+        comment_res = supabase.table("comments") \
+            .select("*") \
+            .eq("id", comment_id) \
+            .execute()
+
+        if not comment_res.data:
+            return jsonify({"error": "Comment not found"}), 404
+
+        comment = comment_res.data[0]
+        comment_user_id = comment["user_id"]
+        post_id = comment.get("post_id")
+
+        # Step 2: determine cafe_id
+        if post_id:
+            # NEW SYSTEM → get cafe_id from post
+            post_res = supabase.table("posts") \
+                .select("cafe_id") \
+                .eq("id", post_id) \
+                .execute()
+
+            if not post_res.data:
+                return jsonify({"error": "Post not found"}), 404
+
+            cafe_id = post_res.data[0]["cafe_id"]
+
+        else:
+            # OLD SYSTEM → fallback
+            cafe_id = comment["cafe_id"]
+
+        # Step 3: get cafe owner
+        cafe_res = supabase.table("cafes") \
+            .select("owner_id") \
+            .eq("id", cafe_id) \
+            .execute()
+
+        if not cafe_res.data:
+            return jsonify({"error": "Cafe not found"}), 404
+
+        owner_id = cafe_res.data[0]["owner_id"]
+
+        # Step 4: check authorization
+        if user_id != comment_user_id and user_id != owner_id:
+            return jsonify({"error": "Not authorized"}), 403
+
+        # Step 5: delete
+        supabase.table("comments") \
+            .delete() \
+            .eq("id", comment_id) \
+            .execute()
+
+        return jsonify({"message": "Comment deleted"}), 200
+
+    except Exception as e:
+        print("Error deleting comment:", str(e))
+        return jsonify({"error": "Failed to delete comment"}), 500
+
+#post ids for the comments
+@cafe_bp.route("/posts/<post_id>/comments", methods=["GET"])
+def get_comments_by_post(post_id):
+    try:
+        response = supabase.table("comments") \
+            .select("id, content, created_at, user_id") \
+            .eq("post_id", post_id) \
+            .order("created_at", desc=True) \
+            .execute()
+
+        return jsonify(response.data), 200
+
+    except Exception as e:
+        print("Error fetching post comments:", str(e))
+        return jsonify({"error": "Failed to fetch comments"}), 500
+    
+@cafe_bp.route("/posts/<post_id>/comments", methods=["POST"])
+@require_auth
+def create_comment_by_post(post_id):
+    data = request.get_json()
+    user_id = g.user["id"]
+
+    content = data.get("content")
+
+    if not content or content.strip() == "":
+        return jsonify({"error": "Comment cannot be empty"}), 400
+
+    try:
+        response = supabase.table("comments").insert({
+            "post_id": post_id,
+            "user_id": user_id,
+            "content": content.strip()
+        }).execute()
+
+        return jsonify(response.data[0]), 201
+
+    except Exception as e:
+        print("Error creating post comment:", str(e))
+        return jsonify({"error": "Failed to create comment"}), 500
