@@ -15,6 +15,7 @@ import { deviceWidth, moderateScale, scale } from "../utils/responsive";
 import BottomNav from "../components/ui/BottomNav";
 import { TextInput } from "react-native";
 import { supabase } from "../api/supabaseClient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const SCREEN_WIDTH = deviceWidth;
 
@@ -31,6 +32,7 @@ const SCREEN_WIDTH = deviceWidth;
     };
 
 export default function CafeProfileScreen() {
+    const insets = useSafeAreaInsets();
     const contentWidth = Math.min(deviceWidth * 0.9, 480);
     const photoSize = (contentWidth - 6) / 3;
     const [cafeId, setCafeId] = useState<string | null>(null);
@@ -104,11 +106,12 @@ export default function CafeProfileScreen() {
     };
 
     useEffect(() => {
+    if (!userId) return;
     const fetchCafe = async () => {
         const { data, error } = await supabase
         .from("cafes")
         .select("id, owner_id")
-        .limit(1)
+        .eq("owner_id", userId)
         .single();
 
         if (!error && data) {
@@ -118,7 +121,7 @@ export default function CafeProfileScreen() {
     };
 
     fetchCafe();
-    }, []);
+    }, [userId]);
 
     const [menuItems, setMenuItems] = useState<any[]>([]);
     useEffect(() => {
@@ -258,8 +261,7 @@ export default function CafeProfileScreen() {
         };
 
     const handleAddItem = async () => {
-    if (!isOwner) return;
-    if (!newName || !newPrice) return;
+    if (!cafeId || !newName || !newPrice) return;
 
     const { error } = await supabase.from("menu_items").insert([
         {
@@ -353,7 +355,7 @@ export default function CafeProfileScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingTop: insets.top }]}>
         <Animated.ScrollView
             contentContainerStyle={{ paddingBottom: scale(100) }}
             style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
@@ -965,7 +967,9 @@ export default function CafeProfileScreen() {
                                                 {/* RIGHT SIDE: PRICE */}
                                                 <View style={{ flex: 1 }} />
 
-                                                <Text style={styles.menuItemPrice}>${item.price}</Text>
+                                                <Text style={styles.menuItemPrice}>
+                                                  {String(item.price).startsWith("$") ? item.price : `$${item.price}`}
+                                                </Text>
                                             </View>
                                             )}
                                         </View>

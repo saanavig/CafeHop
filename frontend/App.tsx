@@ -66,7 +66,6 @@ function AppContent() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="Onboarding" component={OnboardingRoleScreen} />
-        <Stack.Screen name="OnboardingRoleScreen" component={OnboardingRoleScreen} />
         <Stack.Screen name="CustomerOnboarding" component={CustomerOnboardingScreen} />
         <Stack.Screen name="Explore" component={ExploreScreen} />
         <Stack.Screen name="Home" component={Index} />

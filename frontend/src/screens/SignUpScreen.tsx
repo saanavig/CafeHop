@@ -1,6 +1,9 @@
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -10,12 +13,15 @@ import React, { useState } from "react";
 import { moderateScale, scale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
+import { LinearGradient } from "expo-linear-gradient";
 import { apiFetch } from "../api/client";
 import { supabase } from "../api/supabaseClient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 
 export default function SignUpScreen() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -95,7 +101,16 @@ export default function SignUpScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <LinearGradient colors={["#F7F3F0", "#F0EDE8"]} style={styles.gradient}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          contentContainerStyle={[styles.container, { paddingTop: insets.top + scale(24) }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
       <View style={styles.card}>
         <Text style={styles.title}>Create Account</Text>
         <Text style={styles.subtitle}>Sign up to get started</Text>
@@ -207,17 +222,21 @@ export default function SignUpScreen() {
           </Text>
         </Text>
       </View>
-    </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: { flex: 1 },
+
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: scale(24),
-    backgroundColor: "#F7F3F0",
+    paddingHorizontal: scale(24),
+    paddingBottom: scale(40),
   },
 
   card: {
@@ -229,6 +248,7 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 10,
+    elevation: 5,
   },
 
   title: {

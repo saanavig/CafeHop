@@ -3,6 +3,7 @@ import { BarChart2, Compass, Gift, Home, Settings, User } from "lucide-react-nat
 import React, { useRef } from "react";
 import { moderateScale, scale } from "../../utils/responsive";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useRole } from "../../context/RoleContext";
 
@@ -13,76 +14,33 @@ interface NavItem {
 }
 
 const customerNavItems: NavItem[] = [
-  { icon: Home, label: "Home", route: "Home" },
-  { icon: Compass, label: "Explore", route: "Explore" },
-  { icon: Gift, label: "Rewards", route: "Rewards" },
-  { icon: User, label: "Profile", route: "UserProfile" },
-  { icon: Settings, label: "Settings", route: "Settings" },
+  { icon: Home,     label: "Home",    route: "Home"        },
+  { icon: Compass,  label: "Explore", route: "Explore"     },
+  { icon: Gift,     label: "Rewards", route: "Rewards"     },
+  { icon: User,     label: "Profile", route: "UserProfile" },
+  { icon: Settings, label: "More",    route: "Settings"    },
 ];
 
 const cafeNavItems: NavItem[] = [
-  { icon: Home, label: "Home", route: "Home" },
-  { icon: Compass, label: "Explore", route: "Explore" },
-  { icon: BarChart2, label: "Analytics", route: "Analytics" },
-  { icon: Gift, label: "Rewards", route: "Rewards" },
-  // { icon: User, label: "Profile", route: "Profile" },
-  { icon: User, label: "Profile", route: "CafeProfile" },
-  { icon: Settings, label: "Settings", route: "Settings" },
+  { icon: Home,       label: "Home",      route: "Home"        },
+  { icon: Compass,    label: "Explore",   route: "Explore"     },
+  { icon: BarChart2,  label: "Analytics", route: "Analytics"   },
+  { icon: Gift,       label: "Rewards",   route: "Rewards"     },
+  { icon: User,       label: "Profile",   route: "CafeProfile" },
+  { icon: Settings,   label: "More",      route: "Settings"    },
 ];
 
 const BottomNav: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
-  // const { role, toggleRole } = useRole();
   const { role } = useRole();
+  const insets = useSafeAreaInsets();
 
   const navItems = role === "cafe" ? cafeNavItems : customerNavItems;
 
-  // Animated scale for the active toggle pill
-  // const pillScale = useRef(new Animated.Value(1)).current;
-
-  // const handleToggle = () => {
-  //   // Spring bounce on the pill
-  //   Animated.sequence([
-  //     Animated.timing(pillScale, { toValue: 0.92, duration: 80, useNativeDriver: true }),
-  //     Animated.spring(pillScale, { toValue: 1, useNativeDriver: true, friction: 5 }),
-  //   ]).start();
-
-  //   toggleRole();
-  //   const newRole = role === "customer" ? "cafe" : "customer";
-  //   if (route.name === "Explore" && newRole === "cafe") {
-  //     navigation.navigate("Analytics");
-  //   } else if (route.name === "Analytics" && newRole === "customer") {
-  //     navigation.navigate("Explore");
-  //   }
-  // };
-
   return (
-    <View style={styles.container}>
-      {/* Role Toggle */}
-      {/* <Animated.View style={[styles.toggleRow, { transform: [{ scale: pillScale }] }]}>
-        <Pressable
-          style={[styles.togglePill, role === "customer" && styles.togglePillActive]}
-          onPress={() => role !== "customer" && handleToggle()}
-        >
-          <Text style={styles.toggleIcon}>☕</Text>
-          <Text style={[styles.toggleLabel, role === "customer" && styles.toggleLabelActive]}>
-            Customer
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.togglePill, role === "cafe" && styles.togglePillActive]}
-          onPress={() => role !== "cafe" && handleToggle()}
-        >
-          <Text style={styles.toggleIcon}>🏪</Text>
-          <Text style={[styles.toggleLabel, role === "cafe" && styles.toggleLabelActive]}>
-            Cafe Owner
-          </Text>
-        </Pressable>
-      </Animated.View> */}
-
-      {/* Nav Items */}
-      <View style={styles.navWrapper}>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, scale(8)) }]}>
+      <View style={styles.pill}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = route.name === item.route;
@@ -90,17 +48,18 @@ const BottomNav: React.FC = () => {
           return (
             <Pressable
               key={item.label}
-              style={[styles.navItem, isActive && styles.activeNavItem]}
+              style={styles.navItem}
               onPress={() => navigation.navigate(item.route)}
             >
               <Icon
-                size={20}
-                color={isActive ? "#FFF" : "#888"}
-                strokeWidth={isActive ? 2.5 : 2}
+                size={scale(21)}
+                color={isActive ? "#D4A373" : "#B0A89E"}
+                strokeWidth={isActive ? 2.5 : 1.8}
               />
               <Text style={[styles.navLabel, isActive && styles.activeNavLabel]}>
                 {item.label}
               </Text>
+              {isActive && <View style={styles.activeDot} />}
             </Pressable>
           );
         })}
@@ -114,64 +73,49 @@ export default BottomNav;
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E8DFD5",
-    paddingBottom: scale(16),
-    alignItems: "center",
-  },
-  toggleRow: {
-    flexDirection: "row",
-    gap: scale(8),
     paddingHorizontal: scale(16),
-    paddingVertical: scale(8),
-    width: "90%",
-    maxWidth: 480,
-  },
-  togglePill: {
-    flex: 1,
-    flexDirection: "row",
+    paddingTop: scale(6),
+    backgroundColor: "transparent",
     alignItems: "center",
-    justifyContent: "center",
-    gap: scale(6),
-    paddingVertical: scale(6),
-    borderRadius: scale(20),
-    borderWidth: 1,
-    borderColor: "#E8DFD5",
-    backgroundColor: "#F7F3F0",
   },
-  togglePillActive: {
-    backgroundColor: "#D4A373",
-    borderColor: "#D4A373",
-  },
-  toggleIcon: { fontSize: moderateScale(14) },
-  toggleLabel: { fontSize: moderateScale(12), fontWeight: "600", color: "#888" },
-  toggleLabelActive: { color: "#FFF" },
-
-  navWrapper: {
-    width: "90%",
+  pill: {
+    width: "100%",
     maxWidth: 480,
     flexDirection: "row",
     justifyContent: "space-around",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: scale(26),
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(6),
+    shadowColor: "#2C1810",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.10,
+    shadowRadius: 16,
+    elevation: 10,
   },
   navItem: {
     alignItems: "center",
-    paddingVertical: scale(8),
-    paddingHorizontal: scale(12),
-    borderRadius: scale(16),
-    gap: scale(4),
-  },
-  activeNavItem: {
-    backgroundColor: "#D4A373",
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(2),
+    gap: scale(3),
+    minWidth: scale(40),
   },
   navLabel: {
-    fontSize: moderateScale(11),
-    color: "#888",
-    marginTop: scale(2),
+    fontSize: moderateScale(10),
+    color: "#B0A89E",
     fontWeight: "500",
+    letterSpacing: 0.2,
   },
   activeNavLabel: {
-    color: "#FFFFFF",
-    fontWeight: "600",
+    color: "#D4A373",
+    fontWeight: "700",
+  },
+  activeDot: {
+    width: scale(4),
+    height: scale(4),
+    borderRadius: scale(2),
+    backgroundColor: "#D4A373",
+    marginTop: scale(1),
   },
 });

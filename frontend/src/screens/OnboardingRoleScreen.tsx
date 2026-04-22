@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { moderateScale, scale } from "../utils/responsive";
 
+import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
@@ -11,6 +12,7 @@ export default function OnboardingRoleScreen() {
   const { setRole } = useRole();
 
   return (
+    <LinearGradient colors={["#F7F3F0", "#F0EDE8"]} style={styles.gradient}>
     <View style={styles.container}>
       <View style={styles.card}>
         <Text style={styles.title}>How will you use CafeHop?</Text>
@@ -48,16 +50,17 @@ export default function OnboardingRoleScreen() {
         </Pressable>
       </View>
     </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: { flex: 1 },
   container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: scale(24),
-    backgroundColor: "#F7F3F0",
   },
 
   card: {

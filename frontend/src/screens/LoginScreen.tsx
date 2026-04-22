@@ -1,22 +1,26 @@
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-// frontend/src/screens/LoginScreen.tsx
 import React, { useState } from "react";
 import { moderateScale, scale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
 import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "../api/supabaseClient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,7 +68,15 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient colors={["#F7F3F0", "#F0EDE8"]} style={styles.gradient}>
-      <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          contentContainerStyle={[styles.container, { paddingTop: insets.top + scale(24) }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         <View style={styles.card}>
           {/* Header */}
           <Text style={styles.title}>Welcome back ☕</Text>
@@ -139,7 +151,8 @@ export default function LoginScreen() {
             </Text>
           </Text>
         </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
@@ -148,10 +161,11 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
 
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: scale(24),
+    paddingHorizontal: scale(24),
+    paddingBottom: scale(40),
   },
 
   card: {

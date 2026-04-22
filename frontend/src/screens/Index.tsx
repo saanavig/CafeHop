@@ -11,6 +11,7 @@ import { Search } from "lucide-react-native";
 import ForYouCard, { Post } from "../components/ui/ForYouCard";
 import BottomNav from "../components/ui/BottomNav";
 import { scale, moderateScale, deviceHeight } from "../utils/responsive";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const initialPosts: Post[] = [
   {
@@ -38,6 +39,7 @@ const initialPosts: Post[] = [
 ];
 
 const Index = () => {
+  const insets = useSafeAreaInsets();
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -59,7 +61,7 @@ const Index = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <Animated.View style={[styles.header, { opacity: headerFade, transform: [{ translateY: headerSlide }] }]}>
+      <Animated.View style={[styles.header, { paddingTop: insets.top + scale(12), opacity: headerFade, transform: [{ translateY: headerSlide }] }]}>
         <Text style={styles.title}>CAFÉHOP</Text>
 
         {/* Search bar — icon + input row, consistent with Explore */}
@@ -112,7 +114,6 @@ export default Index;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F7F3F0" },
   header: {
-    paddingTop: scale(30),
     paddingBottom: scale(14),
     paddingHorizontal: scale(16),
     alignItems: "center",

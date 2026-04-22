@@ -20,7 +20,9 @@ import { deviceWidth, moderateScale, scale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
+import { API_BASE } from "../api/config";
 import { supabase } from "../api/supabaseClient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRole } from "../context/RoleContext";
 
 const SCREEN_WIDTH = deviceWidth;
@@ -40,6 +42,7 @@ type Post = {
 export default function UserProfileScreen() {
   const { role } = useRole();
   const isCafe = role === "cafe";
+  const insets = useSafeAreaInsets();
 
   const [profileName, setProfileName] = useState("");
 
@@ -56,7 +59,7 @@ export default function UserProfileScreen() {
         const token = session?.access_token;
         if (!token) return;
 
-        const res = await fetch("http://127.0.0.1:3001/api/users/me/name", {
+        const res = await fetch(`${API_BASE}/api/users/me/name`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -258,7 +261,7 @@ export default function UserProfileScreen() {
     const first_name = parts[0] || "";
     const last_name = parts.slice(1).join(" ") || "";
 
-    const res = await fetch("http://127.0.0.1:3001/api/users/me/name", {
+    const res = await fetch(`${API_BASE}/api/users/me/name`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -285,7 +288,7 @@ export default function UserProfileScreen() {
   return (
     <View style={styles.container}>
       <Animated.ScrollView
-        contentContainerStyle={{ paddingBottom: scale(100) }}
+        contentContainerStyle={{ paddingBottom: scale(120), paddingTop: insets.top }}
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
       >
         <View style={{ width: contentWidth, alignSelf: "center" }}>
@@ -507,10 +510,11 @@ export default function UserProfileScreen() {
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(_, i) => i.toString()}
-                    onMomentumScrollEnd={(e) => {
+                    onScroll={(e) => {
                       const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-                      setCarouselIndex(idx);
+                      if (idx !== carouselIndex) setCarouselIndex(idx);
                     }}
+                    scrollEventThrottle={16}
                     renderItem={({ item }) => (
                       <Image
                         source={{ uri: item }}

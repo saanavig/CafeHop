@@ -162,7 +162,7 @@ const allCafes = [
 // ];
 
 const SHEET_HEIGHT = height * 0.52;
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const API_URL = "http://127.0.0.1:3001";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ExploreScreen() {
@@ -176,11 +176,11 @@ export default function ExploreScreen() {
   const [detailVisible, setDetailVisible] = useState(false);
   const [photoIndex, setPhotoIndex]       = useState(0);
   const [hoursExpanded, setHoursExpanded] = useState(false);
-  const [saved, setSaved]                 = useState<number[]>([]);
+  const [saved, setSaved]                 = useState<(string | number)[]>([]);
   const [selectedFilter, setSelectedFilter] = useState("All");
 
   type Cafe = {
-    id: string;
+    id: string | number;
     name: string;
 
     // backend
@@ -191,11 +191,23 @@ export default function ExploreScreen() {
     longitude?: number;
     image_url?: string;
 
-    // frontend-only
-    pin?: { x: number; y: number };
+    // static / enriched
+    image?: any;
+    photos?: any[];
     rating?: number;
+    reviews?: number;
+    category?: string;
+    description?: string;
+    amenities?: string[];
     vibes?: string[];
     distance?: string;
+    priceRange?: string;
+    phone?: string;
+    website?: string;
+    instagram?: string;
+    address?: string;
+    fullHours?: Record<string, string>;
+    pin?: { x: number; y: number };
   };
 
   const [userLocation, setUserLocation] = useState<{
@@ -203,8 +215,8 @@ export default function ExploreScreen() {
     lng: number;
   } | null>(null);
 
-  const [cafes, setCafes] = useState<Cafe[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [cafes, setCafes] = useState<Cafe[]>(allCafes);
+  const [loading, setLoading] = useState(false);
 
   const tabFade     = useRef(new Animated.Value(1)).current;
   const detailSlide = useRef(new Animated.Value(height)).current;
@@ -265,9 +277,9 @@ export default function ExploreScreen() {
         isOpen: c.isOpen ?? false,
       }));
 
-      console.log("CLEANED CAFES:", cleaned);
-
-      setCafes(cleaned);
+      if (cleaned.length > 0) {
+        setCafes([...allCafes, ...cleaned]);
+      }
     } catch (err) {
       console.error("Error fetching cafes:", err);
     } finally {
@@ -384,7 +396,7 @@ export default function ExploreScreen() {
   //     prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
   //   );
 
-  const toggleSave = (id: number) =>
+  const toggleSave = (id: string | number) =>
     setSaved((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
 
   const todayKey = DAYS_SHORT[new Date().getDay()];
@@ -467,7 +479,8 @@ export default function ExploreScreen() {
         ))}
       </Animated.View>
 
-      {/* ── BOTTOM SHEET (list) ─────────────────────────────── */}
+      {/* ── BOTTOM SHEET + NAV (stacked, not both absolute) ── */}
+      <View style={styles.bottomWrapper}>
       <View style={styles.sheet}>
         <View style={styles.handle} />
 
@@ -487,7 +500,7 @@ export default function ExploreScreen() {
           )}
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: scale(16) }}>
           <View style={styles.listHeader}>
             <Text style={styles.listTitle}>Cafes Near You</Text>
             <View style={styles.listCountChip}>
@@ -534,14 +547,14 @@ export default function ExploreScreen() {
             <TouchableOpacity
               key={cafe.id}
               style={styles.cafeCard}
-              onPress={() => navigation.navigate("CafeProfile", { cafe })}
+              onPress={() => openDetail(cafe)}
               activeOpacity={0.9}
             >
               <Image
                 source={
                   cafe.image_url
                     ? { uri: cafe.image_url }
-                    : require("../assets/cafe-1.jpg")
+                    : (cafe.image ?? require("../assets/cafe-1.jpg"))
                 }
                 style={styles.cafeCardImage}
                 resizeMode="cover"
@@ -551,10 +564,12 @@ export default function ExploreScreen() {
                   {cafe.isOpen ? "Open" : "Closed"}
                 </Text>
               </View>
-              <View style={styles.cardRatingBadge}>
-                <Star size={11} color="#D4A373" fill="#D4A373" />
-                <Text style={styles.cardRatingText}>{cafe.rating}</Text>
-              </View>
+              {cafe.rating != null && (
+                <View style={styles.cardRatingBadge}>
+                  <Star size={11} color="#D4A373" fill="#D4A373" />
+                  <Text style={styles.cardRatingText}>{cafe.rating}</Text>
+                </View>
+              )}
               <View style={styles.cafeCardTextArea}>
                 <Text style={styles.cafeCardName}>{cafe.name}</Text>
                 <View style={styles.cafeCardMeta}>
@@ -566,9 +581,7 @@ export default function ExploreScreen() {
           ))}
         </ScrollView>
       </View>
-
-      <View style={styles.navWrapper}>
-        <BottomNav />
+      <BottomNav />
       </View>
 
       {/* ── CAFE DETAIL MODAL ───────────────────────────────── */}
@@ -585,7 +598,7 @@ export default function ExploreScreen() {
                 {/* ── Photo Carousel ── */}
                 <View style={styles.heroWrap}>
                   <FlatList
-                    data={selectedCafe.photos}
+                    data={selectedCafe.photos ?? (selectedCafe.image_url ? [{ uri: selectedCafe.image_url }] : [])}
                     horizontal
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
@@ -594,7 +607,7 @@ export default function ExploreScreen() {
                       setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / width));
                     }}
                     renderItem={({ item }) => (
-                      <Image source={item} style={styles.detailHero} resizeMode="cover" />
+                      <Image source={typeof item === "string" ? { uri: item } : item} style={styles.detailHero} resizeMode="cover" />
                     )}
                   />
 
@@ -608,9 +621,9 @@ export default function ExploreScreen() {
                   </View>
 
                   {/* Dot indicators */}
-                  {selectedCafe.photos.length > 1 && (
+                  {(selectedCafe.photos?.length ?? 0) > 1 && (
                     <View style={styles.photoDots}>
-                      {selectedCafe.photos.map((_, i) => (
+                      {selectedCafe.photos!.map((_, i) => (
                         <View key={i} style={[styles.photoDot, i === photoIndex && styles.photoDotActive]} />
                       ))}
                     </View>
@@ -628,21 +641,33 @@ export default function ExploreScreen() {
                   <View style={styles.nameRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.detailName}>{selectedCafe.name}</Text>
-                      <Text style={styles.detailCategory}>{selectedCafe.category}</Text>
+                      {selectedCafe.category ? (
+                        <Text style={styles.detailCategory}>{selectedCafe.category}</Text>
+                      ) : null}
                     </View>
-                    <View style={styles.ratingChip}>
-                      <Star size={13} color="#D4A373" fill="#D4A373" />
-                      <Text style={styles.ratingNum}>{selectedCafe.rating}</Text>
-                      <Text style={styles.ratingReviews}>({selectedCafe.reviews})</Text>
-                    </View>
+                    {selectedCafe.rating != null && (
+                      <View style={styles.ratingChip}>
+                        <Star size={13} color="#D4A373" fill="#D4A373" />
+                        <Text style={styles.ratingNum}>{selectedCafe.rating}</Text>
+                        {selectedCafe.reviews != null && (
+                          <Text style={styles.ratingReviews}>({selectedCafe.reviews})</Text>
+                        )}
+                      </View>
+                    )}
                   </View>
 
                   {/* ── Address + distance ── */}
-                  <View style={styles.addressRow}>
-                    <MapPin size={scale(13)} color="#D4A373" />
-                    <Text style={styles.addressText}>{selectedCafe.address}</Text>
-                    <Text style={styles.distancePill}>{selectedCafe.distance}</Text>
-                  </View>
+                  {(selectedCafe.address || selectedCafe.distance) ? (
+                    <View style={styles.addressRow}>
+                      <MapPin size={scale(13)} color="#D4A373" />
+                      {selectedCafe.address ? (
+                        <Text style={styles.addressText}>{selectedCafe.address}</Text>
+                      ) : null}
+                      {selectedCafe.distance ? (
+                        <Text style={styles.distancePill}>{selectedCafe.distance}</Text>
+                      ) : null}
+                    </View>
+                  ) : null}
 
                   {/* ── Quick action buttons ── */}
                   <View style={styles.actionsRow}>
@@ -669,23 +694,25 @@ export default function ExploreScreen() {
                   </View>
 
                   {/* ── Amenity chips ── */}
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={{ marginBottom: scale(20) }}
-                    contentContainerStyle={{ gap: scale(8) }}
-                  >
-                    {selectedCafe.amenities.map((a) => (
-                      <View key={a} style={styles.amenityChip}>
-                        <Text style={styles.amenityChipText}>{a}</Text>
-                      </View>
-                    ))}
-                    {selectedCafe.vibes.map((v) => (
-                      <View key={v} style={[styles.amenityChip, styles.vibeChip]}>
-                        <Text style={[styles.amenityChipText, { color: "#D4A373" }]}>{v}</Text>
-                      </View>
-                    ))}
-                  </ScrollView>
+                  {((selectedCafe.amenities?.length ?? 0) > 0 || (selectedCafe.vibes?.length ?? 0) > 0) && (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ marginBottom: scale(20) }}
+                      contentContainerStyle={{ gap: scale(8) }}
+                    >
+                      {(selectedCafe.amenities ?? []).map((a) => (
+                        <View key={a} style={styles.amenityChip}>
+                          <Text style={styles.amenityChipText}>{a}</Text>
+                        </View>
+                      ))}
+                      {(selectedCafe.vibes ?? []).map((v) => (
+                        <View key={v} style={[styles.amenityChip, styles.vibeChip]}>
+                          <Text style={[styles.amenityChipText, { color: "#D4A373" }]}>{v}</Text>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  )}
 
                   {/* ── Tabs ── */}
                   <View style={styles.tabRow}>
@@ -709,62 +736,82 @@ export default function ExploreScreen() {
                     {activeTab === "info" && (
                       <View>
                         {/* About */}
-                        <Text style={styles.sectionHeading}>About</Text>
-                        <Text style={styles.descriptionText}>{selectedCafe.description}</Text>
+                        {selectedCafe.description && (
+                          <>
+                            <Text style={styles.sectionHeading}>About</Text>
+                            <Text style={styles.descriptionText}>{selectedCafe.description}</Text>
+                          </>
+                        )}
 
                         {/* Hours */}
-                        <TouchableOpacity
-                          style={styles.hoursHeader}
-                          onPress={() => setHoursExpanded(!hoursExpanded)}
-                        >
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: scale(8) }}>
-                            <Clock size={scale(15)} color="#D4A373" />
-                            <Text style={styles.sectionHeading}>Hours</Text>
-                          </View>
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
-                            <Text style={styles.todayHoursPreview}>
-                              Today: {selectedCafe.fullHours[todayKey as keyof typeof selectedCafe.fullHours]}
-                            </Text>
-                            {hoursExpanded
-                              ? <ChevronUp size={scale(14)} color="#888" />
-                              : <ChevronDown size={scale(14)} color="#888" />
-                            }
-                          </View>
-                        </TouchableOpacity>
-
-                        {hoursExpanded && (
-                          <View style={styles.hoursGrid}>
-                            {Object.entries(selectedCafe.fullHours).map(([day, hrs]) => (
-                              <View key={day} style={[styles.hoursRow, day === todayKey && styles.hoursRowToday]}>
-                                <Text style={[styles.hoursDay, day === todayKey && styles.hoursDayToday]}>{day}</Text>
-                                <Text style={[styles.hoursTime, day === todayKey && styles.hoursTimeToday]}>{hrs}</Text>
+                        {selectedCafe.fullHours && (
+                          <>
+                            <TouchableOpacity
+                              style={styles.hoursHeader}
+                              onPress={() => setHoursExpanded(!hoursExpanded)}
+                            >
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: scale(8) }}>
+                                <Clock size={scale(15)} color="#D4A373" />
+                                <Text style={styles.sectionHeading}>Hours</Text>
                               </View>
-                            ))}
-                          </View>
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
+                                <Text style={styles.todayHoursPreview}>
+                                  Today: {selectedCafe.fullHours[todayKey as keyof typeof selectedCafe.fullHours]}
+                                </Text>
+                                {hoursExpanded
+                                  ? <ChevronUp size={scale(14)} color="#888" />
+                                  : <ChevronDown size={scale(14)} color="#888" />
+                                }
+                              </View>
+                            </TouchableOpacity>
+
+                            {hoursExpanded && (
+                              <View style={styles.hoursGrid}>
+                                {Object.entries(selectedCafe.fullHours).map(([day, hrs]) => (
+                                  <View key={day} style={[styles.hoursRow, day === todayKey && styles.hoursRowToday]}>
+                                    <Text style={[styles.hoursDay, day === todayKey && styles.hoursDayToday]}>{day}</Text>
+                                    <Text style={[styles.hoursTime, day === todayKey && styles.hoursTimeToday]}>{hrs}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            )}
+                          </>
                         )}
 
                         {/* Contact */}
-                        <Text style={[styles.sectionHeading, { marginTop: scale(16) }]}>Contact</Text>
-                        <View style={styles.contactCard}>
-                          <View style={styles.contactRow}>
-                            <Phone size={scale(15)} color="#D4A373" />
-                            <Text style={styles.contactText}>{selectedCafe.phone}</Text>
-                          </View>
-                          <View style={styles.contactRow}>
-                            <Globe size={scale(15)} color="#D4A373" />
-                            <Text style={styles.contactText}>{selectedCafe.website}</Text>
-                          </View>
-                          <View style={[styles.contactRow, { borderBottomWidth: 0 }]}>
-                            <Instagram size={scale(15)} color="#D4A373" />
-                            <Text style={styles.contactText}>{selectedCafe.instagram}</Text>
-                          </View>
-                        </View>
+                        {(selectedCafe.phone || selectedCafe.website || selectedCafe.instagram) && (
+                          <>
+                            <Text style={[styles.sectionHeading, { marginTop: scale(16) }]}>Contact</Text>
+                            <View style={styles.contactCard}>
+                              {selectedCafe.phone && (
+                                <View style={styles.contactRow}>
+                                  <Phone size={scale(15)} color="#D4A373" />
+                                  <Text style={styles.contactText}>{selectedCafe.phone}</Text>
+                                </View>
+                              )}
+                              {selectedCafe.website && (
+                                <View style={styles.contactRow}>
+                                  <Globe size={scale(15)} color="#D4A373" />
+                                  <Text style={styles.contactText}>{selectedCafe.website}</Text>
+                                </View>
+                              )}
+                              {selectedCafe.instagram && (
+                                <View style={[styles.contactRow, { borderBottomWidth: 0 }]}>
+                                  <Instagram size={scale(15)} color="#D4A373" />
+                                  <Text style={styles.contactText}>{selectedCafe.instagram}</Text>
+                                </View>
+                              )}
+                            </View>
+                          </>
+                        )}
 
                         {/* Price */}
-                        <View style={styles.priceRow}>
-                          <Text style={styles.priceLabel}>Price range</Text>
-                          <Text style={styles.priceValue}>{selectedCafe.priceRange}</Text>
-                        </View>
+                        {selectedCafe.priceRange && (
+                          <View style={styles.priceRow}>
+                            <Text style={styles.priceLabel}>Price range</Text>
+                            <Text style={styles.priceValue}>{selectedCafe.priceRange}</Text>
+                          </View>
+                        )}
                       </View>
                     )}
 
@@ -798,17 +845,19 @@ export default function ExploreScreen() {
                     {activeTab === "reviews" && (
                       <View style={styles.tabContent}>
                         {/* Rating summary */}
-                        <View style={styles.ratingSummary}>
-                          <Text style={styles.ratingSummaryBig}>{selectedCafe.rating}</Text>
-                          <View>
-                            <View style={{ flexDirection: "row", gap: scale(3), marginBottom: scale(4) }}>
-                              {Array.from({ length: 5 }).map((_, j) => (
-                                <Star key={j} size={scale(14)} color="#D4A373" fill={j < Math.round(selectedCafe.rating) ? "#D4A373" : "transparent"} />
-                              ))}
+                        {selectedCafe.rating != null && (
+                          <View style={styles.ratingSummary}>
+                            <Text style={styles.ratingSummaryBig}>{selectedCafe.rating}</Text>
+                            <View>
+                              <View style={{ flexDirection: "row", gap: scale(3), marginBottom: scale(4) }}>
+                                {Array.from({ length: 5 }).map((_, j) => (
+                                  <Star key={j} size={scale(14)} color="#D4A373" fill={j < Math.round(selectedCafe.rating!) ? "#D4A373" : "transparent"} />
+                                ))}
+                              </View>
+                              <Text style={styles.ratingSummaryCount}>{selectedCafe.reviews ?? 0} reviews</Text>
                             </View>
-                            <Text style={styles.ratingSummaryCount}>{selectedCafe.reviews} reviews</Text>
                           </View>
-                        </View>
+                        )}
 
                         <Text style={styles.sectionHeading}>Recent Reviews</Text>
                         {[
@@ -861,7 +910,7 @@ const styles = StyleSheet.create({
   roadHMaj: { position: "absolute", left: 0, right: 0, height: scale(7), backgroundColor: "#FDFAF6" },
   roadVMaj: { position: "absolute", top: 0, bottom: 0, width: scale(7), backgroundColor: "#FDFAF6" },
 
-  navWrapper: { position: "absolute", bottom: 0, left: 0, right: 0 },
+  bottomWrapper: { position: "absolute", bottom: 0, left: 0, right: 0 },
 
   youAreHere: {
     position: "absolute", top: "47%", left: "50%",
@@ -893,7 +942,6 @@ const styles = StyleSheet.create({
   pinText: { color: "#FFF", fontSize: moderateScale(11), fontWeight: "700" },
 
   sheet: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
     height: SHEET_HEIGHT, backgroundColor: "#FFF",
     borderTopLeftRadius: scale(28), borderTopRightRadius: scale(28),
     shadowColor: "#000", shadowOffset: { width: 0, height: -4 },

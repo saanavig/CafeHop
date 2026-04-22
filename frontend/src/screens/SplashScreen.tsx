@@ -1,24 +1,17 @@
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { PlayfairDisplay_700Bold, useFonts } from "@expo-google-fonts/playfair-display";
 import { StyleSheet, Text, View } from "react-native";
 import { moderateScale, scale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
 import { Coffee } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-// frontend/src/screens/SplashScreen.tsx
 import React from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 
 export default function SplashScreen() {
   const navigation = useNavigation<any>();
-  const [fontsLoaded] = useFonts({
-    PlayfairDisplay_700Bold,
-  });
-
-  if (!fontsLoaded) {
-    return null; // or a loading screen
-  }
+  const insets = useSafeAreaInsets();
 
   return (
     <LinearGradient
@@ -47,7 +40,7 @@ export default function SplashScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: scale(24) },
+  container: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: scale(24), paddingBottom: scale(24) },
   content: { maxWidth: 480, alignItems: "center" },
   logoContainer: {
     width: scale(80),

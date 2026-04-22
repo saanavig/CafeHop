@@ -1,6 +1,4 @@
-#!/bin/sh
-'''exec' "/Users/saanavigoyal/Desktop/Spring 2026 Classes/CSc 59866/CafeHop/cafehop-connect-main/backend/venv/bin/python" "$0" "$@"
-' '''
+#!/Users/sehrabrar/Desktop/CafeHop/backend/venv/bin/python3.12
 # -*- coding: utf-8 -*-
 import re
 import sys
