@@ -81,7 +81,7 @@ export default function AnalyticsScreen() {
   const fetchAnalytics = async (selectedPeriod: string) => {
     try {
       const res = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/analytics/overview?cafe_id=1&period=${selectedPeriod}`
+        `${process.env.EXPO_PUBLIC_API_URL}/api/overview?cafe_id=1&period=${selectedPeriod}`
       );
       const data = await res.json();
 
