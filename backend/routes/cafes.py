@@ -210,3 +210,77 @@ def is_cafe_open(hours):
             if h["open_time"] <= current_time <= h["close_time"]:
                 return True
     return False
+
+# comments 
+
+@cafe_bp.route("/cafes/<int:cafe_id>/comments", methods=["GET"])
+def get_comments(cafe_id):
+    try:
+        response = supabase.table("comments") \
+            .select("id, content, created_at, user_id, profiles(username)") \
+            .eq("cafe_id", cafe_id) \
+            .order("created_at", desc=True) \
+            .execute()
+
+        return jsonify(response.data), 200
+
+    except Exception as e:
+        print("Error fetching comments:", str(e))
+        return jsonify({"error": "Failed to fetch comments"}), 500
+    
+@cafe_bp.route("/cafes/<int:cafe_id>/comments", methods=["POST"])
+@require_auth
+def create_comment(cafe_id):
+    data = request.get_json()
+    user_id = g.user["id"]
+
+    content = data.get("content")
+
+    if not content or content.strip() == "":
+        return jsonify({"error": "Comment cannot be empty"}), 400
+
+    try:
+        response = supabase.table("comments").insert({
+            "cafe_id": cafe_id,
+            "user_id": user_id,
+            "content": content.strip()
+        }).execute()
+
+        return jsonify(response.data[0]), 201
+
+    except Exception as e:
+        print("Error creating comment:", str(e))
+        return jsonify({"error": "Failed to create comment"}), 500
+    
+@cafe_bp.route("/comments/<int:comment_id>", methods=["DELETE"])
+@require_auth
+def delete_comment(comment_id):
+    user_id = g.user["id"]
+
+    try:
+        # Step 1: get comment
+        comment_res = supabase.table("comments") \
+            .select("*") \
+            .eq("id", comment_id) \
+            .execute()
+
+        if not comment_res.data:
+            return jsonify({"error": "Comment not found"}), 404
+
+        comment = comment_res.data[0]
+
+        # Step 2: check ownership
+        if comment["user_id"] != user_id:
+            return jsonify({"error": "Not authorized"}), 403
+
+        # Step 3: delete
+        supabase.table("comments") \
+            .delete() \
+            .eq("id", comment_id) \
+            .execute()
+
+        return jsonify({"message": "Comment deleted"}), 200
+
+    except Exception as e:
+        print("Error deleting comment:", str(e))
+        return jsonify({"error": "Failed to delete comment"}), 500
