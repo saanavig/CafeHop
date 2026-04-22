@@ -72,7 +72,13 @@ def attach_review_summaries_to_recommendations(recommendations, cafe_review_text
         cafe_name = cafe.get("name")
         review_rows = cafe_review_text_map.get(cafe_id, [])
 
-        rec["review_summary"] = summarize_cafe_reviews_with_gemini(cafe_name, review_rows)
+        try:
+            summary = summarize_cafe_reviews_with_gemini(cafe_name, review_rows)
+        except Exception as e:
+            print("Gemini error:", e)
+            summary = None   # fallback
+
+        rec["review_summary"] = summary
         rec["review_samples"] = review_rows
         enriched.append(rec)
 
