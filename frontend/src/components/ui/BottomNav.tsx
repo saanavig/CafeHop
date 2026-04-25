@@ -90,13 +90,16 @@ const BottomNav: React.FC = () => {
           return (
             <Pressable
               key={item.label}
-              style={[styles.navItem, isActive && styles.activeNavItem]}
+              style={styles.navItem}
               onPress={() => navigation.navigate(item.route)}
             >
+              <View style={styles.dotRow}>
+                {isActive && <View style={styles.activeDot} />}
+              </View>
               <Icon
-                size={20}
-                color={isActive ? "#FFF" : "#888"}
-                strokeWidth={isActive ? 2.5 : 2}
+                size={scale(20)}
+                color={isActive ? "#D4A373" : "#AAA"}
+                strokeWidth={isActive ? 2.5 : 1.8}
               />
               <Text style={[styles.navLabel, isActive && styles.activeNavLabel]}>
                 {item.label}
@@ -117,6 +120,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
     borderTopColor: "#E8DFD5",
+    paddingTop: scale(6),
     paddingBottom: scale(16),
     alignItems: "center",
   },
@@ -156,22 +160,28 @@ const styles = StyleSheet.create({
   },
   navItem: {
     alignItems: "center",
-    paddingVertical: scale(8),
+    paddingVertical: scale(4),
     paddingHorizontal: scale(12),
-    borderRadius: scale(16),
-    gap: scale(4),
+    gap: scale(3),
   },
-  activeNavItem: {
+  dotRow: {
+    height: scale(5),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  activeDot: {
+    width: scale(5),
+    height: scale(5),
+    borderRadius: scale(3),
     backgroundColor: "#D4A373",
   },
   navLabel: {
-    fontSize: moderateScale(11),
-    color: "#888",
-    marginTop: scale(2),
+    fontSize: moderateScale(10),
+    color: "#AAA",
     fontWeight: "500",
   },
   activeNavLabel: {
-    color: "#FFFFFF",
-    fontWeight: "600",
+    color: "#D4A373",
+    fontWeight: "700",
   },
 });
