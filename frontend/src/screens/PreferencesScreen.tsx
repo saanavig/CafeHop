@@ -1,18 +1,19 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
-  View,
-  Text,
+  Dimensions,
+  Pressable,
   ScrollView,
   StyleSheet,
-  Pressable,
-  Dimensions,
   Switch,
+  Text,
+  View,
 } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import { ArrowLeft, Bell, Moon, Lock } from "lucide-react-native";
+import { ArrowLeft, Bell, Lock, Moon, Wifi } from "lucide-react-native";
+import { moderateScale, scale } from "../utils/responsive";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+
 import BottomNav from "../components/ui/BottomNav";
-import Button from "../components/ui/Button";
-import { scale, moderateScale } from "../utils/responsive";
+import { supabase } from "../api/supabaseClient";
 
 const PreferencesScreen = () => {
   const navigation = useNavigation<any>();
@@ -22,27 +23,42 @@ const PreferencesScreen = () => {
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
 
-  const [settings, setSettings] = useState({
-    notifications: true,
-    darkMode: false,
-  });
+  const [notifications, setNotifications] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
+  const [privateAccount, setPrivateAccount] = useState(false);
+  const [twoFactorAuth, setTwoFactorAuth] = useState(false);
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [wantsWifi, setWantsWifi] = useState(false);
 
-  const [privacy, setPrivacy] = useState({
-    privateAccount: false,
-    twoFactorAuth: false,
-    emailNotifications: true,
-  });
+  useFocusEffect(
+    useCallback(() => {
+      const loadPrefs = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase
+          .from("user_preferences")
+          .select("wants_wifi")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (data) {
+          setWantsWifi(data.wants_wifi ?? false);
+        }
+      };
+      loadPrefs();
+    }, [])
+  );
 
-  const handleNotificationsToggle = () => {
-    setSettings({ ...settings, notifications: !settings.notifications });
+  const persistPref = async (key: string, value: boolean) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase
+      .from("user_preferences")
+      .upsert({ user_id: user.id, [key]: value }, { onConflict: "user_id" });
   };
 
-  const handleDarkModeToggle = () => {
-    setSettings({ ...settings, darkMode: !settings.darkMode });
-  };
-
-  const handlePrivacyToggle = (key: keyof typeof privacy) => {
-    setPrivacy({ ...privacy, [key]: !privacy[key] });
+  const handleWifiToggle = (val: boolean) => {
+    setWantsWifi(val);
+    persistPref("wants_wifi", val);
   };
 
   return (
@@ -53,22 +69,18 @@ const PreferencesScreen = () => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Pressable
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
             <ArrowLeft size={24} color="#333" />
           </Pressable>
           <Text style={styles.headerTitle}>Preferences</Text>
         </View>
 
-        {/* Content */}
         <View style={[styles.content, { width: contentWidth }]}>
-          {/* General Preferences Section */}
+
+          {/* General Section */}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>General</Text>
             <View style={styles.settingsContainer}>
-              {/* Notifications Toggle */}
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <View style={styles.iconBg}>
@@ -80,13 +92,12 @@ const PreferencesScreen = () => {
                   </View>
                 </View>
                 <Switch
-                  value={settings.notifications}
-                  onValueChange={handleNotificationsToggle}
+                  value={notifications}
+                  onValueChange={setNotifications}
                   trackColor={{ false: "#E8DFD5", true: "#D4A373" }}
                 />
               </View>
 
-              {/* Dark Mode Toggle */}
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <View style={styles.iconBg}>
@@ -98,19 +109,43 @@ const PreferencesScreen = () => {
                   </View>
                 </View>
                 <Switch
-                  value={settings.darkMode}
-                  onValueChange={handleDarkModeToggle}
+                  value={darkMode}
+                  onValueChange={setDarkMode}
                   trackColor={{ false: "#E8DFD5", true: "#D4A373" }}
                 />
               </View>
             </View>
           </View>
 
+          {/* Cafe Preferences Section (customer only) */}
+          {role === "customer" && (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Cafe Preferences</Text>
+              <View style={styles.settingsContainer}>
+                <View style={styles.settingRow}>
+                  <View style={styles.settingLeft}>
+                    <View style={styles.iconBg}>
+                      <Wifi size={18} color="#D4A373" />
+                    </View>
+                    <View>
+                      <Text style={styles.settingTitle}>Wi-Fi Required</Text>
+                      <Text style={styles.settingDesc}>Only show cafes with Wi-Fi</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={wantsWifi}
+                    onValueChange={handleWifiToggle}
+                    trackColor={{ false: "#E8DFD5", true: "#D4A373" }}
+                  />
+                </View>
+              </View>
+            </View>
+          )}
+
           {/* Privacy & Security Section */}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Privacy & Security</Text>
             <View style={styles.settingsContainer}>
-              {/* Private Account */}
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <View style={styles.iconBg}>
@@ -122,13 +157,12 @@ const PreferencesScreen = () => {
                   </View>
                 </View>
                 <Switch
-                  value={privacy.privateAccount}
-                  onValueChange={() => handlePrivacyToggle("privateAccount")}
+                  value={privateAccount}
+                  onValueChange={setPrivateAccount}
                   trackColor={{ false: "#E8DFD5", true: "#D4A373" }}
                 />
               </View>
 
-              {/* Two-Factor Auth */}
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <View style={styles.iconBg}>
@@ -140,14 +174,13 @@ const PreferencesScreen = () => {
                   </View>
                 </View>
                 <Switch
-                  value={privacy.twoFactorAuth}
-                  onValueChange={() => handlePrivacyToggle("twoFactorAuth")}
+                  value={twoFactorAuth}
+                  onValueChange={setTwoFactorAuth}
                   trackColor={{ false: "#E8DFD5", true: "#D4A373" }}
                 />
               </View>
 
-              {/* Email Notifications */}
-              <View style={styles.settingRow}>
+              <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
                 <View style={styles.settingLeft}>
                   <View style={styles.iconBg}>
                     <Bell size={18} color="#D4A373" />
@@ -158,45 +191,33 @@ const PreferencesScreen = () => {
                   </View>
                 </View>
                 <Switch
-                  value={privacy.emailNotifications}
-                  onValueChange={() => handlePrivacyToggle("emailNotifications")}
+                  value={emailNotifications}
+                  onValueChange={setEmailNotifications}
                   trackColor={{ false: "#E8DFD5", true: "#D4A373" }}
                 />
               </View>
             </View>
           </View>
 
-          {/* Footer */}
           <Text style={styles.footer}>CafeHop v1.0.0</Text>
         </View>
       </ScrollView>
 
-      {/* Bottom Nav */}
       <BottomNav />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F7F3F0",
-  },
-  scrollContent: {
-    paddingTop: scale(16),
-    paddingBottom: scale(100),
-    alignItems: "center",
-  },
+  container: { flex: 1, backgroundColor: "#F7F3F0" },
+  scrollContent: { paddingTop: scale(16), paddingBottom: scale(100), alignItems: "center" },
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: scale(16),
     marginBottom: scale(24),
   },
-  backButton: {
-    padding: scale(8),
-    marginRight: scale(12),
-  },
+  backButton: { padding: scale(8), marginRight: scale(12) },
   headerTitle: {
     fontSize: moderateScale(20),
     fontWeight: "600",
@@ -204,13 +225,8 @@ const styles = StyleSheet.create({
     marginLeft: scale(8),
     color: "#1A1A1A",
   },
-  content: {
-    alignSelf: "center",
-    paddingHorizontal: scale(16),
-  },
-  section: {
-    marginBottom: scale(24),
-  },
+  content: { alignSelf: "center", paddingHorizontal: scale(16) },
+  section: { marginBottom: scale(24) },
   sectionLabel: {
     fontSize: moderateScale(12),
     fontWeight: "600",
@@ -235,12 +251,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E8DFD5",
   },
-  settingLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(12),
-    flex: 1,
-  },
+  settingLeft: { flexDirection: "row", alignItems: "center", gap: scale(12), flex: 1 },
   iconBg: {
     width: scale(40),
     height: scale(40),
@@ -249,22 +260,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  settingTitle: {
-    fontSize: moderateScale(14),
-    fontWeight: "600",
-    color: "#1A1A1A",
-    marginBottom: scale(2),
-  },
-  settingDesc: {
-    fontSize: moderateScale(12),
-    color: "#888",
-  },
-  footer: {
-    textAlign: "center",
-    fontSize: moderateScale(12),
-    color: "#888",
-    marginTop: scale(24),
-  },
+  settingTitle: { fontSize: moderateScale(14), fontWeight: "600", color: "#1A1A1A", marginBottom: scale(2) },
+  settingDesc: { fontSize: moderateScale(12), color: "#888" },
+  footer: { textAlign: "center", fontSize: moderateScale(12), color: "#888", marginTop: scale(24) },
 });
 
 export default PreferencesScreen;

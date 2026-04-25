@@ -206,6 +206,10 @@ export default function ExploreScreen() {
     // frontend-only / legacy static fields
     pin?: { x: number; y: number };
     rating?: number;
+    reviews?: number;
+    category?: string;
+    amenities?: string[];
+    photos?: any[];
     vibes?: string[];
     distance?: string;
   };
@@ -254,9 +258,11 @@ export default function ExploreScreen() {
     })
   ).current;
 
-  // Pin pulse
-  const pulseScales  = useRef(allCafes.map(() => new Animated.Value(1))).current;
-  const pulseOpacity = useRef(allCafes.map(() => new Animated.Value(0.6))).current;
+  // Pin pulse — pre-allocate a pool large enough for any realistic cafe count
+  const MAX_PINS = 60;
+  const pulseScales  = useRef(Array.from({ length: MAX_PINS }, () => new Animated.Value(1))).current;
+  const pulseOpacity = useRef(Array.from({ length: MAX_PINS }, () => new Animated.Value(0.6))).current;
+  const pinAnimRefs  = useRef<Animated.CompositeAnimation[]>([]);
 
   useEffect(() => {
     fetchCafes();
@@ -385,10 +391,13 @@ export default function ExploreScreen() {
   }, []);
 
   useEffect(() => {
-    allCafes.forEach((_, i) => {
+    pinAnimRefs.current.forEach((a) => a.stop());
+    pinAnimRefs.current = [];
+    const count = Math.min(cafes.length, MAX_PINS);
+    for (let i = 0; i < count; i++) {
       const loop = Animated.loop(
         Animated.sequence([
-          Animated.delay(i * 600),
+          Animated.delay((i % 10) * 400),
           Animated.parallel([
             Animated.timing(pulseScales[i],  { toValue: 2.2, duration: 1100, useNativeDriver: true }),
             Animated.timing(pulseOpacity[i], { toValue: 0,   duration: 1100, useNativeDriver: true }),
@@ -400,8 +409,9 @@ export default function ExploreScreen() {
         ])
       );
       loop.start();
-    });
-  }, []);
+      pinAnimRefs.current.push(loop);
+    }
+  }, [cafes.length]);
 
   const mergedCafes = cafes.map((cafe) => ({
     ...cafe,
@@ -647,7 +657,7 @@ export default function ExploreScreen() {
           {fetchError && (
             <View style={styles.errorBanner}>
               <Text style={styles.errorBannerText}>Couldn't load cafes</Text>
-              <TouchableOpacity onPress={fetchCafes} style={styles.retryBtn}>
+              <TouchableOpacity onPress={() => fetchCafes()} style={styles.retryBtn}>
                 <Text style={styles.retryBtnText}>Retry</Text>
               </TouchableOpacity>
             </View>
@@ -750,7 +760,7 @@ export default function ExploreScreen() {
                   {/* Dot indicators */}
                   {(selectedCafe.photos?.length ?? 0) > 1 && (
                     <View style={styles.photoDots}>
-                      {(selectedCafe.photos ?? []).map((_, i) => (
+                      {(selectedCafe.photos ?? []).map((_: any, i: number) => (
                         <View key={i} style={[styles.photoDot, i === photoIndex && styles.photoDotActive]} />
                       ))}
                     </View>
@@ -817,7 +827,7 @@ export default function ExploreScreen() {
                     style={{ marginBottom: scale(20) }}
                     contentContainerStyle={{ gap: scale(8) }}
                   >
-                    {(selectedCafe.amenities ?? []).map((a) => (
+                    {(selectedCafe.amenities ?? []).map((a: string) => (
                       <View key={a} style={styles.amenityChip}>
                         <Text style={styles.amenityChipText}>{a}</Text>
                       </View>
