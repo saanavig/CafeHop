@@ -87,6 +87,8 @@ export default function RewardsScreen({ navigation }) {
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
   const [earnedPoints, setEarnedPoints] = useState(0);
+  const [tier, setTier] = useState("bronze");
+  const [catalogRewards, setCatalogRewards] = useState<Reward[]>([]);
 
   // Entry animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -131,6 +133,36 @@ export default function RewardsScreen({ navigation }) {
     }
   };
 
+  const fetchTierAndCatalog = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user.id;
+      if (!userId) return;
+
+      const [{ data: loyaltyData }, { data: catalogData }] = await Promise.all([
+        supabase.from("loyalty_accounts").select("tier").eq("user_id", userId).single(),
+        supabase.from("rewards_catalog").select("id, name, description, points_required").eq("active", true).order("points_required"),
+      ]);
+
+      if (loyaltyData?.tier) setTier(loyaltyData.tier);
+
+      if (catalogData && catalogData.length > 0) {
+        setCatalogRewards(
+          catalogData.map((r: any, i: number) => ({
+            id: i + 1,
+            title: r.name,
+            cafe: "Any participating cafe",
+            points: r.points_required,
+            image: require("../assets/latte-art.jpg"),
+            popular: i === 0,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error("fetchTierAndCatalog error:", err);
+    }
+  };
+
   const fetchPoints = async () => {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -153,6 +185,7 @@ export default function RewardsScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       fetchPoints();
+      fetchTierAndCatalog();
     }, [])
   );
 
@@ -379,14 +412,25 @@ export default function RewardsScreen({ navigation }) {
           </View>
 
           {/* Rewards Card */}
-          <RewardsCard
-            points={points}
-            status="EXPLORER"
-            nextReward={2000}
-            description="Earn points and unlock perks"
-            role={role}
-            onScan={() => setShowScan(true)}
-          />
+          {(() => {
+            const TIER_MAP: Record<string, { label: string; nextThreshold: number; themeColor: "caramel" | "gold" }> = {
+              bronze: { label: "BRONZE", nextThreshold: 1000, themeColor: "caramel" },
+              silver: { label: "SILVER", nextThreshold: 3000, themeColor: "caramel" },
+              gold:   { label: "GOLD",   nextThreshold: 5000, themeColor: "gold" },
+            };
+            const tierInfo = TIER_MAP[tier] ?? TIER_MAP.bronze;
+            return (
+              <RewardsCard
+                points={points}
+                status={tierInfo.label}
+                nextReward={tierInfo.nextThreshold}
+                themeColor={tierInfo.themeColor}
+                description="Earn points and unlock perks"
+                role={role}
+                onScan={() => setShowScan(true)}
+              />
+            );
+          })()}
           <Button
             title="Upload Receipt"
             onPress={() => navigation.navigate("ReceiptUpload")}
@@ -396,7 +440,7 @@ export default function RewardsScreen({ navigation }) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Available Rewards</Text>
 
-            {availableRewards.map((reward) => {
+            {(catalogRewards.length > 0 ? catalogRewards : availableRewards).map((reward) => {
               const canAfford = points >= reward.points;
               return (
                 <View key={reward.id} style={styles.rewardCard}>

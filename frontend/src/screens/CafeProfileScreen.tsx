@@ -21,7 +21,7 @@ const SCREEN_WIDTH = deviceWidth;
 
     type Comment = { text: string };
     type Post = {
-    id: number;
+    id: string | number;
     images: string[];
     likes: number;
     liked: boolean;
@@ -46,6 +46,7 @@ export default function CafeProfileScreen() {
     const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
     const [formError, setFormError] = useState("");
     const [addingItem, setAddingItem] = useState(false);
+    const [newDescription, setNewDescription] = useState("");
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     const [editName, setEditName] = useState("");
     const [editPrice, setEditPrice] = useState("");
@@ -184,17 +185,34 @@ export default function CafeProfileScreen() {
         setAddingItemCategory('GLOBAL');
     };
 
-    const [posts, setPosts] = useState<Post[]>(
-        Array.from({ length: 9 }).map((_, i) => ({
-        id: i,
-        images: [`https://picsum.photos/seed/cafe${i}/400`],
-        likes: Math.floor(Math.random() * 200),
-        liked: false,
-        comments: [{ text: "Looks amazing!" }],
-        caption: "Cozy vibes ☕",
-        location: "Brooklyn, NY",
-        }))
-    );
+    const [posts, setPosts] = useState<Post[]>([]);
+
+    useEffect(() => {
+        if (!cafeId) return;
+        const fetchPosts = async () => {
+            const { data } = await supabase
+                .from("posts")
+                .select("id, caption, created_at, post_media(id, file_url, file_type)")
+                .eq("cafe_id", cafeId)
+                .order("created_at", { ascending: false });
+            if (data) {
+                const mapped = data
+                    .map((p: any) => ({
+                        id: p.id,
+                        images: (p.post_media ?? [])
+                            .filter((m: any) => m.file_type === "image" && m.file_url)
+                            .map((m: any) => m.file_url as string),
+                        likes: 0,
+                        liked: false,
+                        comments: [],
+                        caption: p.caption ?? "",
+                    }))
+                    .filter((p: any) => p.images.length > 0);
+                setPosts(mapped);
+            }
+        };
+        fetchPosts();
+    }, [cafeId]);
 
     const handleCreateCategory = async () => {
     const newCategory = "New Category";
@@ -613,6 +631,16 @@ export default function CafeProfileScreen() {
                             style={inputStyle}
                             />
 
+                            {/* DESCRIPTION */}
+                            <TextInput
+                            placeholder="Description (optional)"
+                            value={newDescription}
+                            onChangeText={setNewDescription}
+                            style={[inputStyle, { minHeight: verticalScale(60) }]}
+                            multiline
+                            textAlignVertical="top"
+                            />
+
                             {/* PRICE */}
                             <TextInput
                                 placeholder="Price"
@@ -811,6 +839,7 @@ export default function CafeProfileScreen() {
                                         price: newPrice,
                                         category: newCategory,
                                         image_url: imageUrl,
+                                        description: newDescription || null,
                                         },
                                     ])
                                     .select();
@@ -822,6 +851,7 @@ export default function CafeProfileScreen() {
                                     setNewName("");
                                     setNewPrice("");
                                     setNewCategory("");
+                                    setNewDescription("");
                                     setNewImage(null);
                                     setAddingItemCategory(null);
                                 } catch {
@@ -982,12 +1012,17 @@ export default function CafeProfileScreen() {
                                                     />
                                                 </TouchableOpacity>
 
-                                                    <Text style={styles.menuItemName}>{item.name}</Text>
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={styles.menuItemName}>{item.name}</Text>
+                                                        {item.description ? (
+                                                            <Text style={{ fontSize: moderateScale(11), color: "#888", marginTop: scale(2) }}>
+                                                                {item.description}
+                                                            </Text>
+                                                        ) : null}
+                                                    </View>
                                                 </View>
 
                                                 {/* RIGHT SIDE: PRICE */}
-                                                <View style={{ flex: 1 }} />
-
                                                 <Text style={styles.menuItemPrice}>${item.price}</Text>
                                             </View>
                                             )}
