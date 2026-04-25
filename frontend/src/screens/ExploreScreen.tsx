@@ -1,10 +1,12 @@
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   FlatList,
   Image,
   Modal,
   PanResponder,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -170,30 +172,44 @@ export default function ExploreScreen() {
   const navigation = useNavigation<any>();
 
   const [search, setSearch]               = useState("");
+  const [inputText, setInputText]         = useState("");
+  const [refreshing, setRefreshing]       = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedCafe, setSelectedCafe] = useState<Cafe | null>(null);
   // const [activeFilters, setActiveFilters] = useState<string[]>(["open"]);
   const [activeTab, setActiveTab]         = useState<"info" | "rewards" | "reviews">("info");
   const [detailVisible, setDetailVisible] = useState(false);
   const [photoIndex, setPhotoIndex]       = useState(0);
   const [hoursExpanded, setHoursExpanded] = useState(false);
-  const [saved, setSaved]                 = useState<number[]>([]);
+  const [saved, setSaved]                 = useState<string[]>([]);
   const [selectedFilter, setSelectedFilter] = useState("All");
 
   type Cafe = {
     id: string;
     name: string;
 
-    // backend
+    // backend — cafes table
     attributes?: string[];
     price_level?: number;
     isOpen?: boolean;
     latitude?: number;
     longitude?: number;
     image_url?: string;
+    contact_phone?: string;
+    website_url?: string;
+    instagram_url?: string;
+    facebook_url?: string;
+    description?: string;
+    address?: string;
+    active?: boolean;
 
-    // frontend-only
+    // frontend-only / legacy static fields
     pin?: { x: number; y: number };
     rating?: number;
+    reviews?: number;
+    category?: string;
+    amenities?: string[];
+    photos?: any[];
     vibes?: string[];
     distance?: string;
   };
@@ -205,6 +221,13 @@ export default function ExploreScreen() {
 
   const [cafes, setCafes] = useState<Cafe[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [cafeHours, setCafeHours]         = useState<Record<string, string>>({});
+  const [cafeReviews, setCafeReviews]     = useState<any[]>([]);
+  const [cafeRewards, setCafeRewards]     = useState<any[]>([]);
+  const [cafeAiProfile, setCafeAiProfile] = useState<{ vibe_summary?: string; best_for?: string[] } | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const tabFade     = useRef(new Animated.Value(1)).current;
   const detailSlide = useRef(new Animated.Value(height)).current;
@@ -235,44 +258,112 @@ export default function ExploreScreen() {
     })
   ).current;
 
-  // Pin pulse
-  const pulseScales  = useRef(allCafes.map(() => new Animated.Value(1))).current;
-  const pulseOpacity = useRef(allCafes.map(() => new Animated.Value(0.6))).current;
+  // Pin pulse — pre-allocate a pool large enough for any realistic cafe count
+  const MAX_PINS = 60;
+  const pulseScales  = useRef(Array.from({ length: MAX_PINS }, () => new Animated.Value(1))).current;
+  const pulseOpacity = useRef(Array.from({ length: MAX_PINS }, () => new Animated.Value(0.6))).current;
+  const pinAnimRefs  = useRef<Animated.CompositeAnimation[]>([]);
 
   useEffect(() => {
     fetchCafes();
   }, []);
 
-  const fetchCafes = async () => {
+  useEffect(() => {
+    const init = async () => {
+      const { data } = await supabase.auth.getUser();
+      const uid = data.user?.id ?? null;
+      setCurrentUserId(uid);
+      if (!uid) return;
+      const { data: savedData } = await supabase
+        .from("user_cafe_interactions")
+        .select("cafe_id")
+        .eq("user_id", uid)
+        .eq("interaction_type", "saved");
+      if (savedData) setSaved(savedData.map((d: any) => d.cafe_id));
+    };
+    init();
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchCafes(true);
+    setRefreshing(false);
+  };
+
+  const fetchCafes = async (silent = false) => {
+    setFetchError(false);
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(`${API_URL}/api/cafe/all`);
+      if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-      console.log("FILTER INPUT:", data);
 
       const cleaned = data.map((c: any) => ({
         ...c,
-
         attributes: Array.isArray(c.attributes)
           ? c.attributes.map((a: string) => a.toLowerCase())
           : typeof c.attributes === "string"
           ? c.attributes.toLowerCase().split(",").map((a: string) => a.trim())
           : [],
-
         price_level: c.price_level ? Number(c.price_level) : null,
         latitude: c.latitude ? Number(c.latitude) : null,
         longitude: c.longitude ? Number(c.longitude) : null,
-
         isOpen: c.isOpen ?? false,
       }));
-
-      console.log("CLEANED CAFES:", cleaned);
 
       setCafes(cleaned);
     } catch (err) {
       console.error("Error fetching cafes:", err);
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchCafeDetail = async (cafeId: string) => {
+    setDetailLoading(true);
+    setCafeHours({});
+    setCafeReviews([]);
+    setCafeRewards([]);
+    setCafeAiProfile(null);
+    try {
+      const formatTime = (t: string) => {
+        const [h, m] = t.split(":").map(Number);
+        return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+      };
+      const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+      const [{ data: hours }, { data: reviews }, { data: rewards }, { data: ai }] = await Promise.all([
+        supabase.from("cafe_hours").select("day_of_week, open_time, close_time").eq("cafe_id", cafeId),
+        supabase.from("reviews").select("id, rating, review_text, created_at, profiles(first_name, last_name)").eq("cafe_id", cafeId).order("created_at", { ascending: false }).limit(8),
+        supabase.from("rewards").select("id, title, description, points_required").eq("cafe_id", cafeId).eq("active", true),
+        supabase.from("cafe_ai_profiles").select("vibe_summary, best_for").eq("cafe_id", cafeId).maybeSingle(),
+      ]);
+
+      if (hours && hours.length > 0) {
+        const map: Record<string, string> = {};
+        for (const row of hours) {
+          map[DAY[row.day_of_week]] = `${formatTime(row.open_time)} – ${formatTime(row.close_time)}`;
+        }
+        setCafeHours(map);
+      }
+      setCafeReviews(reviews ?? []);
+      setCafeRewards(rewards ?? []);
+      setCafeAiProfile(ai ?? null);
+    } catch (err) {
+      console.error("fetchCafeDetail error:", err);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const formattedDistance = (cafe: Cafe): string | undefined => {
+    if (userLocation && cafe.latitude && cafe.longitude) {
+      const km = getDistance(userLocation.lat, userLocation.lng, cafe.latitude, cafe.longitude);
+      const mi = km * 0.621371;
+      return mi < 0.1 ? "< 0.1 mi" : `${mi.toFixed(1)} mi`;
+    }
+    return cafe.distance;
   };
 
   const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -300,10 +391,13 @@ export default function ExploreScreen() {
   }, []);
 
   useEffect(() => {
-    allCafes.forEach((_, i) => {
+    pinAnimRefs.current.forEach((a) => a.stop());
+    pinAnimRefs.current = [];
+    const count = Math.min(cafes.length, MAX_PINS);
+    for (let i = 0; i < count; i++) {
       const loop = Animated.loop(
         Animated.sequence([
-          Animated.delay(i * 600),
+          Animated.delay((i % 10) * 400),
           Animated.parallel([
             Animated.timing(pulseScales[i],  { toValue: 2.2, duration: 1100, useNativeDriver: true }),
             Animated.timing(pulseOpacity[i], { toValue: 0,   duration: 1100, useNativeDriver: true }),
@@ -315,8 +409,9 @@ export default function ExploreScreen() {
         ])
       );
       loop.start();
-    });
-  }, []);
+      pinAnimRefs.current.push(loop);
+    }
+  }, [cafes.length]);
 
   const mergedCafes = cafes.map((cafe) => ({
     ...cafe,
@@ -363,6 +458,7 @@ export default function ExploreScreen() {
     detailSlide.setValue(height);
     setDetailVisible(true);
     Animated.spring(detailSlide, { toValue: 0, friction: 9, tension: 60, useNativeDriver: true }).start();
+    fetchCafeDetail(cafe.id);
   };
 
   const closeDetail = () => {
@@ -384,8 +480,20 @@ export default function ExploreScreen() {
   //     prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
   //   );
 
-  const toggleSave = (id: number) =>
-    setSaved((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+  const toggleSave = async (id: string) => {
+    const isSaved = saved.includes(id);
+    setSaved((prev) => isSaved ? prev.filter((s) => s !== id) : [...prev, id]);
+    if (!currentUserId) return;
+    if (isSaved) {
+      await supabase.from("user_cafe_interactions").delete()
+        .eq("user_id", currentUserId).eq("cafe_id", id).eq("interaction_type", "saved");
+    } else {
+      await supabase.from("user_cafe_interactions").upsert(
+        { user_id: currentUserId, cafe_id: id, interaction_type: "saved" },
+        { onConflict: "user_id,cafe_id,interaction_type" }
+      );
+    }
+  };
 
   const todayKey = DAYS_SHORT[new Date().getDay()];
 
@@ -477,17 +585,32 @@ export default function ExploreScreen() {
             placeholder="Search cafes near you…"
             placeholderTextColor="#BBB"
             style={styles.searchInput}
-            value={search}
-            onChangeText={setSearch}
+            value={inputText}
+            onChangeText={(text) => {
+              setInputText(text);
+              if (searchTimeout.current) clearTimeout(searchTimeout.current);
+              searchTimeout.current = setTimeout(() => setSearch(text), 300);
+            }}
           />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch("")}>
+          {inputText.length > 0 && (
+            <TouchableOpacity onPress={() => { setInputText(""); setSearch(""); }}>
               <X size={14} color="#BBB" />
             </TouchableOpacity>
           )}
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#D4A373"
+              colors={["#D4A373"]}
+            />
+          }
+        >
           <View style={styles.listHeader}>
             <Text style={styles.listTitle}>Cafes Near You</Text>
             <View style={styles.listCountChip}>
@@ -530,6 +653,33 @@ export default function ExploreScreen() {
             })}
           </ScrollView>
 
+          {/* Error state */}
+          {fetchError && (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorBannerText}>Couldn't load cafes</Text>
+              <TouchableOpacity onPress={() => fetchCafes()} style={styles.retryBtn}>
+                <Text style={styles.retryBtnText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Loading state */}
+          {loading && (
+            <View style={styles.loadingState}>
+              <ActivityIndicator size="small" color="#D4A373" />
+              <Text style={styles.loadingText}>Finding cafes near you…</Text>
+            </View>
+          )}
+
+          {/* Empty state */}
+          {!loading && !fetchError && filteredCafes.length === 0 && (
+            <View style={styles.emptyState}>
+              <Coffee size={scale(32)} color="#CCC" />
+              <Text style={styles.emptyStateText}>No cafes found</Text>
+              <Text style={styles.emptyStateSub}>Try a different search or filter</Text>
+            </View>
+          )}
+
           {filteredCafes.map((cafe) => (
             <TouchableOpacity
               key={cafe.id}
@@ -559,7 +709,7 @@ export default function ExploreScreen() {
                 <Text style={styles.cafeCardName}>{cafe.name}</Text>
                 <View style={styles.cafeCardMeta}>
                   <Text style={styles.cafeCardSub}>{(cafe.vibes ?? []).join(" · ")}</Text>
-                  <Text style={styles.cafeCardDist}>{cafe.distance}</Text>
+                  <Text style={styles.cafeCardDist}>{formattedDistance(cafe)}</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -585,7 +735,7 @@ export default function ExploreScreen() {
                 {/* ── Photo Carousel ── */}
                 <View style={styles.heroWrap}>
                   <FlatList
-                    data={selectedCafe.photos}
+                    data={selectedCafe.photos ?? (selectedCafe.image_url ? [{ uri: selectedCafe.image_url }] : [require("../assets/cafe-1.jpg")])}
                     horizontal
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
@@ -608,9 +758,9 @@ export default function ExploreScreen() {
                   </View>
 
                   {/* Dot indicators */}
-                  {selectedCafe.photos.length > 1 && (
+                  {(selectedCafe.photos?.length ?? 0) > 1 && (
                     <View style={styles.photoDots}>
-                      {selectedCafe.photos.map((_, i) => (
+                      {(selectedCafe.photos ?? []).map((_: any, i: number) => (
                         <View key={i} style={[styles.photoDot, i === photoIndex && styles.photoDotActive]} />
                       ))}
                     </View>
@@ -641,7 +791,9 @@ export default function ExploreScreen() {
                   <View style={styles.addressRow}>
                     <MapPin size={scale(13)} color="#D4A373" />
                     <Text style={styles.addressText}>{selectedCafe.address}</Text>
-                    <Text style={styles.distancePill}>{selectedCafe.distance}</Text>
+                    {formattedDistance(selectedCafe) ? (
+                      <Text style={styles.distancePill}>{formattedDistance(selectedCafe)}</Text>
+                    ) : null}
                   </View>
 
                   {/* ── Quick action buttons ── */}
@@ -675,12 +827,12 @@ export default function ExploreScreen() {
                     style={{ marginBottom: scale(20) }}
                     contentContainerStyle={{ gap: scale(8) }}
                   >
-                    {selectedCafe.amenities.map((a) => (
+                    {(selectedCafe.amenities ?? []).map((a: string) => (
                       <View key={a} style={styles.amenityChip}>
                         <Text style={styles.amenityChipText}>{a}</Text>
                       </View>
                     ))}
-                    {selectedCafe.vibes.map((v) => (
+                    {(selectedCafe.vibes ?? []).map((v) => (
                       <View key={v} style={[styles.amenityChip, styles.vibeChip]}>
                         <Text style={[styles.amenityChipText, { color: "#D4A373" }]}>{v}</Text>
                       </View>
@@ -710,34 +862,62 @@ export default function ExploreScreen() {
                       <View>
                         {/* About */}
                         <Text style={styles.sectionHeading}>About</Text>
-                        <Text style={styles.descriptionText}>{selectedCafe.description}</Text>
+                        {selectedCafe.description ? (
+                          <Text style={styles.descriptionText}>{selectedCafe.description}</Text>
+                        ) : (
+                          <Text style={[styles.descriptionText, { color: "#CCC" }]}>No description available.</Text>
+                        )}
+                        {cafeAiProfile?.vibe_summary ? (
+                          <Text style={[styles.descriptionText, { fontStyle: "italic", color: "#888", marginTop: scale(-8) }]}>
+                            {cafeAiProfile.vibe_summary}
+                          </Text>
+                        ) : null}
+                        {(cafeAiProfile?.best_for ?? []).length > 0 && (
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ gap: scale(6), marginBottom: scale(16) }}
+                          >
+                            {(cafeAiProfile?.best_for ?? []).map((tag: string) => (
+                              <View key={tag} style={styles.aiTag}>
+                                <Text style={styles.aiTagText}>{tag}</Text>
+                              </View>
+                            ))}
+                          </ScrollView>
+                        )}
 
                         {/* Hours */}
-                        <TouchableOpacity
-                          style={styles.hoursHeader}
-                          onPress={() => setHoursExpanded(!hoursExpanded)}
-                        >
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: scale(8) }}>
-                            <Clock size={scale(15)} color="#D4A373" />
-                            <Text style={styles.sectionHeading}>Hours</Text>
-                          </View>
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
-                            <Text style={styles.todayHoursPreview}>
-                              Today: {selectedCafe.fullHours[todayKey as keyof typeof selectedCafe.fullHours]}
-                            </Text>
-                            {hoursExpanded
-                              ? <ChevronUp size={scale(14)} color="#888" />
-                              : <ChevronDown size={scale(14)} color="#888" />
-                            }
-                          </View>
-                        </TouchableOpacity>
+                        {Object.keys(cafeHours).length > 0 ? (
+                          <TouchableOpacity
+                            style={styles.hoursHeader}
+                            onPress={() => setHoursExpanded(!hoursExpanded)}
+                          >
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: scale(8) }}>
+                              <Clock size={scale(15)} color="#D4A373" />
+                              <Text style={styles.sectionHeading}>Hours</Text>
+                            </View>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
+                              <Text style={styles.todayHoursPreview}>
+                                Today: {cafeHours[todayKey] ?? "—"}
+                              </Text>
+                              {hoursExpanded
+                                ? <ChevronUp size={scale(14)} color="#888" />
+                                : <ChevronDown size={scale(14)} color="#888" />
+                              }
+                            </View>
+                          </TouchableOpacity>
+                        ) : detailLoading ? (
+                          <Text style={[styles.todayHoursPreview, { marginBottom: scale(12) }]}>
+                            Loading hours…
+                          </Text>
+                        ) : null}
 
-                        {hoursExpanded && (
+                        {hoursExpanded && Object.keys(cafeHours).length > 0 && (
                           <View style={styles.hoursGrid}>
-                            {Object.entries(selectedCafe.fullHours).map(([day, hrs]) => (
+                            {Object.entries(cafeHours).map(([day, hrs]) => (
                               <View key={day} style={[styles.hoursRow, day === todayKey && styles.hoursRowToday]}>
                                 <Text style={[styles.hoursDay, day === todayKey && styles.hoursDayToday]}>{day}</Text>
-                                <Text style={[styles.hoursTime, day === todayKey && styles.hoursTimeToday]}>{hrs}</Text>
+                                <Text style={[styles.hoursTime, day === todayKey && styles.hoursTimeToday]}>{hrs as string}</Text>
                               </View>
                             ))}
                           </View>
@@ -748,22 +928,24 @@ export default function ExploreScreen() {
                         <View style={styles.contactCard}>
                           <View style={styles.contactRow}>
                             <Phone size={scale(15)} color="#D4A373" />
-                            <Text style={styles.contactText}>{selectedCafe.phone}</Text>
+                            <Text style={styles.contactText}>{selectedCafe.contact_phone || "—"}</Text>
                           </View>
                           <View style={styles.contactRow}>
                             <Globe size={scale(15)} color="#D4A373" />
-                            <Text style={styles.contactText}>{selectedCafe.website}</Text>
+                            <Text style={styles.contactText}>{selectedCafe.website_url || "—"}</Text>
                           </View>
                           <View style={[styles.contactRow, { borderBottomWidth: 0 }]}>
                             <Instagram size={scale(15)} color="#D4A373" />
-                            <Text style={styles.contactText}>{selectedCafe.instagram}</Text>
+                            <Text style={styles.contactText}>{selectedCafe.instagram_url || "—"}</Text>
                           </View>
                         </View>
 
                         {/* Price */}
                         <View style={styles.priceRow}>
                           <Text style={styles.priceLabel}>Price range</Text>
-                          <Text style={styles.priceValue}>{selectedCafe.priceRange}</Text>
+                          <Text style={styles.priceValue}>
+                            {["", "$", "$$", "$$$", "$$$$"][selectedCafe.price_level ?? 0] || "—"}
+                          </Text>
                         </View>
                       </View>
                     )}
@@ -772,18 +954,29 @@ export default function ExploreScreen() {
                     {activeTab === "rewards" && (
                       <View style={styles.tabContent}>
                         <Text style={styles.sectionHeading}>Available Rewards</Text>
-                        {[
-                          ["500 pts", "Free Latte"],
-                          ["300 pts", "20% Off Order"],
-                          ["700 pts", "Buy 1 Get 1 Free"],
-                        ].map(([pts, label], i) => (
-                          <View key={i} style={styles.rewardRow}>
-                            <View style={styles.rewardPtsBadge}>
-                              <Text style={styles.rewardPts}>{pts}</Text>
+                        {detailLoading ? (
+                          <ActivityIndicator size="small" color="#D4A373" style={{ marginVertical: scale(16) }} />
+                        ) : cafeRewards.length > 0 ? (
+                          cafeRewards.map((r: any) => (
+                            <View key={r.id} style={styles.rewardRow}>
+                              <View style={styles.rewardPtsBadge}>
+                                <Text style={styles.rewardPts}>{r.points_required} pts</Text>
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.rewardLabel}>{r.title}</Text>
+                                {r.description ? (
+                                  <Text style={{ fontSize: moderateScale(11), color: "#AAA", marginTop: scale(2) }}>
+                                    {r.description}
+                                  </Text>
+                                ) : null}
+                              </View>
                             </View>
-                            <Text style={styles.rewardLabel}>{label}</Text>
-                          </View>
-                        ))}
+                          ))
+                        ) : (
+                          <Text style={{ color: "#BBB", fontSize: moderateScale(13), marginVertical: scale(16) }}>
+                            No rewards available yet
+                          </Text>
+                        )}
                         <TouchableOpacity
                           style={styles.goToRewardsBtn}
                           onPress={() => { closeDetail(); navigation.navigate("Rewards"); }}
@@ -798,43 +991,77 @@ export default function ExploreScreen() {
                     {activeTab === "reviews" && (
                       <View style={styles.tabContent}>
                         {/* Rating summary */}
-                        <View style={styles.ratingSummary}>
-                          <Text style={styles.ratingSummaryBig}>{selectedCafe.rating}</Text>
-                          <View>
-                            <View style={{ flexDirection: "row", gap: scale(3), marginBottom: scale(4) }}>
-                              {Array.from({ length: 5 }).map((_, j) => (
-                                <Star key={j} size={scale(14)} color="#D4A373" fill={j < Math.round(selectedCafe.rating) ? "#D4A373" : "transparent"} />
-                              ))}
+                        {(() => {
+                          const avgRating = cafeReviews.length > 0
+                            ? cafeReviews.reduce((s: number, r: any) => s + r.rating, 0) / cafeReviews.length
+                            : (selectedCafe.rating ?? 0);
+                          const displayRating = avgRating > 0 ? avgRating.toFixed(1) : "—";
+                          return (
+                            <View style={styles.ratingSummary}>
+                              <Text style={styles.ratingSummaryBig}>{displayRating}</Text>
+                              <View>
+                                <View style={{ flexDirection: "row", gap: scale(3), marginBottom: scale(4) }}>
+                                  {Array.from({ length: 5 }).map((_, j) => (
+                                    <Star key={j} size={scale(14)} color="#D4A373" fill={j < Math.round(avgRating) ? "#D4A373" : "transparent"} />
+                                  ))}
+                                </View>
+                                <Text style={styles.ratingSummaryCount}>{cafeReviews.length} reviews</Text>
+                              </View>
                             </View>
-                            <Text style={styles.ratingSummaryCount}>{selectedCafe.reviews} reviews</Text>
-                          </View>
-                        </View>
+                          );
+                        })()}
 
                         <Text style={styles.sectionHeading}>Recent Reviews</Text>
-                        {[
-                          { text: "Best flat white in the area. Perfect study spot!", stars: 5, time: "2 days ago" },
-                          { text: "Love the atmosphere. Come every morning.", stars: 5, time: "1 week ago" },
-                          { text: "Cozy vibes, great music. Highly recommend!", stars: 4, time: "2 weeks ago" },
-                        ].map((r, i) => (
-                          <View key={i} style={styles.reviewCard}>
-                            <View style={styles.reviewHeader}>
-                              <View style={styles.reviewAvatar}>
-                                <Coffee size={scale(14)} color="#D4A373" />
-                              </View>
-                              <View style={{ flex: 1 }}>
-                                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                                  <View style={{ flexDirection: "row", gap: scale(2) }}>
-                                    {Array.from({ length: 5 }).map((_, j) => (
-                                      <Star key={j} size={scale(11)} color={j < r.stars ? "#D4A373" : "#DDD"} fill={j < r.stars ? "#D4A373" : "transparent"} />
-                                    ))}
+                        {detailLoading ? (
+                          <ActivityIndicator size="small" color="#D4A373" style={{ marginVertical: scale(16) }} />
+                        ) : cafeReviews.length > 0 ? (
+                          cafeReviews.map((r: any) => {
+                            const timeAgo = (d: string) => {
+                              const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+                              if (mins < 60) return `${mins}m ago`;
+                              const hrs = Math.floor(mins / 60);
+                              if (hrs < 24) return `${hrs}h ago`;
+                              return `${Math.floor(hrs / 24)}d ago`;
+                            };
+                            const profile = r.profiles as { first_name?: string; last_name?: string } | null;
+                            const name = profile?.first_name
+                              ? `${profile.first_name}${profile.last_name ? " " + profile.last_name[0] + "." : ""}`
+                              : "Anonymous";
+                            return (
+                              <View key={r.id} style={styles.reviewCard}>
+                                <View style={styles.reviewHeader}>
+                                  <View style={styles.reviewAvatar}>
+                                    <Text style={{ fontSize: moderateScale(13), fontWeight: "700", color: "#D4A373" }}>
+                                      {name[0]}
+                                    </Text>
                                   </View>
-                                  <Text style={styles.reviewTime}>{r.time}</Text>
+                                  <View style={{ flex: 1 }}>
+                                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                                      <View>
+                                        <Text style={{ fontSize: moderateScale(12), fontWeight: "600", color: "#333", marginBottom: scale(2) }}>
+                                          {name}
+                                        </Text>
+                                        <View style={{ flexDirection: "row", gap: scale(2) }}>
+                                          {Array.from({ length: 5 }).map((_, j) => (
+                                            <Star key={j} size={scale(11)} color={j < r.rating ? "#D4A373" : "#DDD"} fill={j < r.rating ? "#D4A373" : "transparent"} />
+                                          ))}
+                                        </View>
+                                      </View>
+                                      <Text style={styles.reviewTime}>{timeAgo(r.created_at)}</Text>
+                                    </View>
+                                    {r.review_text ? (
+                                      <Text style={styles.reviewText}>{r.review_text}</Text>
+                                    ) : null}
+                                  </View>
                                 </View>
-                                <Text style={styles.reviewText}>{r.text}</Text>
                               </View>
-                            </View>
+                            );
+                          })
+                        ) : (
+                          <View style={{ alignItems: "center", paddingVertical: scale(24) }}>
+                            <Text style={{ color: "#BBB", fontSize: moderateScale(13) }}>No reviews yet</Text>
                           </View>
-                        ))}
+                        )}
                       </View>
                     )}
                   </Animated.View>
@@ -1156,4 +1383,35 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(13), color: "#555",
     lineHeight: moderateScale(19), marginTop: scale(4),
   },
+
+  errorBanner: {
+    marginHorizontal: scale(16), marginBottom: scale(12),
+    backgroundColor: "rgba(198,40,40,0.08)",
+    borderRadius: scale(12), padding: scale(14),
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  errorBannerText: { fontSize: moderateScale(13), color: "#C62828", fontWeight: "500" },
+  retryBtn: {
+    backgroundColor: "#C62828", borderRadius: scale(10),
+    paddingHorizontal: scale(14), paddingVertical: scale(6),
+  },
+  retryBtnText: { color: "#FFF", fontSize: moderateScale(12), fontWeight: "700" },
+
+  loadingState: {
+    alignItems: "center", paddingVertical: scale(32), gap: scale(10),
+  },
+  loadingText: { fontSize: moderateScale(13), color: "#AAA" },
+
+  emptyState: {
+    alignItems: "center", paddingVertical: scale(40), gap: scale(8),
+  },
+  emptyStateText: { fontSize: moderateScale(16), fontWeight: "700", color: "#888" },
+  emptyStateSub:  { fontSize: moderateScale(13), color: "#BBB" },
+
+  aiTag: {
+    paddingHorizontal: scale(10), paddingVertical: scale(4),
+    borderRadius: scale(12), backgroundColor: "rgba(212,163,115,0.12)",
+    borderWidth: 1, borderColor: "rgba(212,163,115,0.25)",
+  },
+  aiTagText: { fontSize: moderateScale(11), color: "#D4A373", fontWeight: "600" },
 });

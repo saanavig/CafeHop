@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { moderateScale, verticalScale } from "../../utils/responsive";
 
 type SplashTextProps = {
   title: string;
@@ -17,14 +18,14 @@ export default function SplashText({ title, subtitle }: SplashTextProps) {
 
 const styles = StyleSheet.create({
   title: {
-    fontSize: 36,
+    fontSize: moderateScale(36),
     fontWeight: "bold",
-    marginBottom: 12,
+    marginBottom: verticalScale(12),
     textAlign: "center",
   },
   subtitle: {
     textAlign: "center",
     color: "#555",
-    marginBottom: 32,
+    marginBottom: verticalScale(32),
   },
 });

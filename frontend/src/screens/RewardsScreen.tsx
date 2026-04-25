@@ -87,6 +87,21 @@ export default function RewardsScreen({ navigation }) {
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
   const [earnedPoints, setEarnedPoints] = useState(0);
+  const [tier, setTier] = useState("bronze");
+  const [catalogRewards, setCatalogRewards] = useState<Reward[]>([]);
+  const [transactions, setTransactions] = useState<{ id: string; points_change: number; reason: string; created_at: string }[]>([]);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const toastAnim = useRef(new Animated.Value(-scale(80))).current;
+
+  const showToast = (message: string, type: "success" | "error" = "error") => {
+    setToast({ message, type });
+    Animated.spring(toastAnim, { toValue: 0, useNativeDriver: true, friction: 8 }).start();
+    setTimeout(() => {
+      Animated.timing(toastAnim, { toValue: -scale(80), duration: 280, useNativeDriver: true }).start(() =>
+        setToast(null)
+      );
+    }, 3000);
+  };
 
   // Entry animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -124,10 +139,42 @@ export default function RewardsScreen({ navigation }) {
         setEarnedPoints(data.points_earned);
         setScanSuccess(true);
       } else {
-        alert(data.error);
+        showToast(data.error ?? "Something went wrong");
       }
     } catch (err) {
       console.error("Scan error:", err);
+    }
+  };
+
+  const fetchTierAndCatalog = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user.id;
+      if (!userId) return;
+
+      const [{ data: loyaltyData }, { data: catalogData }, { data: txData }] = await Promise.all([
+        supabase.from("loyalty_accounts").select("tier").eq("user_id", userId).single(),
+        supabase.from("rewards_catalog").select("id, name, description, points_required").eq("active", true).order("points_required"),
+        supabase.from("loyalty_transactions").select("id, points_change, reason, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
+      ]);
+
+      if (loyaltyData?.tier) setTier(loyaltyData.tier);
+      if (txData) setTransactions(txData);
+
+      if (catalogData && catalogData.length > 0) {
+        setCatalogRewards(
+          catalogData.map((r: any, i: number) => ({
+            id: i + 1,
+            title: r.name,
+            cafe: "Any participating cafe",
+            points: r.points_required,
+            image: require("../assets/latte-art.jpg"),
+            popular: i === 0,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error("fetchTierAndCatalog error:", err);
     }
   };
 
@@ -153,6 +200,7 @@ export default function RewardsScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       fetchPoints();
+      fetchTierAndCatalog();
     }, [])
   );
 
@@ -215,8 +263,9 @@ export default function RewardsScreen({ navigation }) {
       if (res.ok) {
         setPoints(data.remaining_points);
         setSelectedReward(null);
+        showToast("Reward redeemed!", "success");
       } else {
-        alert(data.error);
+        showToast(data.error ?? "Redemption failed");
       }
     } catch (err) {
       console.error("Redeem error:", err);
@@ -379,24 +428,68 @@ export default function RewardsScreen({ navigation }) {
           </View>
 
           {/* Rewards Card */}
-          <RewardsCard
-            points={points}
-            status="EXPLORER"
-            nextReward={2000}
-            description="Earn points and unlock perks"
-            role={role}
-            onScan={() => setShowScan(true)}
-          />
+          {(() => {
+            const TIER_MAP: Record<string, { label: string; nextThreshold: number; themeColor: "caramel" | "gold" }> = {
+              bronze: { label: "BRONZE", nextThreshold: 1000, themeColor: "caramel" },
+              silver: { label: "SILVER", nextThreshold: 3000, themeColor: "caramel" },
+              gold:   { label: "GOLD",   nextThreshold: 5000, themeColor: "gold" },
+            };
+            const tierInfo = TIER_MAP[tier] ?? TIER_MAP.bronze;
+            return (
+              <RewardsCard
+                points={points}
+                status={tierInfo.label}
+                nextReward={tierInfo.nextThreshold}
+                themeColor={tierInfo.themeColor}
+                description="Earn points and unlock perks"
+                role={role}
+                onScan={() => setShowScan(true)}
+              />
+            );
+          })()}
           <Button
             title="Upload Receipt"
             onPress={() => navigation.navigate("ReceiptUpload")}
           />
 
+          {/* Transaction History */}
+          {transactions.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Points History</Text>
+              {transactions.map((tx) => {
+                const timeAgo = (d: string) => {
+                  const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+                  if (mins < 60) return `${mins}m ago`;
+                  const hrs = Math.floor(mins / 60);
+                  if (hrs < 24) return `${hrs}h ago`;
+                  return `${Math.floor(hrs / 24)}d ago`;
+                };
+                const positive = tx.points_change >= 0;
+                return (
+                  <View key={tx.id} style={styles.txRow}>
+                    <View style={[styles.txDot, { backgroundColor: positive ? "#E8F5E9" : "#FCE4EC" }]}>
+                      <Text style={{ fontSize: moderateScale(14) }}>{positive ? "+" : "−"}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.txReason} numberOfLines={1}>
+                        {tx.reason || (positive ? "Points earned" : "Points spent")}
+                      </Text>
+                      <Text style={styles.txTime}>{timeAgo(tx.created_at)}</Text>
+                    </View>
+                    <Text style={[styles.txPoints, { color: positive ? "#2E7D32" : "#C62828" }]}>
+                      {positive ? "+" : ""}{tx.points_change} pts
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
           {/* Rewards List */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Available Rewards</Text>
 
-            {availableRewards.map((reward) => {
+            {(catalogRewards.length > 0 ? catalogRewards : availableRewards).map((reward) => {
               const canAfford = points >= reward.points;
               return (
                 <View key={reward.id} style={styles.rewardCard}>
@@ -459,6 +552,19 @@ export default function RewardsScreen({ navigation }) {
       </Modal>
 
       <BottomNav />
+
+      {/* Toast */}
+      {toast && (
+        <Animated.View
+          style={[
+            styles.toast,
+            toast.type === "success" && styles.toastSuccess,
+            { transform: [{ translateY: toastAnim }] },
+          ]}
+        >
+          <Text style={styles.toastText}>{toast.message}</Text>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -664,4 +770,48 @@ const styles = StyleSheet.create({
   redemptionReward: { fontSize: moderateScale(12), color: "#888" },
   redemptionPoints: { fontSize: moderateScale(13), color: "#D4A373", fontWeight: "600" },
   redemptionTime: { fontSize: moderateScale(11), color: "#BBB", marginTop: scale(2) },
+
+  txRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(12),
+    backgroundColor: "#FFF",
+    borderRadius: scale(12),
+    padding: scale(12),
+    marginBottom: scale(8),
+  },
+  txDot: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  txReason: { fontSize: moderateScale(13), fontWeight: "500", color: "#1A1A1A" },
+  txTime:   { fontSize: moderateScale(11), color: "#AAA", marginTop: scale(2) },
+  txPoints: { fontSize: moderateScale(13), fontWeight: "700" },
+
+  toast: {
+    position: "absolute",
+    top: scale(52),
+    left: scale(16),
+    right: scale(16),
+    backgroundColor: "#C62828",
+    borderRadius: scale(12),
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(16),
+    zIndex: 1000,
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: scale(4) },
+    shadowOpacity: 0.18,
+    shadowRadius: scale(8),
+  },
+  toastSuccess: { backgroundColor: "#2E7D32" },
+  toastText: {
+    color: "#FFF",
+    fontSize: moderateScale(13),
+    fontWeight: "600",
+    textAlign: "center",
+  },
 });

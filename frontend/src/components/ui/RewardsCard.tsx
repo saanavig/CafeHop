@@ -8,6 +8,7 @@ import {
 
 import { Gift, ChevronRight, Star } from "lucide-react-native";
 import Button from "./Button";
+import { scale, moderateScale, verticalScale } from "../../utils/responsive";
 
 interface RewardsCardProps {
   points: number;
@@ -65,7 +66,7 @@ export default function RewardsCard({
             ]}
           >
             <Gift
-              size={18}
+              size={scale(18)}
               color={isGold ? "#D4A017" : "#D4A373"}
             />
           </View>
@@ -122,11 +123,11 @@ export default function RewardsCard({
           style={styles.scanButton}
         >
           <View style={styles.scanContent}>
-            <Star size={16} color="#D4A373" />
+            <Star size={scale(16)} color="#D4A373" />
             <Text style={styles.scanText}>Scan QR</Text>
           </View>
 
-          <ChevronRight size={16} color="#D4A373" />
+          <ChevronRight size={scale(16)} color="#D4A373" />
         </Button>
       )}
     </View>
@@ -136,9 +137,9 @@ export default function RewardsCard({
 const styles = StyleSheet.create({
 
   card: {
-    borderRadius: 20,
-    padding: 20,
-    marginVertical: 10,
+    borderRadius: scale(20),
+    padding: scale(20),
+    marginVertical: verticalScale(10),
   },
 
   caramelCard: {
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 14,
+    marginBottom: verticalScale(14),
   },
 
   statusContainer: {
@@ -161,9 +162,9 @@ const styles = StyleSheet.create({
   },
 
   iconBox: {
-    padding: 8,
-    borderRadius: 10,
-    marginRight: 10,
+    padding: scale(8),
+    borderRadius: scale(10),
+    marginRight: scale(10),
   },
 
   iconCaramel: {
@@ -175,13 +176,13 @@ const styles = StyleSheet.create({
   },
 
   statusLabel: {
-    fontSize: 11,
+    fontSize: moderateScale(11),
     color: "#CCCCCC",
     textTransform: "uppercase",
   },
 
   status: {
-    fontSize: 18,
+    fontSize: moderateScale(18),
     fontWeight: "600",
     color: "#FFF",
   },
@@ -191,45 +192,45 @@ const styles = StyleSheet.create({
   },
 
   points: {
-    fontSize: 26,
+    fontSize: moderateScale(26),
     fontWeight: "700",
     color: "#FFF",
   },
 
   pointsLabel: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
     color: "#CCCCCC",
   },
 
   description: {
     color: "#EEE",
-    marginBottom: 12,
+    marginBottom: verticalScale(12),
   },
 
   progressSection: {
-    marginBottom: 14,
+    marginBottom: verticalScale(14),
   },
 
   progressLabels: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 6,
+    marginBottom: verticalScale(6),
   },
 
   progressText: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
     color: "#BBBBBB",
   },
 
   progressBar: {
-    height: 8,
+    height: verticalScale(8),
     backgroundColor: "#00000020",
-    borderRadius: 20,
+    borderRadius: scale(20),
     overflow: "hidden",
   },
 
   progressFill: {
-    height: 8,
+    height: verticalScale(8),
     backgroundColor: "#D4A373",
   },
 
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
   scanContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: scale(6),
   },
 
   scanText: {

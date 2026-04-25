@@ -49,21 +49,17 @@ export default function UserProfileScreen() {
 
     const fetchUserName = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        const token = session?.access_token;
-        if (!token) return;
-
-        const res = await fetch("http://127.0.0.1:3001/api/users/me/name", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const data = await res.json();
-        setProfileName(data.name || "");
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("first_name, last_name")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (profile) {
+          const full = `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
+          setProfileName(full);
+        }
       } catch (err) {
         console.error("Error fetching user name:", err);
       }
@@ -245,41 +241,25 @@ export default function UserProfileScreen() {
     setShowAddPost(false);
   };
   const handleSaveProfile = async () => {
-  try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const token = session?.access_token;
-    if (!token) return;
+      const parts = editableName.trim().split(" ");
+      const first_name = parts[0] || "";
+      const last_name = parts.slice(1).join(" ") || "";
 
+      await supabase
+        .from("profiles")
+        .update({ first_name, last_name })
+        .eq("id", user.id);
 
-    const parts = editableName.trim().split(" ");
-    const first_name = parts[0] || "";
-    const last_name = parts.slice(1).join(" ") || "";
-
-    const res = await fetch("http://127.0.0.1:3001/api/users/me/name", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        first_name,
-        last_name,
-      }),
-    });
-
-    const data = await res.json();
-    console.log("update response:", data);
-
-    setProfileName(editableName);
-    setIsEditing(false);
-
-  } catch (err) {
-    console.error("Error updating name:", err);
-  }
-};
+      setProfileName(editableName);
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Error updating name:", err);
+    }
+  };
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (

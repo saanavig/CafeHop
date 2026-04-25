@@ -12,6 +12,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../api/supabaseClient";
 import Button from "../components/ui/Button";
+import { scale, moderateScale, verticalScale } from "../utils/responsive";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -223,45 +224,46 @@ const styles = StyleSheet.create({
     backgroundColor: "#F7F3F0",
   },
   content: {
-    padding: 24,
+    padding: scale(24),
+    width: "100%",
   },
   title: {
-    fontSize: 24,
+    fontSize: moderateScale(24),
     fontWeight: "700",
     textAlign: "center",
-    marginBottom: 6,
+    marginBottom: verticalScale(6),
     color: "#2C1810",
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: moderateScale(14),
     textAlign: "center",
     color: "#666",
-    marginBottom: 24,
+    marginBottom: verticalScale(24),
   },
   section: {
-    marginBottom: 20,
+    marginBottom: verticalScale(20),
   },
   label: {
-    fontSize: 15,
+    fontSize: moderateScale(15),
     fontWeight: "600",
-    marginBottom: 8,
+    marginBottom: verticalScale(8),
     color: "#2C1810",
   },
   input: {
-    minHeight: 110,
+    minHeight: verticalScale(110),
     borderWidth: 1,
     borderColor: "#D8D8D8",
-    borderRadius: 12,
+    borderRadius: scale(12),
     backgroundColor: "#FFF",
-    padding: 14,
+    padding: scale(14),
     textAlignVertical: "top",
-    fontSize: 15,
+    fontSize: moderateScale(15),
   },
   mediaBox: {
-    height: 220,
+    height: verticalScale(220),
     borderWidth: 1,
     borderColor: "#CCC",
-    borderRadius: 12,
+    borderRadius: scale(12),
     backgroundColor: "#FAFAFA",
     justifyContent: "center",
     alignItems: "center",
@@ -269,7 +271,7 @@ const styles = StyleSheet.create({
   },
   mediaText: {
     color: "#777",
-    fontSize: 15,
+    fontSize: moderateScale(15),
   },
   previewImage: {
     width: "100%",
@@ -277,16 +279,16 @@ const styles = StyleSheet.create({
   },
   videoPlaceholder: {
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: scale(16),
   },
   videoText: {
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: "600",
     color: "#2C1810",
-    marginBottom: 6,
+    marginBottom: verticalScale(6),
   },
   videoSubtext: {
-    fontSize: 13,
+    fontSize: moderateScale(13),
     color: "#777",
     textAlign: "center",
   },
