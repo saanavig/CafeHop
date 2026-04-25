@@ -6,6 +6,7 @@ import {
   Image,
   Modal,
   PanResponder,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -171,6 +172,9 @@ export default function ExploreScreen() {
   const navigation = useNavigation<any>();
 
   const [search, setSearch]               = useState("");
+  const [inputText, setInputText]         = useState("");
+  const [refreshing, setRefreshing]       = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedCafe, setSelectedCafe] = useState<Cafe | null>(null);
   // const [activeFilters, setActiveFilters] = useState<string[]>(["open"]);
   const [activeTab, setActiveTab]         = useState<"info" | "rewards" | "reviews">("info");
@@ -274,9 +278,15 @@ export default function ExploreScreen() {
     init();
   }, []);
 
-  const fetchCafes = async () => {
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchCafes(true);
+    setRefreshing(false);
+  };
+
+  const fetchCafes = async (silent = false) => {
     setFetchError(false);
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(`${API_URL}/api/cafe/all`);
       if (!res.ok) throw new Error("Failed to fetch");
@@ -339,6 +349,15 @@ export default function ExploreScreen() {
     } finally {
       setDetailLoading(false);
     }
+  };
+
+  const formattedDistance = (cafe: Cafe): string | undefined => {
+    if (userLocation && cafe.latitude && cafe.longitude) {
+      const km = getDistance(userLocation.lat, userLocation.lng, cafe.latitude, cafe.longitude);
+      const mi = km * 0.621371;
+      return mi < 0.1 ? "< 0.1 mi" : `${mi.toFixed(1)} mi`;
+    }
+    return cafe.distance;
   };
 
   const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -556,17 +575,32 @@ export default function ExploreScreen() {
             placeholder="Search cafes near you…"
             placeholderTextColor="#BBB"
             style={styles.searchInput}
-            value={search}
-            onChangeText={setSearch}
+            value={inputText}
+            onChangeText={(text) => {
+              setInputText(text);
+              if (searchTimeout.current) clearTimeout(searchTimeout.current);
+              searchTimeout.current = setTimeout(() => setSearch(text), 300);
+            }}
           />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch("")}>
+          {inputText.length > 0 && (
+            <TouchableOpacity onPress={() => { setInputText(""); setSearch(""); }}>
               <X size={14} color="#BBB" />
             </TouchableOpacity>
           )}
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#D4A373"
+              colors={["#D4A373"]}
+            />
+          }
+        >
           <View style={styles.listHeader}>
             <Text style={styles.listTitle}>Cafes Near You</Text>
             <View style={styles.listCountChip}>
@@ -665,7 +699,7 @@ export default function ExploreScreen() {
                 <Text style={styles.cafeCardName}>{cafe.name}</Text>
                 <View style={styles.cafeCardMeta}>
                   <Text style={styles.cafeCardSub}>{(cafe.vibes ?? []).join(" · ")}</Text>
-                  <Text style={styles.cafeCardDist}>{cafe.distance}</Text>
+                  <Text style={styles.cafeCardDist}>{formattedDistance(cafe)}</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -747,7 +781,9 @@ export default function ExploreScreen() {
                   <View style={styles.addressRow}>
                     <MapPin size={scale(13)} color="#D4A373" />
                     <Text style={styles.addressText}>{selectedCafe.address}</Text>
-                    <Text style={styles.distancePill}>{selectedCafe.distance}</Text>
+                    {formattedDistance(selectedCafe) ? (
+                      <Text style={styles.distancePill}>{formattedDistance(selectedCafe)}</Text>
+                    ) : null}
                   </View>
 
                   {/* ── Quick action buttons ── */}

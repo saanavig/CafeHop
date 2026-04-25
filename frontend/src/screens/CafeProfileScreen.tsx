@@ -186,29 +186,35 @@ export default function CafeProfileScreen() {
     };
 
     const [posts, setPosts] = useState<Post[]>([]);
+    const [postsLoading, setPostsLoading] = useState(false);
 
     useEffect(() => {
         if (!cafeId) return;
         const fetchPosts = async () => {
-            const { data } = await supabase
-                .from("posts")
-                .select("id, caption, created_at, post_media(id, file_url, file_type)")
-                .eq("cafe_id", cafeId)
-                .order("created_at", { ascending: false });
-            if (data) {
-                const mapped = data
-                    .map((p: any) => ({
-                        id: p.id,
-                        images: (p.post_media ?? [])
-                            .filter((m: any) => m.file_type === "image" && m.file_url)
-                            .map((m: any) => m.file_url as string),
-                        likes: 0,
-                        liked: false,
-                        comments: [],
-                        caption: p.caption ?? "",
-                    }))
-                    .filter((p: any) => p.images.length > 0);
-                setPosts(mapped);
+            setPostsLoading(true);
+            try {
+                const { data } = await supabase
+                    .from("posts")
+                    .select("id, caption, created_at, post_media(id, file_url, file_type)")
+                    .eq("cafe_id", cafeId)
+                    .order("created_at", { ascending: false });
+                if (data) {
+                    const mapped = data
+                        .map((p: any) => ({
+                            id: p.id,
+                            images: (p.post_media ?? [])
+                                .filter((m: any) => m.file_type === "image" && m.file_url)
+                                .map((m: any) => m.file_url as string),
+                            likes: 0,
+                            liked: false,
+                            comments: [],
+                            caption: p.caption ?? "",
+                        }))
+                        .filter((p: any) => p.images.length > 0);
+                    setPosts(mapped);
+                }
+            } finally {
+                setPostsLoading(false);
             }
         };
         fetchPosts();
@@ -442,21 +448,38 @@ export default function CafeProfileScreen() {
 
                 {/* POSTS */}
                 {activeTab === "posts" && (
-                <View style={styles.grid}>
-                    {posts.map((post) => (
-                    <TouchableOpacity key={post.id} onPress={() => setSelectedPost(post)}>
-                        <Image
-                        source={{ uri: post.images[0] }}
-                        style={{
-                            width: photoSize,
-                            height: photoSize,
-                            margin: 1,
-                            borderRadius: scale(4),
-                        }}
-                        />
-                    </TouchableOpacity>
-                    ))}
-                </View>
+                  postsLoading ? (
+                    <View style={{ alignItems: "center", paddingVertical: verticalScale(48) }}>
+                      <ActivityIndicator size="small" color="#D4A373" />
+                    </View>
+                  ) : posts.length === 0 ? (
+                    <View style={{ alignItems: "center", paddingVertical: verticalScale(48), gap: verticalScale(8) }}>
+                      <Text style={{ fontSize: moderateScale(15), fontWeight: "600", color: "#BBB" }}>
+                        No posts yet
+                      </Text>
+                      {isOwner && (
+                        <Text style={{ fontSize: moderateScale(13), color: "#D4A373" }}>
+                          Share your first photo!
+                        </Text>
+                      )}
+                    </View>
+                  ) : (
+                    <View style={styles.grid}>
+                      {posts.map((post) => (
+                        <TouchableOpacity key={post.id} onPress={() => setSelectedPost(post)}>
+                          <Image
+                            source={{ uri: post.images[0] }}
+                            style={{
+                              width: photoSize,
+                              height: photoSize,
+                              margin: 1,
+                              borderRadius: scale(4),
+                            }}
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )
                 )}
 
                 {/* MENU */}

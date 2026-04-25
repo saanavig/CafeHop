@@ -2,6 +2,8 @@ import {
   ActivityIndicator,
   Animated,
   Pressable,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -80,10 +82,18 @@ export default function AnalyticsScreen() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchAnalytics = async (selectedPeriod: string) => {
+  const onRefresh = async () => {
+    const map: Record<Period, string> = { Today: "today", "This Week": "week", "This Month": "month" };
+    setRefreshing(true);
+    await fetchAnalytics(map[period], true);
+    setRefreshing(false);
+  };
+
+  const fetchAnalytics = async (selectedPeriod: string, silent = false) => {
     setFetchError(false);
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(
         `${process.env.EXPO_PUBLIC_API_URL}/api/overview?cafe_id=1&period=${selectedPeriod}`
@@ -127,6 +137,14 @@ export default function AnalyticsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#D4A373"
+            colors={["#D4A373"]}
+          />
+        }
       >
         <View style={{ width: contentWidth, alignSelf: "center" }}>
 
