@@ -1,4 +1,5 @@
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   FlatList,
@@ -205,6 +206,7 @@ export default function ExploreScreen() {
 
   const [cafes, setCafes] = useState<Cafe[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   const tabFade     = useRef(new Animated.Value(1)).current;
   const detailSlide = useRef(new Animated.Value(height)).current;
@@ -244,32 +246,30 @@ export default function ExploreScreen() {
   }, []);
 
   const fetchCafes = async () => {
+    setFetchError(false);
+    setLoading(true);
     try {
       const res = await fetch(`${API_URL}/api/cafe/all`);
+      if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-      console.log("FILTER INPUT:", data);
 
       const cleaned = data.map((c: any) => ({
         ...c,
-
         attributes: Array.isArray(c.attributes)
           ? c.attributes.map((a: string) => a.toLowerCase())
           : typeof c.attributes === "string"
           ? c.attributes.toLowerCase().split(",").map((a: string) => a.trim())
           : [],
-
         price_level: c.price_level ? Number(c.price_level) : null,
         latitude: c.latitude ? Number(c.latitude) : null,
         longitude: c.longitude ? Number(c.longitude) : null,
-
         isOpen: c.isOpen ?? false,
       }));
-
-      console.log("CLEANED CAFES:", cleaned);
 
       setCafes(cleaned);
     } catch (err) {
       console.error("Error fetching cafes:", err);
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
@@ -530,6 +530,33 @@ export default function ExploreScreen() {
             })}
           </ScrollView>
 
+          {/* Error state */}
+          {fetchError && (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorBannerText}>Couldn't load cafes</Text>
+              <TouchableOpacity onPress={fetchCafes} style={styles.retryBtn}>
+                <Text style={styles.retryBtnText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Loading state */}
+          {loading && (
+            <View style={styles.loadingState}>
+              <ActivityIndicator size="small" color="#D4A373" />
+              <Text style={styles.loadingText}>Finding cafes near you…</Text>
+            </View>
+          )}
+
+          {/* Empty state */}
+          {!loading && !fetchError && filteredCafes.length === 0 && (
+            <View style={styles.emptyState}>
+              <Coffee size={scale(32)} color="#CCC" />
+              <Text style={styles.emptyStateText}>No cafes found</Text>
+              <Text style={styles.emptyStateSub}>Try a different search or filter</Text>
+            </View>
+          )}
+
           {filteredCafes.map((cafe) => (
             <TouchableOpacity
               key={cafe.id}
@@ -585,7 +612,7 @@ export default function ExploreScreen() {
                 {/* ── Photo Carousel ── */}
                 <View style={styles.heroWrap}>
                   <FlatList
-                    data={selectedCafe.photos}
+                    data={selectedCafe.photos ?? (selectedCafe.image_url ? [{ uri: selectedCafe.image_url }] : [require("../assets/cafe-1.jpg")])}
                     horizontal
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
@@ -608,9 +635,9 @@ export default function ExploreScreen() {
                   </View>
 
                   {/* Dot indicators */}
-                  {selectedCafe.photos.length > 1 && (
+                  {(selectedCafe.photos?.length ?? 0) > 1 && (
                     <View style={styles.photoDots}>
-                      {selectedCafe.photos.map((_, i) => (
+                      {(selectedCafe.photos ?? []).map((_, i) => (
                         <View key={i} style={[styles.photoDot, i === photoIndex && styles.photoDotActive]} />
                       ))}
                     </View>
@@ -675,12 +702,12 @@ export default function ExploreScreen() {
                     style={{ marginBottom: scale(20) }}
                     contentContainerStyle={{ gap: scale(8) }}
                   >
-                    {selectedCafe.amenities.map((a) => (
+                    {(selectedCafe.amenities ?? []).map((a) => (
                       <View key={a} style={styles.amenityChip}>
                         <Text style={styles.amenityChipText}>{a}</Text>
                       </View>
                     ))}
-                    {selectedCafe.vibes.map((v) => (
+                    {(selectedCafe.vibes ?? []).map((v) => (
                       <View key={v} style={[styles.amenityChip, styles.vibeChip]}>
                         <Text style={[styles.amenityChipText, { color: "#D4A373" }]}>{v}</Text>
                       </View>
@@ -1156,4 +1183,28 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(13), color: "#555",
     lineHeight: moderateScale(19), marginTop: scale(4),
   },
+
+  errorBanner: {
+    marginHorizontal: scale(16), marginBottom: scale(12),
+    backgroundColor: "rgba(198,40,40,0.08)",
+    borderRadius: scale(12), padding: scale(14),
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  errorBannerText: { fontSize: moderateScale(13), color: "#C62828", fontWeight: "500" },
+  retryBtn: {
+    backgroundColor: "#C62828", borderRadius: scale(10),
+    paddingHorizontal: scale(14), paddingVertical: scale(6),
+  },
+  retryBtnText: { color: "#FFF", fontSize: moderateScale(12), fontWeight: "700" },
+
+  loadingState: {
+    alignItems: "center", paddingVertical: scale(32), gap: scale(10),
+  },
+  loadingText: { fontSize: moderateScale(13), color: "#AAA" },
+
+  emptyState: {
+    alignItems: "center", paddingVertical: scale(40), gap: scale(8),
+  },
+  emptyStateText: { fontSize: moderateScale(16), fontWeight: "700", color: "#888" },
+  emptyStateSub:  { fontSize: moderateScale(13), color: "#BBB" },
 });

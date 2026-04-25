@@ -1,4 +1,5 @@
 import {
+  ActivityIndicator,
   Animated,
   Pressable,
   StyleSheet,
@@ -77,18 +78,24 @@ export default function AnalyticsScreen() {
   // const maxBar = Math.max(...PEAK_HOURS.map((h) => h.value));
 
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   const fetchAnalytics = async (selectedPeriod: string) => {
+    setFetchError(false);
+    setLoading(true);
     try {
       const res = await fetch(
         `${process.env.EXPO_PUBLIC_API_URL}/api/overview?cafe_id=1&period=${selectedPeriod}`
       );
+      if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-
-      console.log("DATA:", data);
       setAnalytics(data);
     } catch (err) {
       console.error(err);
+      setFetchError(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -186,14 +193,43 @@ export default function AnalyticsScreen() {
             </View>
           </View>
 
+          {/* Error banner */}
+          {fetchError && (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>Couldn't load analytics</Text>
+              <Pressable
+                onPress={() => {
+                  const map: Record<Period, string> = { Today: "today", "This Week": "week", "This Month": "month" };
+                  fetchAnalytics(map[period]);
+                }}
+                style={styles.retryBtn}
+              >
+                <Text style={styles.retryText}>Retry</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Loading overlay for stats grid */}
+          {loading && (
+            <View style={styles.loadingState}>
+              <ActivityIndicator size="small" color="#D4A373" />
+              <Text style={styles.loadingText}>Loading analytics…</Text>
+            </View>
+          )}
+
           {/* Peak Hours Chart */}
+          {!loading && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Clock size={16} color="#D4A373" />
               <Text style={styles.sectionTitle}>Peak Hours</Text>
             </View>
             <View style={styles.chartContainer}>
-              {peakHours.map((hour) => (
+              {peakHours.length === 0 ? (
+                <View style={styles.chartEmpty}>
+                  <Text style={styles.emptyText}>No data yet</Text>
+                </View>
+              ) : peakHours.map((hour) => (
                 <View key={hour.hour} style={styles.barGroup}>
                   <View style={styles.barTrack}>
                     <View
@@ -211,15 +247,21 @@ export default function AnalyticsScreen() {
               ))}
             </View>
           </View>
+          )}
 
           {/* Recent Visitors */}
+          {!loading && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Coffee size={16} color="#D4A373" />
               <Text style={styles.sectionTitle}>Recent Visitors</Text>
             </View>
             <View style={styles.visitorsList}>
-              {(analytics?.recent_visitors || []).map((v, i) => (
+              {(analytics?.recent_visitors || []).length === 0 ? (
+                <View style={styles.emptyVisitors}>
+                  <Text style={styles.emptyText}>No recent visitors yet</Text>
+                </View>
+              ) : (analytics?.recent_visitors || []).map((v, i) => (
                 <View key={i} style={styles.visitorRow}>
                   <View style={styles.visitorAvatar}>
                     <Text style={styles.visitorInitial}>{v.name[0]}</Text>
@@ -235,6 +277,7 @@ export default function AnalyticsScreen() {
               ))}
             </View>
           </View>
+          )}
 
           {/* Loyalty Summary */}
           <View style={styles.loyaltyCard}>
@@ -390,4 +433,28 @@ const styles = StyleSheet.create({
   loyaltyValue: { fontSize: moderateScale(20), fontWeight: "700", color: "#D4A373" },
   loyaltyLabel: { fontSize: moderateScale(11), color: "#888", marginTop: scale(4) },
   loyaltyDivider: { width: 1, height: scale(32), backgroundColor: "#E8DFD5" },
+
+  errorBanner: {
+    backgroundColor: "rgba(198,40,40,0.08)", borderRadius: scale(12),
+    padding: scale(14), flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between", marginBottom: scale(16),
+  },
+  errorText: { fontSize: moderateScale(13), color: "#C62828", fontWeight: "500" },
+  retryBtn: {
+    backgroundColor: "#C62828", borderRadius: scale(10),
+    paddingHorizontal: scale(14), paddingVertical: scale(6),
+  },
+  retryText: { color: "#FFF", fontSize: moderateScale(12), fontWeight: "700" },
+
+  loadingState: { alignItems: "center", paddingVertical: scale(32), gap: scale(10) },
+  loadingText:  { fontSize: moderateScale(13), color: "#AAA" },
+
+  chartEmpty: {
+    flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: scale(32),
+  },
+  emptyVisitors: {
+    backgroundColor: "#FFF", borderRadius: scale(12), padding: scale(20),
+    alignItems: "center", borderWidth: 1, borderColor: "#E8DFD5",
+  },
+  emptyText: { fontSize: moderateScale(13), color: "#BBB" },
 });

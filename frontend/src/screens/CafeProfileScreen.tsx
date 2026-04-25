@@ -1,6 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 
 import {
+    ActivityIndicator,
     Animated,
     Image,
     StyleSheet,
@@ -44,6 +45,7 @@ export default function CafeProfileScreen() {
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
     const [formError, setFormError] = useState("");
+    const [addingItem, setAddingItem] = useState(false);
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     const [editName, setEditName] = useState("");
     const [editPrice, setEditPrice] = useState("");
@@ -764,6 +766,7 @@ export default function CafeProfileScreen() {
                             ) : null}
 
                             <TouchableOpacity
+                            disabled={addingItem}
                             onPress={async () => {
                                 if (!newName || !newPrice || !newCategory) {
                                     setFormError("Please fill out all fields");
@@ -787,43 +790,60 @@ export default function CafeProfileScreen() {
                                     return;
                                 }
 
-                                let imageUrl = null;
-                                if (newImage) {
-                                    imageUrl = await uploadImage(newImage);
-                                }
-
-                                const { data } = await supabase
-                                .from("menu_items")
-                                .insert([
-                                    {
-                                    cafe_id: cafeId,
-                                    name: newName,
-                                    price: newPrice,
-                                    category: newCategory,
-                                    image_url: imageUrl,
-                                    },
-                                ])
-                                .select();
-
-                                if (data) {
-                                setMenuItems((prev) => [...prev, data[0]]);
-                                }
+                                setAddingItem(true);
                                 setFormError("");
+                                try {
+                                    let imageUrl = null;
+                                    if (newImage) {
+                                        imageUrl = await uploadImage(newImage);
+                                        if (imageUrl === null) {
+                                            setFormError("Image upload failed. Try again.");
+                                            return;
+                                        }
+                                    }
 
-                                setNewName("");
-                                setNewPrice("");
-                                setNewCategory("");
-                                setAddingItemCategory(null);
+                                    const { data } = await supabase
+                                    .from("menu_items")
+                                    .insert([
+                                        {
+                                        cafe_id: cafeId,
+                                        name: newName,
+                                        price: newPrice,
+                                        category: newCategory,
+                                        image_url: imageUrl,
+                                        },
+                                    ])
+                                    .select();
+
+                                    if (data) {
+                                        setMenuItems((prev) => [...prev, data[0]]);
+                                    }
+
+                                    setNewName("");
+                                    setNewPrice("");
+                                    setNewCategory("");
+                                    setNewImage(null);
+                                    setAddingItemCategory(null);
+                                } catch {
+                                    setFormError("Something went wrong. Please try again.");
+                                } finally {
+                                    setAddingItem(false);
+                                }
                             }}
                             style={{
-                                backgroundColor: "#D4A373",
+                                backgroundColor: addingItem ? "#E5C9A8" : "#D4A373",
                                 padding: scale(12),
                                 borderRadius: scale(10),
+                                flexDirection: "row",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                gap: scale(8),
                             }}
                             >
-                            <Text style={{ color: "#fff", textAlign: "center", fontSize: moderateScale(14) }}>
-                                Add Item
-                            </Text>
+                            {addingItem
+                                ? <ActivityIndicator size="small" color="#FFF" />
+                                : <Text style={{ color: "#fff", textAlign: "center", fontSize: moderateScale(14) }}>Add Item</Text>
+                            }
                             </TouchableOpacity>
                         </View>
                         )}
