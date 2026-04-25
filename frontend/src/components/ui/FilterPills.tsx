@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { FontAwesome5 } from "@expo/vector-icons";
+import { scale, moderateScale, verticalScale } from "../../utils/responsive";
 
 interface Filter {
-  icon: string; // name for FontAwesome5
+  icon: string; 
   label: string;
   id: string;
 }
@@ -42,9 +43,9 @@ const FilterPills = () => {
           >
             <FontAwesome5
               name={filter.icon}
-              size={14}
+              size={scale(14)}
               color={active ? "#FFF" : "#555"}
-              style={{ marginRight: 6 }}
+              style={{ marginRight: scale(6) }}
             />
             <Text style={[styles.pillText, active ? styles.activeText : styles.inactiveText]}>
               {filter.label}
@@ -58,20 +59,20 @@ const FilterPills = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
+    paddingHorizontal: scale(12),
+    paddingVertical: verticalScale(8),
+    gap: scale(8),
   },
   pill: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: scale(12),
+    paddingVertical: verticalScale(6),
+    borderRadius: scale(20),
     borderWidth: 1,
   },
   activePill: {
-    backgroundColor: "#C17A54", // caramel color
+    backgroundColor: "#C17A54",
     borderColor: "#C17A54",
   },
   inactivePill: {
@@ -79,7 +80,7 @@ const styles = StyleSheet.create({
     borderColor: "#CCC",
   },
   pillText: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
     fontWeight: "500",
   },
   activeText: {

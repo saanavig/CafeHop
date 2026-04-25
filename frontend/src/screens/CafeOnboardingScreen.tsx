@@ -2,7 +2,6 @@ import * as ImagePicker from "expo-image-picker";
 
 import { CheckCircle, Coffee } from "lucide-react-native";
 import {
-  Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,6 +15,7 @@ import { Alert } from "react-native";
 import Button from "../components/ui/Button";
 import { Image } from "react-native";
 import { apiFetch } from "../api/client";
+import { scale, moderateScale, verticalScale } from "../utils/responsive";
 import { supabase } from "../api/supabaseClient";
 import { useRole } from "../context/RoleContext";
 import * as Location from "expo-location";
@@ -112,7 +112,7 @@ export default function CafeOnboarding({ navigation }: any) {
     setHours((prev) => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
   };
 
-  const maxWidth = 480;
+  const maxWidth = scale(480);
 
   const handleFinishSetup = async () => {
     let imageUrl = null;
@@ -214,7 +214,7 @@ export default function CafeOnboarding({ navigation }: any) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.innerContainer, { maxWidth }]}>
           {/* Header */}
-          <Coffee size={32} color="#D4A373" style={{ alignSelf: "center", marginBottom: 8 }} />
+          <Coffee size={scale(32)} color="#D4A373" style={{ alignSelf: "center", marginBottom: verticalScale(8) }} />
           <Text style={styles.title}>Set Up Your Cafe</Text>
           <Text style={styles.subtitle}>Step {step} of {TOTAL_STEPS}</Text>
 
@@ -407,7 +407,7 @@ export default function CafeOnboarding({ navigation }: any) {
               Select your cafe's general price range
             </Text>
 
-            <View style={{ gap: 10, marginTop: 16 }}>
+            <View style={{ gap: scale(10), marginTop: verticalScale(16) }}>
               {[
                 "$ (Budget-friendly)",
                 "$$ (Moderate)",
@@ -420,8 +420,8 @@ export default function CafeOnboarding({ navigation }: any) {
                     setPriceError("");
                   }}
                   style={{
-                    padding: 14,
-                    borderRadius: 10,
+                    padding: scale(14),
+                    borderRadius: scale(10),
                     borderWidth: 1,
                     borderColor:
                       priceRange === option ? "#D4A373" : "#CCC",
@@ -429,13 +429,13 @@ export default function CafeOnboarding({ navigation }: any) {
                       priceRange === option ? "#FFF0E6" : "#FFF",
                   }}
                 >
-                  <Text style={{ textAlign: "center" }}>{option}</Text>
+                  <Text style={{ textAlign: "center", fontSize: moderateScale(14) }}>{option}</Text>
                 </Pressable>
               ))}
             </View>
 
             {priceError ? (
-              <Text style={{ color: "red", marginTop: 12, textAlign: "center" }}>
+              <Text style={{ color: "red", marginTop: verticalScale(12), textAlign: "center", fontSize: moderateScale(13) }}>
                 {priceError}
               </Text>
             ) : null}
@@ -450,7 +450,7 @@ export default function CafeOnboarding({ navigation }: any) {
                 }
                 next();
               }}
-              style={{ marginTop: 24 }}
+              style={{ marginTop: verticalScale(24) }}
             />
           </View>
         )}
@@ -462,28 +462,28 @@ export default function CafeOnboarding({ navigation }: any) {
                 Select what best describes your cafe (optional)
               </Text>
 
-              <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 6, marginTop: 12, }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: scale(6), marginTop: verticalScale(12) }}>
                 {ATTRIBUTE_OPTIONS.map((tag) => (
                   <Pressable
                     key={tag}
                     onPress={() => toggleTag(tag)}
                     style={{
-                      paddingVertical: 10,
-                      paddingHorizontal: 14,
-                      borderRadius: 20,
+                      paddingVertical: scale(10),
+                      paddingHorizontal: scale(14),
+                      borderRadius: scale(20),
                       borderWidth: 1,
                       borderColor: selectedTags.includes(tag) ? "#D4A373" : "#CCC",
                       backgroundColor: selectedTags.includes(tag) ? "#FFF0E6" : "#FFF",
-                      marginBottom: 6,
+                      marginBottom: scale(6),
                     }}
                   >
-                    <Text>{tag}</Text>
+                    <Text style={{ fontSize: moderateScale(13) }}>{tag}</Text>
                   </Pressable>
                 ))}
               </View>
 
               {tagError ? (
-                <Text style={{ color: "red", marginTop: 10, textAlign: "center" }}>
+                <Text style={{ color: "red", marginTop: verticalScale(10), textAlign: "center", fontSize: moderateScale(13) }}>
                   {tagError}
                 </Text>
               ) : null}
@@ -500,7 +500,7 @@ export default function CafeOnboarding({ navigation }: any) {
                   setTagError("");
                   handleFinishSetup();
                 }}
-                style={{ marginTop: 28 }}
+                style={{ marginTop: verticalScale(28) }}
               />
             </View>
           )}
@@ -529,104 +529,102 @@ export default function CafeOnboarding({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F7F3F0" },
-  scrollContent: { padding: 24, alignItems: "center" },
+  scrollContent: { padding: scale(24), alignItems: "center", width: "100%" },
   innerContainer: { width: "100%" },
   title: {
-    fontSize: 22,
+    fontSize: moderateScale(22),
     fontWeight: "bold",
     fontFamily: "PlayfairDisplay_700Bold",
-    marginBottom: 4,
+    marginBottom: verticalScale(4),
     textAlign: "center",
   },
-  subtitle: { fontSize: 14, color: "#555", marginBottom: 16, textAlign: "center" },
+  subtitle: { fontSize: moderateScale(14), color: "#555", marginBottom: verticalScale(16), textAlign: "center" },
   progressBackground: {
     width: "100%",
-    height: 6,
+    height: verticalScale(6),
     backgroundColor: "#DDD",
-    borderRadius: 3,
-    marginBottom: 16,
+    borderRadius: scale(3),
+    marginBottom: verticalScale(16),
   },
-  progressForeground: { height: 6, backgroundColor: "#D4A373", borderRadius: 3 },
-  backText: { color: "#555", marginBottom: 8, alignSelf: "flex-start" },
-  stepSection: { width: "100%", marginBottom: 24 },
+  progressForeground: { height: verticalScale(6), backgroundColor: "#D4A373", borderRadius: scale(3) },
+  backText: { color: "#555", marginBottom: verticalScale(8), alignSelf: "flex-start", fontSize: moderateScale(14) },
+  stepSection: { width: "100%", marginBottom: verticalScale(24) },
   stepTitle: {
-    fontSize: 20,
+    fontSize: moderateScale(20),
     fontWeight: "bold",
     textAlign: "center",
-    marginBottom: 6,
+    marginBottom: verticalScale(6),
     color: "#2C1810",
   },
-  stepDesc: { fontSize: 14, color: "#666", textAlign: "center", marginBottom: 20 },
+  stepDesc: { fontSize: moderateScale(14), color: "#666", textAlign: "center", marginBottom: verticalScale(20) },
   input: {
     borderWidth: 1,
     borderColor: "#CCC",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+    borderRadius: scale(8),
+    padding: scale(12),
+    marginBottom: verticalScale(12),
     backgroundColor: "#FFF",
-    fontSize: 15,
+    fontSize: moderateScale(15),
   },
   // Hours
   dayRow: {
     backgroundColor: "#FFF",
-    borderRadius: 12,
+    borderRadius: scale(12),
     borderWidth: 1,
     borderColor: "#E0E0E0",
-    padding: 12,
-    marginBottom: 10,
+    padding: scale(12),
+    marginBottom: verticalScale(10),
   },
   dayHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  dayName: { fontSize: 15, fontWeight: "600", color: "#2C1810" },
+  dayName: { fontSize: moderateScale(15), fontWeight: "600", color: "#2C1810" },
   togglePill: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(6),
+    borderRadius: scale(20),
     borderWidth: 1,
     borderColor: "#CCC",
     backgroundColor: "#F5F5F5",
   },
   togglePillActive: { borderColor: "#D4A373", backgroundColor: "#FFF0E6" },
-  togglePillText: { fontSize: 13, color: "#888" },
+  togglePillText: { fontSize: moderateScale(13), color: "#888" },
   togglePillTextActive: { color: "#D4A373", fontWeight: "600" },
   timeRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 10,
-    gap: 8,
+    marginTop: verticalScale(10),
+    gap: scale(8),
   },
   timeField: { flex: 1 },
-  timeLabel: { fontSize: 11, color: "#999", marginBottom: 4 },
+  timeLabel: { fontSize: moderateScale(11), color: "#999", marginBottom: verticalScale(4) },
   timeInput: {
     borderWidth: 1,
     borderColor: "#DDD",
-    borderRadius: 8,
-    padding: 8,
+    borderRadius: scale(8),
+    padding: scale(8),
     backgroundColor: "#FAFAFA",
-    fontSize: 14,
+    fontSize: moderateScale(14),
     textAlign: "center",
   },
-  timeSep: { fontSize: 18, color: "#CCC", marginTop: 16 },
+  timeSep: { fontSize: moderateScale(18), color: "#CCC", marginTop: verticalScale(16) },
   imageUploadBox: {
-  height: 140,
-  borderRadius: 12,
-  borderWidth: 1,
-  borderColor: "#CCC",
-  justifyContent: "center",
-  alignItems: "center",
-  marginBottom: 16,
-  backgroundColor: "#FAFAFA",
-  overflow: "hidden",
-},
-
+    height: verticalScale(140),
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderColor: "#CCC",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: verticalScale(16),
+    backgroundColor: "#FAFAFA",
+    overflow: "hidden",
+  },
   imageUploadText: {
     color: "#888",
-    fontSize: 14,
+    fontSize: moderateScale(14),
   },
-
   imagePreview: {
     width: "100%",
     height: "100%",

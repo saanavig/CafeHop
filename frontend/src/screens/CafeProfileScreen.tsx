@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { BookOpen, Grid3X3, Pencil, Star, Store } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
-import { deviceWidth, moderateScale, scale } from "../utils/responsive";
+import { deviceWidth, moderateScale, scale, verticalScale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
 import { TextInput } from "react-native";
@@ -89,7 +89,7 @@ export default function CafeProfileScreen() {
     const [activeTab, setActiveTab] = useState<"posts" | "menu" | "reviews">("posts");
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(18)).current;
+    const slideAnim = useRef(new Animated.Value(scale(18))).current;
     const tabFadeAnim = useRef(new Animated.Value(1)).current;
 
     const handleDeleteItem = async (item: any) => {
@@ -294,9 +294,9 @@ export default function CafeProfileScreen() {
     const inputStyle = {
         borderWidth: 1,
         borderColor: "#ddd",
-        borderRadius: 8,
-        padding: 10,
-        marginBottom: 10,
+        borderRadius: scale(8),
+        padding: scale(10),
+        marginBottom: verticalScale(10),
     };
 
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -408,13 +408,13 @@ export default function CafeProfileScreen() {
             {/* ICON TABS (MATCH USER PROFILE) */}
             <View style={styles.tabs}>
                 <TouchableOpacity onPress={() => switchTab("posts")}>
-                <Grid3X3 size={22} color={activeTab === "posts" ? "#D4A373" : "#777"} />
+                <Grid3X3 size={scale(22)} color={activeTab === "posts" ? "#D4A373" : "#777"} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => switchTab("menu")}>
-                <BookOpen size={22} color={activeTab === "menu" ? "#D4A373" : "#777"} />
+                <BookOpen size={scale(22)} color={activeTab === "menu" ? "#D4A373" : "#777"} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => switchTab("reviews")}>
-                <Star size={22} color={activeTab === "reviews" ? "#D4A373" : "#777"} />
+                <Star size={scale(22)} color={activeTab === "reviews" ? "#D4A373" : "#777"} />
                 </TouchableOpacity>
             </View>
 
@@ -445,8 +445,8 @@ export default function CafeProfileScreen() {
 
                 {/* EMPTY STATE */}
                 {!hasMenu && !isEditing && (
-                <View style={{ marginTop: 40, alignItems: "center" }}>
-                    <Text style={{ color: "#777", marginBottom: 12 }}>
+                <View style={{ marginTop: verticalScale(40), alignItems: "center" }}>
+                    <Text style={{ color: "#777", marginBottom: verticalScale(12), fontSize: moderateScale(14) }}>
                         {isEditing ? "No Menu Yet" : "No menu yet"}
                     </Text>
 
@@ -454,12 +454,12 @@ export default function CafeProfileScreen() {
                     onPress={handleCreateMenu}
                     style={{
                         backgroundColor: "#D4A373",
-                        paddingHorizontal: 18,
-                        paddingVertical: 12,
-                        borderRadius: 10,
+                        paddingHorizontal: scale(18),
+                        paddingVertical: scale(12),
+                        borderRadius: scale(10),
                     }}
                     >
-                    <Text style={{ color: "#fff", fontWeight: "600" }}>
+                    <Text style={{ color: "#fff", fontWeight: "600", fontSize: moderateScale(14) }}>
                         Create Menu
                     </Text>
                     </TouchableOpacity>
@@ -476,21 +476,21 @@ export default function CafeProfileScreen() {
                     }}
                     style={{
                         position: "absolute",
-                        right: 8,
-                        top: 20,
-                        padding: 8,
+                        right: scale(8),
+                        top: verticalScale(20),
+                        padding: scale(8),
                         backgroundColor: "#fff",
-                        borderRadius: 20,
+                        borderRadius: scale(20),
                         elevation: 3,
                         zIndex: 10,
                     }}
                     >
                     {isEditing ? (
-                        <Text style={{ color: "#D4A373", fontWeight: "600" }}>
+                        <Text style={{ color: "#D4A373", fontWeight: "600", fontSize: moderateScale(14) }}>
                         Done
                         </Text>
                     ) : (
-                        <Pencil size={18} color="#D4A373" />
+                        <Pencil size={scale(18)} color="#D4A373" />
                     )}
                     </TouchableOpacity>
 
@@ -499,9 +499,9 @@ export default function CafeProfileScreen() {
                         style={{
                             flexDirection: "row",
                             justifyContent: "space-between",
-                            marginTop: 20, 
+                            marginTop: verticalScale(20),
                             alignItems: "center",
-                            marginBottom: 10,
+                            marginBottom: verticalScale(10),
                         }}
                         >
                         <Text
@@ -511,7 +511,7 @@ export default function CafeProfileScreen() {
                                 fontSize: moderateScale(16),
                                 textAlign: "center",
                                 width: "100%",
-                                marginBottom: 6,
+                                marginBottom: verticalScale(6),
                             }}
                         >
                             {isEditing ? "Editing Menu" : "Menu"}
@@ -524,12 +524,12 @@ export default function CafeProfileScreen() {
                             onPress={() => setAddingItemCategory("GLOBAL")}
                             style={{
                             backgroundColor: "#D4A373",
-                            paddingVertical: 10,
-                            borderRadius: 10,
-                            marginBottom: 12,
+                            paddingVertical: scale(10),
+                            borderRadius: scale(10),
+                            marginBottom: verticalScale(12),
                             }}
                         >
-                            <Text style={{ color: "#fff", textAlign: "center", fontWeight: "600" }}>
+                            <Text style={{ color: "#fff", textAlign: "center", fontWeight: "600", fontSize: moderateScale(14) }}>
                             + Add Item
                             </Text>
                         </TouchableOpacity>
@@ -541,19 +541,19 @@ export default function CafeProfileScreen() {
                             style={{
                             flexDirection: "row",
                             justifyContent: "space-between",
-                            marginBottom: 6,
-                            paddingBottom: 4,
+                            marginBottom: verticalScale(6),
+                            paddingBottom: verticalScale(4),
                             borderBottomWidth: 1,
                             borderBottomColor: "#DDD",
                             }}
                         >
-                            <Text style={{ flex: 1, fontWeight: "600", color: "#888" }}>
+                            <Text style={{ flex: 1, fontWeight: "600", color: "#888", fontSize: moderateScale(13) }}>
                             Item
                             </Text>
-                            <Text style={{ width: 60, textAlign: "right", color: "#888" }}>
+                            <Text style={{ width: scale(60), textAlign: "right", color: "#888", fontSize: moderateScale(13) }}>
                             Price
                             </Text>
-                            <Text style={{ width: 40, textAlign: "right", color: "#888" }}>
+                            <Text style={{ width: scale(40), textAlign: "right", color: "#888", fontSize: moderateScale(13) }}>
                             Edit
                             </Text>
                         </View>
@@ -563,9 +563,9 @@ export default function CafeProfileScreen() {
                         <View
                         style={{
                             backgroundColor: "#FFF",
-                            borderRadius: 12,
-                            padding: 14,
-                            marginBottom: 16,
+                            borderRadius: scale(12),
+                            padding: scale(14),
+                            marginBottom: verticalScale(16),
                             borderWidth: 1,
                             borderColor: "#E5DED6",
                         }}
@@ -577,10 +577,10 @@ export default function CafeProfileScreen() {
                             flexDirection: "row",
                             justifyContent: "space-between",
                             alignItems: "center",
-                            marginBottom: 10,
+                            marginBottom: verticalScale(10),
                         }}
                     >
-                        <Text style={{ fontWeight: "600", fontSize: 16 }}>
+                        <Text style={{ fontWeight: "600", fontSize: moderateScale(16) }}>
                             Add Item
                         </Text>
 
@@ -594,12 +594,12 @@ export default function CafeProfileScreen() {
                                 setNewImage(null);
                             }}
                             style={{
-                                padding: 6,
+                                padding: scale(6),
                                 backgroundColor: "#F3F0EC",
-                                borderRadius: 20,
+                                borderRadius: scale(20),
                             }}
                         >
-                            <Text style={{ fontSize: 16, fontWeight: "600" }}>×</Text>
+                            <Text style={{ fontSize: moderateScale(16), fontWeight: "600" }}>×</Text>
                         </TouchableOpacity>
 
                     </View>
@@ -633,18 +633,18 @@ export default function CafeProfileScreen() {
                                 onPress={pickImage}
                                 style={{
                                     backgroundColor: "#F3F0EC",
-                                    padding: 10,
-                                    borderRadius: 8,
-                                    marginBottom: 10,
+                                    padding: scale(10),
+                                    borderRadius: scale(8),
+                                    marginBottom: verticalScale(10),
                                     alignItems: "center",
                                 }}
                             >
-                                <Text>{newImage ? "Change Image" : "Add Image"}</Text>
+                                <Text style={{ fontSize: moderateScale(14) }}>{newImage ? "Change Image" : "Add Image"}</Text>
                             </TouchableOpacity>
                             {newImage && (
                             <Image
                                 source={{ uri: newImage }}
-                                style={{ width: "100%", height: 120, borderRadius: 8, marginBottom: 10 }}
+                                style={{ width: "100%", height: verticalScale(120), borderRadius: scale(8), marginBottom: verticalScale(10) }}
                             />
                             )}
 
@@ -656,8 +656,8 @@ export default function CafeProfileScreen() {
                                 style={{
                                 borderWidth: 1,
                                 borderColor: "#ddd",
-                                borderRadius: 8,
-                                padding: 10,
+                                borderRadius: scale(8),
+                                padding: scale(10),
                                 backgroundColor: "#fff",
                                 }}
                             >
@@ -675,8 +675,8 @@ export default function CafeProfileScreen() {
                                 style={{
                                     borderWidth: 1,
                                     borderColor: "#ddd",
-                                    borderRadius: 8,
-                                    marginTop: 6,
+                                    borderRadius: scale(8),
+                                    marginTop: verticalScale(6),
                                     backgroundColor: "#fff",
                                     elevation: 4,
                                     zIndex: 10,
@@ -691,9 +691,9 @@ export default function CafeProfileScreen() {
                                         setShowCategoryDropdown(false);
                                         setIsAddingNewCategory(false);
                                         }}
-                                        style={{ padding: 10 }}
+                                        style={{ padding: scale(10) }}
                                     >
-                                        <Text>{cat}</Text>
+                                        <Text style={{ fontSize: moderateScale(14) }}>{cat}</Text>
                                     </TouchableOpacity>
                                     ))
                                 ) : (
@@ -706,7 +706,7 @@ export default function CafeProfileScreen() {
                                 <TouchableOpacity
                                     onPress={() => setIsAddingNewCategory(true)}
                                     style={{
-                                    padding: 10,
+                                    padding: scale(10),
                                     borderTopWidth: 1,
                                     borderTopColor: "#eee",
                                     }}
@@ -727,8 +727,9 @@ export default function CafeProfileScreen() {
                                         style={{
                                         borderWidth: 1,
                                         borderColor: "#ddd",
-                                        borderRadius: 6,
-                                        padding: 8,
+                                        borderRadius: scale(6),
+                                        padding: scale(8),
+                                        fontSize: moderateScale(14),
                                         }}
                                     />
 
@@ -740,10 +741,10 @@ export default function CafeProfileScreen() {
                                         setShowCategoryDropdown(false);
                                         }}
                                         style={{
-                                        marginTop: 8,
+                                        marginTop: verticalScale(8),
                                         backgroundColor: "#D4A373",
-                                        padding: 8,
-                                        borderRadius: 6,
+                                        padding: scale(8),
+                                        borderRadius: scale(6),
                                         }}
                                     >
                                         <Text style={{ color: "#fff", textAlign: "center" }}>
@@ -816,11 +817,11 @@ export default function CafeProfileScreen() {
                             }}
                             style={{
                                 backgroundColor: "#D4A373",
-                                padding: 12,
-                                borderRadius: 10,
+                                padding: scale(12),
+                                borderRadius: scale(10),
                             }}
                             >
-                            <Text style={{ color: "#fff", textAlign: "center" }}>
+                            <Text style={{ color: "#fff", textAlign: "center", fontSize: moderateScale(14) }}>
                                 Add Item
                             </Text>
                             </TouchableOpacity>
@@ -841,8 +842,8 @@ export default function CafeProfileScreen() {
                                         fontWeight: "700",
                                         color: "#1A1A1A",
                                         backgroundColor: "#F3F0EC",
-                                        padding: 6,
-                                        borderRadius: 6,
+                                        padding: scale(6),
+                                        borderRadius: scale(6),
                                         marginBottom: scale(8),
                                     }}
                                     />
@@ -877,11 +878,11 @@ export default function CafeProfileScreen() {
                                                             : undefined
                                                     }
                                                     style={{
-                                                        width: 30,
-                                                        height: 30,
-                                                        borderRadius: 6,
+                                                        width: scale(30),
+                                                        height: scale(30),
+                                                        borderRadius: scale(6),
                                                         backgroundColor: "#E8DFD5",
-                                                        marginRight: 8,
+                                                        marginRight: scale(8),
                                                     }}
                                                 />
 
@@ -893,8 +894,9 @@ export default function CafeProfileScreen() {
                                                         style={{
                                                             flex: 1,
                                                             backgroundColor: "#F3F0EC",
-                                                            padding: 6,
-                                                            borderRadius: 6,
+                                                            padding: scale(6),
+                                                            borderRadius: scale(6),
+                                                            fontSize: moderateScale(13),
                                                         }}
                                                     />
 
@@ -904,26 +906,27 @@ export default function CafeProfileScreen() {
                                                             handleEditItem(item.id, "price", text)
                                                         }
                                                         style={{
-                                                            width: 60,
+                                                            width: scale(60),
                                                             textAlign: "right",
                                                             backgroundColor: "#F3F0EC",
-                                                            padding: 6,
-                                                            borderRadius: 6,
-                                                            marginLeft: 10,
+                                                            padding: scale(6),
+                                                            borderRadius: scale(6),
+                                                            marginLeft: scale(10),
+                                                            fontSize: moderateScale(13),
                                                         }}
                                                     />
 
                                                     {/* ✏️ + 🗑 ICONS */}
-                                                    <View style={{ flexDirection: "row", marginLeft: 10 }}>
+                                                    <View style={{ flexDirection: "row", marginLeft: scale(10) }}>
                                                         <TouchableOpacity
                                                             onPress={() => {
                                                                 setEditingItemId(item.id);
                                                                 setEditName(item.name);
                                                                 setEditPrice(item.price);
                                                                 setEditCategory(section.title);
-                                                                setEditImage(item.image_url || null); 
+                                                                setEditImage(item.image_url || null);
                                                             }}
-                                                            style={{ marginRight: 10 }}
+                                                            style={{ marginRight: scale(10) }}
                                                         >
                                                             <Text>✏️</Text>
                                                         </TouchableOpacity>
@@ -936,7 +939,7 @@ export default function CafeProfileScreen() {
                                             ) : (
                                                 <View style={{ flexDirection: "row", alignItems: "center", width: "100%" }}>
                                                 {/* LEFT SIDE: IMAGE + NAME */}
-                                                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                                <View style={{ flexDirection: "row", alignItems: "center", gap: scale(10) }}>
                                                     <TouchableOpacity
                                                     onPress={() => {
                                                         if (item.image_url) {
@@ -951,9 +954,9 @@ export default function CafeProfileScreen() {
                                                                 : undefined
                                                         }
                                                         style={{
-                                                            width: 40,
-                                                            height: 40,
-                                                            borderRadius: 8,
+                                                            width: scale(40),
+                                                            height: scale(40),
+                                                            borderRadius: scale(8),
                                                             backgroundColor: "#E8DFD5",
                                                         }}
                                                     />
@@ -974,9 +977,9 @@ export default function CafeProfileScreen() {
                                             <View
                                                 style={{
                                                     backgroundColor: "#FFF",
-                                                    borderRadius: 10,
-                                                    padding: 10,
-                                                    marginTop: 8,
+                                                    borderRadius: scale(10),
+                                                    padding: scale(10),
+                                                    marginTop: verticalScale(8),
                                                     borderWidth: 1,
                                                     borderColor: "#E5DED6",
                                                 }}
@@ -1009,9 +1012,9 @@ export default function CafeProfileScreen() {
                                                 }}
                                                 style={{
                                                     backgroundColor: "#F3F0EC",
-                                                    padding: 10,
-                                                    borderRadius: 8,
-                                                    marginBottom: 10,
+                                                    padding: scale(10),
+                                                    borderRadius: scale(8),
+                                                    marginBottom: verticalScale(10),
                                                     alignItems: "center",
                                                 }}
                                             >
@@ -1022,7 +1025,7 @@ export default function CafeProfileScreen() {
                                             {editImage && (
                                                 <Image
                                                     source={{ uri: editImage }}
-                                                    style={{ width: "100%", height: 120, borderRadius: 8, marginBottom: 10 }}
+                                                    style={{ width: "100%", height: verticalScale(120), borderRadius: scale(8), marginBottom: verticalScale(10) }}
                                                 />
                                             )}
 
@@ -1070,11 +1073,11 @@ export default function CafeProfileScreen() {
                                                     }}
                                                     style={{
                                                         backgroundColor: "#D4A373",
-                                                        padding: 10,
-                                                        borderRadius: 8,
+                                                        padding: scale(10),
+                                                        borderRadius: scale(8),
                                                     }}
                                                 >
-                                                    <Text style={{ color: "#fff", textAlign: "center" }}>
+                                                    <Text style={{ color: "#fff", textAlign: "center", fontSize: moderateScale(14) }}>
                                                         Save Changes
                                                     </Text>
                                                 </TouchableOpacity>
@@ -1096,9 +1099,9 @@ export default function CafeProfileScreen() {
                     {[1, 2, 3].map((_, i) => (
                     <View key={i} style={styles.card}>
                         <Text style={styles.cardTitle}>Amazing coffee!</Text>
-                        <View style={{ flexDirection: "row", marginTop: 4 }}>
+                        <View style={{ flexDirection: "row", marginTop: verticalScale(4) }}>
                         {Array.from({ length: 5 }).map((__, j) => (
-                            <Star key={j} size={14} color={j < 4 ? "#D4A373" : "#ddd"} fill={j < 4 ? "#D4A373" : "transparent"} />
+                            <Star key={j} size={scale(14)} color={j < 4 ? "#D4A373" : "#ddd"} fill={j < 4 ? "#D4A373" : "transparent"} />
                         ))}
                         </View>
                     </View>
@@ -1131,7 +1134,7 @@ export default function CafeProfileScreen() {
                 style={{
                     width: "90%",
                     height: "60%",
-                    borderRadius: 12,
+                    borderRadius: scale(12),
                 }}
                 resizeMode="contain"
             />
@@ -1155,8 +1158,8 @@ const styles = StyleSheet.create({
         left: scale(12),
         right: scale(12),
     },
-    heroTitle: { color: "#FFF", fontSize: 18, fontWeight: "700" },
-    heroSubtitle: { color: "#FFF", fontSize: 12, marginTop: 4 },
+    heroTitle: { color: "#FFF", fontSize: moderateScale(18), fontWeight: "700" },
+    heroSubtitle: { color: "#FFF", fontSize: moderateScale(12), marginTop: verticalScale(4) },
 
     header: { padding: scale(16), alignItems: "center" },
     avatar: {
@@ -1240,11 +1243,11 @@ const styles = StyleSheet.create({
 
     closeBtn: {
         position: "absolute",
-        top: 40,
-        right: 20,
+        top: verticalScale(40),
+        right: scale(20),
         zIndex: 10,
     },
-    modalContent: { padding: 12 },
+    modalContent: { padding: scale(12) },
 
     menuSectionTitle: {
         fontSize: moderateScale(14),

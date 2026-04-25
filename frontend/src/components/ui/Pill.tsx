@@ -1,10 +1,11 @@
 // components/ui/Pill.tsx
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { scale, moderateScale } from "../../utils/responsive";
 
 interface PillProps {
   text: string;
-  variant?: "default" | "caramel"; // optional styling
+  variant?: "default" | "caramel"; 
 }
 
 const Pill = ({ text, variant = "default" }: PillProps) => {
@@ -26,13 +27,13 @@ export default Pill;
 
 const styles = StyleSheet.create({
   pill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 6,
-    marginBottom: 6,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(12),
+    marginRight: scale(6),
+    marginBottom: scale(6),
   },
-  text: { fontSize: 12, color: "#555" },
+  text: { fontSize: moderateScale(12), color: "#555" },
   default: { backgroundColor: "#EEE" },
   caramel: { backgroundColor: "#C68D59" },
   caramelText: { color: "#FFF" },
