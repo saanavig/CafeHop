@@ -12,7 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { moderateScale, scale, verticalScale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
@@ -101,15 +101,12 @@ export default function CafeOnboarding({ navigation }: any) {
   const [tagError, setTagError] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const debounceRef = useRef<any>(null);
-  // const [posType, setPosType] = useState<"manual" | "square" | null>(null);
-  // const [linkedPOS, setLinkedPOS] = useState<"Square" | null>(null);
-  // const [posEmail, setPosEmail] = useState("");
-  // const [posPassword, setPosPassword] = useState("");
-  // const [verificationCode, setVerificationCode] = useState("");
+  // const [email, setEmail] = useState("");
   const [priceRange, setPriceRange] = useState<string | null>(null);
   const [priceError, setPriceError] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
-  // const [debounceTimeout, setDebounceTimeout] = useState<any>(null);
+  const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [coordinates, setCoordinates] = useState<{
     lat: number;
     lng: number;
@@ -128,6 +125,21 @@ export default function CafeOnboarding({ navigation }: any) {
       return updated;
     });
   };
+
+
+  // useEffect(() => {
+  //   const loadEmail = async () => {
+  //     const {
+  //       data: { user },
+  //     } = await supabase.auth.getUser();
+
+  //     if (user?.email) {
+  //       setEmail(user.email);
+  //     }
+  //   };
+
+  //   loadEmail();
+  // }, []);
 
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -160,6 +172,16 @@ export default function CafeOnboarding({ navigation }: any) {
     console.log("Finish setup clicked");
     
     let imageUrl = null;
+
+    // if (!email.trim()) {
+    //   Alert.alert("Invalid Email", "Please enter a valid email");
+    //   return;
+    // }
+
+    if (phone.length !== 10) {
+      Alert.alert("Invalid Phone Number", "Phone number must be 10 digits");
+      return;
+    }
 
     if (image) {
       const fileName = `cafe-${Date.now()}-${Math.random()}.jpg`;
@@ -198,7 +220,8 @@ export default function CafeOnboarding({ navigation }: any) {
       const payload = {
         name: cafeName,
         address,
-        contact,
+        // contact_email: email,
+        contact_phone: phone,
         latitude,
         longitude,
         hours,
@@ -388,98 +411,42 @@ export default function CafeOnboarding({ navigation }: any) {
                   </ScrollView>
                 </View>
               )}
-              <TextInput
-                placeholder="Contact email or phone"
+              {/* done with location here */}
+
+              {/* <TextInput
+                placeholder="Email"
                 style={styles.input}
-                value={contact}
-                onChangeText={setContact}
+                value={email}
+                onChangeText={setEmail}
                 keyboardType="email-address"
-              />
-              {/* <View
-                style={{
-                  position: "absolute",
-                  top: verticalScale(150),
-                  width: "100%",
-                  backgroundColor: "#fff",
-                  borderRadius: 10,
-                  zIndex: 999,
-                  elevation: 5,
+                autoCapitalize="none"
+              /> */}
+              <TextInput
+                placeholder="Phone Number"
+                style={styles.input}
+                value={phone}
+                onChangeText={(text) => {
+                  const cleaned = text.replace(/\D/g, "").slice(0, 10);
+                  setPhone(cleaned);
+
+                  if (cleaned.length !== 10) {
+                    setPhoneError("Phone number must be 10 digits");
+                  } else {
+                    setPhoneError("");
+                  }
                 }}
-              >
-              {suggestions.map((item) => (
-                <Pressable
-                  key={item.placePrediction.placeId}
-                  onPress={async () => {
-                    const placeId = item.placePrediction.placeId;
+                keyboardType="phone-pad"
+                maxLength={10}
+              />
 
-                    const res = await fetch(
-                      `${API_URL}/api/places/details?place_id=${placeId}`
-                    );
+              {phoneError ? (
+                <Text style={{ color: "red", marginBottom: 10 }}>
+                  {phoneError}
+                </Text>
+              ) : null}
 
-                    const data = await res.json();
-                    console.log("DETAILS:", data);
 
-                    setAddress(item.placePrediction.text.text);
-                    setSuggestions([]);
 
-                    setCoordinates({ lat: 0, lng: 0 });
-                  }}
-                >
-                  <Text>
-                    {item.placePrediction.text.text}
-                  </Text>
-                </Pressable>
-              ))} */}
-              {/* <View
-              style={{
-              maxHeight: 200,
-              backgroundColor: "#fff",
-              borderRadius: 10,
-              marginTop: 4,
-              borderWidth: 1,
-              borderColor: "#ddd",
-              overflow: "hidden",
-            }}
-          > */}
-            {/* <ScrollView keyboardShouldPersistTaps="handled">
-              {suggestions.map((item) => (
-                <Pressable
-                  key={item.placePrediction.placeId}
-                  onPress={async () => {
-                    const placeId = item.placePrediction.placeId;
-
-                    const res = await fetch(
-                      `${API_URL}/api/places/details?place_id=${placeId}`
-                    );
-
-                    const data = await res.json();
-                    console.log("DETAILS:", data);
-
-                    setAddress(item.placePrediction.text.text);
-                    setSuggestions([]);
-                    setCoordinates({
-                      lat: data.location.latitude,
-                      lng: data.location.longitude,
-                    });
-                  }}
-                  style={{
-                    padding: 12,
-                    borderBottomWidth: 1,
-                    borderColor: "#eee",
-                  }}
-                >
-                  <>
-                  <Text style={{ fontWeight: "600" }}>
-                    {item.placePrediction.structuredFormat.mainText.text}
-                  </Text>
-                  <Text style={{ color: "#666", fontSize: 12 }}>
-                    {item.placePrediction.structuredFormat.secondaryText.text}
-                  </Text>
-                </>
-                </Pressable>
-              ))}
-            </ScrollView> */}
-          {/* </View> */}
               <Pressable onPress={pickImage} style={styles.imageUploadBox}>
                 {image ? (
                   <Image source={{ uri: image }} style={styles.imagePreview} />
@@ -494,7 +461,8 @@ export default function CafeOnboarding({ navigation }: any) {
                 disabled={
                   !cafeName.trim() ||
                   !address.trim() ||
-                  !contact.trim() ||
+                  !email.trim() ||
+                  phone.length !== 10 ||
                   !coordinates
                 }
               />
