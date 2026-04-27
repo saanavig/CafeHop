@@ -1,13 +1,14 @@
 import * as Location from "expo-location";
 
 import {
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { moderateScale, scale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
@@ -74,10 +75,9 @@ export default function CustomerOnboardingScreen() {
   const navigation = useNavigation<any>();
   const { setRole } = useRole();
   const [selectedPrefs, setSelectedPrefs] = useState<string[]>([]);
-  const [locationAllowed, setLocationAllowed] = useState(false);
   const [distance, setDistance] = useState(5);
   const [step, setStep] = useState(0);
-  const totalSteps = preferenceCategories.length + 1;
+  const totalSteps = preferenceCategories.length;
   const [error, setError] = useState("");
 
   // must pick a preference
@@ -133,7 +133,7 @@ export default function CustomerOnboardingScreen() {
       //   ["Student discounts", "Accepts cash", "Deals & specials", "Affordable portions"].includes(p)
       // ),
 
-      max_distance_miles: distance,
+      // max_distance_miles: distance,
     };
   };
 
@@ -201,117 +201,55 @@ export default function CustomerOnboardingScreen() {
             </View>
           )}
 
-          {/* Location Step */}
-          {step === preferenceCategories.length && (
-            <View style={styles.locationCard}>
-              <View style={styles.locationHeader}>
-                <Text style={styles.locationIcon}>📍</Text>
-                <Text style={styles.locationTitle}>Enable location</Text>
-              </View>
-
-              <Text style={styles.locationDesc}>
-                Find cafes near you and see what’s open.
-              </Text>
-
-              <Button
-                title={locationAllowed ? "Location enabled" : "Allow location"}
-                variant={locationAllowed ? "outline" : "caramel"}
-                onPress={async () => {
-                  try {
-                    const { status } = await Location.requestForegroundPermissionsAsync();
-
-                    if (status === "granted") {
-                      setLocationAllowed(true);
-                    } else {
-                      setLocationAllowed(false);
-                      alert("Location permission is required to find nearby cafes.");
-                    }
-                  } catch (err) {
-                    console.error("Location error:", err);
-                  }
-                }}
-              />
-
-              {locationAllowed && (
-                <View style={{ marginTop: 16 }}>
-                  <Text style={{ fontSize: 14, marginBottom: 8 }}>
-                    Search within
-                  </Text>
-
-                  <View style={{ flexDirection: "row", gap: 10 }}>
-                    {[1, 3, 5, 10].map((d) => {
-                      const active = distance === d;
-
-                      return (
-                        <Pressable
-                          key={d}
-                          onPress={() => setDistance(d)}
-                          style={{
-                            paddingVertical: 8,
-                            paddingHorizontal: 12,
-                            borderWidth: 1,
-                            borderColor: active ? "#D4A373" : "#CCC",
-                            borderRadius: 20,
-                            backgroundColor: active ? "#FFF0E6" : "#FFF",
-                          }}
-                        >
-                          <Text style={{ color: active ? "#D4A373" : "#555" }}>
-                            {d} mi
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-              )}
-            </View>
-          )}
-
           {/* Continue / Finish Button */}
           <View style={styles.finishButton}>
             <Button
-            title={step < preferenceCategories.length ? "Continue" : "Finish"}
+            title={
+              step === preferenceCategories.length - 1
+                ? "Finish Setup"
+                : "Continue"
+            }
             onPress={async () => {
-                if (step < preferenceCategories.length) {
-                  const hasSelection = selectedPrefs.length > 0;
+            if (step < preferenceCategories.length - 1) {
+              const hasSelection = selectedPrefs.length > 0;
 
-                  if (!hasSelection) {
-                    setError("Please select at least one option or choose 'No preference'");
-                    return;
-                  }
+              if (!hasSelection) {
+                setError("Please select at least one option or choose 'No preference'");
+                return;
+              }
 
-                  setError("");
-                  setStep((prev) => prev + 1);
-                } else {
-                  const preferences = buildPreferences();
+              setError("");
+              setStep((prev) => prev + 1);
+            } else {
+              const preferences = buildPreferences();
 
-                  const {
-                    data: { user },
-                    error: userError,
-                  } = await supabase.auth.getUser();
+              const {
+                data: { user },
+                error: userError,
+              } = await supabase.auth.getUser();
 
-                  if (userError || !user) {
-                    console.error("User not found:", userError);
-                    return;
-                  }
+              if (userError || !user) {
+                console.error("User not found:", userError);
+                return;
+              }
 
-                  const { error } = await supabase
-                    .from("user_preferences")
-                    .upsert({
-                      user_id: user.id,
-                      ...preferences,
-                    });
+              const { error } = await supabase
+                .from("user_preferences")
+                .upsert({
+                  user_id: user.id,
+                  ...preferences,
+                });
 
-                  if (error) {
-                    console.error("Error saving preferences:", error);
-                    return;
-                  }
+              if (error) {
+                console.error("Error saving preferences:", error);
+                return;
+              }
 
-                  setRole("customer");
-                  navigation.navigate("Home");
-                }
+              setRole("customer");
+              navigation.navigate("Home");
+            }
             }}
-            disabled={step === preferenceCategories.length && !locationAllowed} // only disables on location step
+            disabled={false}
             />
           </View>
         </View>
