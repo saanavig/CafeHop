@@ -4,7 +4,6 @@ import re
 
 from services.user_profile_service import build_user_profile
 from database.supabase_client import supabase
-from services.gemini_services import generate_recommendation_explanations_with_gemini
 from services.review_service import (
     get_user_reviews,
     get_cafe_review_stats,
@@ -32,31 +31,13 @@ def haversine_miles(lat1, lon1, lat2, lon2):
     return round(r * c, 2)
 
 
-def safe_lower(value):
-    if value is None:
-        return None
-    return str(value).strip().lower()
-
-
 def normalize_text_token(value):
     if not value:
         return None
+
     cleaned = re.sub(r"[^a-zA-Z0-9\s&\-]", "", str(value).strip().lower())
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     return cleaned or None
-
-
-def normalize_text_list(values):
-    if not values:
-        return []
-    normalized = []
-    seen = set()
-    for value in values:
-        token = normalize_text_token(value)
-        if token and token not in seen:
-            seen.add(token)
-            normalized.append(token)
-    return normalized
 
 
 def get_all_active_cafes():
@@ -79,16 +60,8 @@ def get_all_cafe_tags():
 
 
 def get_all_menu_items():
-    """
-    Works with your pasted schema:
-    menu_items(id, cafe_id, name, price, category, created_at, image_url)
-    """
     try:
-        response = (
-            supabase.table("menu_items")
-            .select("*")
-            .execute()
-        )
+        response = supabase.table("menu_items").select("*").execute()
         return response.data or []
     except Exception:
         return []
@@ -96,11 +69,14 @@ def get_all_menu_items():
 
 def build_cafe_tag_map(cafe_tag_rows):
     cafe_tag_map = defaultdict(set)
+
     for row in cafe_tag_rows:
         cafe_id = row.get("cafe_id")
         tag_id = row.get("tag_id")
+
         if cafe_id and tag_id:
             cafe_tag_map[cafe_id].add(tag_id)
+
     return cafe_tag_map
 
 
@@ -119,6 +95,7 @@ def build_cafe_tag_detail_map(cafe_tag_rows):
         key = (cafe_id, tag_id)
         if key in seen:
             continue
+
         seen.add(key)
 
         cafe_tag_detail_map[cafe_id].append({
@@ -132,25 +109,17 @@ def build_cafe_tag_detail_map(cafe_tag_rows):
 
 def build_menu_map(menu_rows):
     menu_map = defaultdict(list)
+
     for row in menu_rows:
         cafe_id = row.get("cafe_id")
-        if not cafe_id:
-            continue
-        menu_map[cafe_id].append(row)
+
+        if cafe_id:
+            menu_map[cafe_id].append(row)
+
     return menu_map
 
 
 def build_interaction_map_from_profile(user_profile):
-    """
-    Converts user_profile['interaction_per_cafe'] into:
-    {
-      cafe_id: Counter({
-         "view": 2,
-         "favorite": 1,
-         "purchase": 3,
-      })
-    }
-    """
     return {
         cafe_id: Counter(counts)
         for cafe_id, counts in user_profile.get("interaction_per_cafe", {}).items()
@@ -162,19 +131,22 @@ def build_cafe_profile(cafe, cafe_tags, menu_items, review_stats):
 
     tag_names = []
     for tag in cafe_tags:
-        name = tag.get("name")
-        token = normalize_text_token(name)
+        token = normalize_text_token(tag.get("name"))
         if token:
             tag_names.append(token)
 
     menu_names = []
     menu_categories = []
+
     for item in menu_items:
-        item_name = normalize_text_token(item.get("name"))
+        item_name = normalize_text_token(
+            item.get("normalized_name") or item.get("name")
+        )
         item_category = normalize_text_token(item.get("category"))
 
         if item_name:
             menu_names.append(item_name)
+
         if item_category:
             menu_categories.append(item_category)
 
@@ -201,61 +173,67 @@ def score_distance(distance_miles, max_distance):
     if distance_miles > max_distance:
         return 0, []
 
-    reasons = []
     if distance_miles <= 1:
-        reasons.append("very close by")
-        return 25, reasons
-    if distance_miles <= 2:
-        reasons.append("close to you")
-        return 20, reasons
-    if distance_miles <= 3:
-        reasons.append("nearby")
-        return 15, reasons
-    if distance_miles <= 5:
-        return 10, reasons
+        return 25, ["very close by"]
 
-    return max(1, int((1 - (distance_miles / max_distance)) * 10)), reasons
+    if distance_miles <= 2:
+        return 20, ["close to you"]
+
+    if distance_miles <= 3:
+        return 15, ["nearby"]
+
+    if distance_miles <= 5:
+        return 10, []
+
+    return max(1, int((1 - (distance_miles / max_distance)) * 10)), []
 
 
 def score_preference_fit(user_profile, cafe_profile):
     score = 0
     reasons = []
 
-    if user_profile["wants_wifi"] and cafe_profile["wifi"] is True:
+    if user_profile.get("wants_wifi") and cafe_profile.get("wifi") is True:
         score += 8
         reasons.append("has WiFi")
 
     preferred_price = user_profile.get("preferred_price_level")
     cafe_price = cafe_profile.get("price_level")
+
     if preferred_price is not None and cafe_price is not None:
-        if cafe_price == preferred_price:
-            score += 8
-            reasons.append("matches your price preference")
-        elif abs(cafe_price - preferred_price) == 1:
-            score += 4
+        try:
+            preferred_price = int(preferred_price)
+            cafe_price = int(cafe_price)
+
+            if cafe_price == preferred_price:
+                score += 8
+                reasons.append("matches your price preference")
+            elif abs(cafe_price - preferred_price) == 1:
+                score += 4
+        except Exception:
+            pass
 
     cafe_tokens = set(
-        cafe_profile["tag_names"]
-        + cafe_profile["menu_categories"]
-        + cafe_profile["menu_item_names"]
+        cafe_profile.get("tag_names", [])
+        + cafe_profile.get("menu_categories", [])
+        + cafe_profile.get("menu_item_names", [])
     )
 
-    for token in user_profile["atmosphere"]:
+    for token in user_profile.get("atmosphere", []):
         if token in cafe_tokens:
             score += 3
             reasons.append(f"matches your atmosphere preference for {token}")
 
-    for token in user_profile["vibe"]:
+    for token in user_profile.get("vibe", []):
         if token in cafe_tokens:
             score += 3
             reasons.append(f"matches your vibe preference for {token}")
 
-    for token in user_profile["work_preferences"]:
+    for token in user_profile.get("work_preferences", []):
         if token in cafe_tokens:
             score += 3
             reasons.append(f"fits your work preference for {token}")
 
-    for token in user_profile["food_preferences"]:
+    for token in user_profile.get("food_preferences", []):
         if token in cafe_tokens:
             score += 4
             reasons.append(f"fits your food preference for {token}")
@@ -264,20 +242,22 @@ def score_preference_fit(user_profile, cafe_profile):
 
 
 def score_tag_overlap(user_profile, cafe_profile):
-    user_tags = set(user_profile["tag_names"])
-    cafe_tags = set(cafe_profile["tag_names"])
+    user_tags = set(user_profile.get("tag_names", []))
+    cafe_tags = set(cafe_profile.get("tag_names", []))
 
     overlap = user_tags.intersection(cafe_tags)
+
     if not overlap:
         return 0, [], []
 
     score = min(20, len(overlap) * 5)
     reasons = [f"matches your tags: {', '.join(sorted(overlap)[:3])}"]
+
     return score, list(overlap), reasons
 
 
 def score_reviews(cafe_profile):
-    stats = cafe_profile["review_stats"]
+    stats = cafe_profile.get("review_stats") or {}
     avg_rating = stats.get("avg_rating")
     review_count = stats.get("review_count", 0)
 
@@ -336,15 +316,12 @@ def score_interactions(cafe_id, interaction_map, liked_cafe_ids):
 
 
 def score_menu_affinity(user_profile, cafe_profile):
-    """
-    This is where the future 'you like matcha' logic plugs in.
-    It already works if user_item_preferences exists.
-    """
-    favorite_items = set(user_profile["favorite_items"])
+    favorite_items = set(user_profile.get("favorite_items", []))
+
     if not favorite_items:
         return 0, [], []
 
-    cafe_menu_names = set(cafe_profile["menu_item_names"])
+    cafe_menu_names = set(cafe_profile.get("menu_item_names", []))
 
     direct_matches = set()
     fuzzy_matches = set()
@@ -372,6 +349,7 @@ def score_menu_affinity(user_profile, cafe_profile):
         )
 
     all_matches = list(direct_matches.union(fuzzy_matches))
+
     return score, all_matches, dedupe_reasons(reasons)
 
 
@@ -379,7 +357,6 @@ def score_cafe(
     cafe,
     user_profile,
     user_tag_ids,
-    user_tag_lookup,
     cafe_tag_ids,
     cafe_profile,
     interaction_map,
@@ -389,7 +366,7 @@ def score_cafe(
     total_score = 0
     reasons = []
 
-    max_distance = user_profile["max_distance_miles"]
+    max_distance = user_profile.get("max_distance_miles") or DEFAULT_MAX_DISTANCE_MILES
 
     distance_score, distance_reasons = score_distance(distance_miles, max_distance)
     total_score += distance_score
@@ -415,14 +392,15 @@ def score_cafe(
     total_score += interaction_score
     reasons.extend(interaction_reasons)
 
-    menu_score, menu_matches, menu_reasons = score_menu_affinity(user_profile, cafe_profile)
+    menu_score, menu_matches, menu_reasons = score_menu_affinity(
+        user_profile,
+        cafe_profile,
+    )
     total_score += menu_score
     reasons.extend(menu_reasons)
 
     matching_tag_ids = [
-        tag_id
-        for tag_id in cafe_tag_ids
-        if tag_id in user_tag_ids
+        tag_id for tag_id in cafe_tag_ids if tag_id in user_tag_ids
     ]
 
     return {
@@ -438,57 +416,81 @@ def score_cafe(
 def dedupe_reasons(reasons):
     deduped = []
     seen = set()
+
     for reason in reasons:
         if reason and reason not in seen:
             seen.add(reason)
             deduped.append(reason)
+
     return deduped
 
 
-def attach_gemini_explanations(user_profile, recommendations):
-    user_tag_names = user_profile.get("tag_names", [])
+def build_ai_ready_recommendation_payload(recommendations, limit=5):
+    payload = []
 
-    simplified = []
-    for rec in recommendations[:TOP_K_FOR_AI_EXPLANATIONS]:
-        cafe = rec["cafe"]
+    for rec in recommendations[:limit]:
+        cafe = rec.get("cafe") or {}
 
-        simplified.append({
+        payload.append({
             "cafe_id": cafe.get("id"),
             "cafe_name": cafe.get("name"),
-            "score": rec["score"],
-            "matching_tag_names": rec["matching_tag_names"],
-            "cafe_tags": [t.get("name") for t in rec.get("cafe_tags", []) if t.get("name")],
-            "review_stats": rec["review_stats"],
-            "review_summary": rec.get("review_summary"),
+            "score": rec.get("score"),
             "distance_miles": rec.get("distance_miles"),
+            "matching_tag_names": rec.get("matching_tag_names", []),
+            "cafe_tags": [
+                tag.get("name")
+                for tag in rec.get("cafe_tags", [])
+                if tag.get("name")
+            ],
+            "review_stats": rec.get("review_stats"),
+            "review_summary": rec.get("review_summary"),
+            "menu_matches": rec.get("menu_matches", []),
+            "top_menu_items": rec.get("menu_preview", []),
+            "rules_based_reasons": rec.get("reasons", []),
             "wifi": rec.get("cafe_profile", {}).get("wifi"),
             "outlets": rec.get("cafe_profile", {}).get("outlets"),
             "price_level": rec.get("cafe_profile", {}).get("price_level"),
-            "menu_matches": rec.get("menu_matches", []),
-            "top_menu_items": rec.get("menu_preview", []),
-            "rules_based_reasons": rec["reasons"],
         })
 
-    try:
-        explanations = generate_recommendation_explanations_with_gemini(
-            user_prefs=user_profile,
-            user_tag_names=user_tag_names,
-            recommendations=simplified,
-        )
+    return payload
 
-        explanation_map = {
-            item["cafe_id"]: item["explanation"]
-            for item in explanations
-            if item.get("cafe_id") and item.get("explanation")
-        }
 
-        for rec in recommendations[:TOP_K_FOR_AI_EXPLANATIONS]:
-            rec["gemini_explanation"] = explanation_map.get(rec["cafe"]["id"])
-    except Exception:
-        for rec in recommendations[:TOP_K_FOR_AI_EXPLANATIONS]:
-            rec["gemini_explanation"] = None
+def generate_rule_based_explanations(recommendations):
+    explanations = []
 
-    return recommendations
+    for rec in recommendations:
+        cafe = rec.get("cafe") or {}
+        cafe_id = cafe.get("id")
+        cafe_name = cafe.get("name") or "This cafe"
+
+        reasons = rec.get("reasons") or []
+        menu_matches = rec.get("menu_matches") or []
+        review_stats = rec.get("review_stats") or {}
+
+        parts = []
+
+        if reasons:
+            parts.append(", ".join(reasons[:3]))
+
+        if menu_matches:
+            parts.append(
+                "it has menu items similar to what you like, such as "
+                + ", ".join(menu_matches[:3])
+            )
+
+        avg_rating = review_stats.get("avg_rating")
+        if avg_rating:
+            parts.append(f"it has a {avg_rating} average rating")
+
+        if not parts:
+            parts.append("it matches your cafe preferences and location")
+
+        explanations.append({
+            "cafe_id": cafe_id,
+            "explanation": f"{cafe_name} is recommended because " + "; ".join(parts) + ".",
+        })
+
+    return explanations
 
 
 def get_recommendations_for_user(
@@ -498,44 +500,27 @@ def get_recommendations_for_user(
     user_lng=None,
     bad_review_threshold=2,
 ):
-    # -----------------------------
-    # 1. Fetch user-side signals
-    # -----------------------------
     user_profile = build_user_profile(user_id)
     user_reviews = get_user_reviews(user_id)
 
-    # -----------------------------
-    # 2. Fetch cafe-side signals
-    # -----------------------------
     cafes = get_all_active_cafes()
     cafe_tag_rows = get_all_cafe_tags()
     review_stats = get_cafe_review_stats()
     cafe_review_text_map = get_cafe_review_text_map(limit_per_cafe=5)
     menu_rows = get_all_menu_items()
 
-    user_tag_ids = user_profile["user_tag_ids"]
-    user_tag_lookup = user_profile["user_tag_lookup"]
+    user_tag_ids = user_profile.get("user_tag_ids", set())
 
     cafe_tag_map = build_cafe_tag_map(cafe_tag_rows)
     cafe_tag_detail_map = build_cafe_tag_detail_map(cafe_tag_rows)
     menu_map = build_menu_map(menu_rows)
     interaction_map = build_interaction_map_from_profile(user_profile)
 
-    bad_cafe_ids = {
-        cafe_id
-        for cafe_id in user_profile["disliked_cafe_ids"]
-    }
-
-    liked_cafe_ids = {
-        cafe_id
-        for cafe_id in user_profile["liked_cafe_ids"]
-    }
+    bad_cafe_ids = set(user_profile.get("disliked_cafe_ids", []))
+    liked_cafe_ids = set(user_profile.get("liked_cafe_ids", []))
 
     recommendations = []
 
-    # -----------------------------
-    # 3. Candidate retrieval + scoring
-    # -----------------------------
     for cafe in cafes:
         cafe_id = cafe.get("id")
 
@@ -543,6 +528,7 @@ def get_recommendations_for_user(
             continue
 
         distance_miles = None
+
         if user_lat is not None and user_lng is not None:
             distance_miles = haversine_miles(
                 user_lat,
@@ -551,13 +537,13 @@ def get_recommendations_for_user(
                 cafe.get("longitude"),
             )
 
-            if (
-                distance_miles is not None
-                and distance_miles > user_profile["max_distance_miles"]
-            ):
+            max_distance = user_profile.get("max_distance_miles") or DEFAULT_MAX_DISTANCE_MILES
+
+            if distance_miles is not None and distance_miles > max_distance:
                 continue
 
         cafe_tags = cafe_tag_detail_map.get(cafe_id, [])
+
         cafe_profile = build_cafe_profile(
             cafe=cafe,
             cafe_tags=cafe_tags,
@@ -569,7 +555,6 @@ def get_recommendations_for_user(
             cafe=cafe,
             user_profile=user_profile,
             user_tag_ids=user_tag_ids,
-            user_tag_lookup=user_tag_lookup,
             cafe_tag_ids=cafe_tag_map.get(cafe_id, set()),
             cafe_profile=cafe_profile,
             interaction_map=interaction_map,
@@ -594,9 +579,6 @@ def get_recommendations_for_user(
             "gemini_explanation": None,
         })
 
-    # -----------------------------
-    # 4. Sort and trim
-    # -----------------------------
     recommendations.sort(
         key=lambda x: (
             x["score"],
@@ -609,9 +591,6 @@ def get_recommendations_for_user(
 
     recommendations = recommendations[:limit]
 
-    # -----------------------------
-    # 5. Enrich top results
-    # -----------------------------
     top_to_enrich = recommendations[:TOP_K_FOR_AI_EXPLANATIONS]
     top_to_enrich = attach_review_summaries_to_recommendations(
         top_to_enrich,
@@ -619,9 +598,52 @@ def get_recommendations_for_user(
     )
     recommendations[:TOP_K_FOR_AI_EXPLANATIONS] = top_to_enrich
 
-    recommendations = attach_gemini_explanations(
-        user_profile=user_profile,
-        recommendations=recommendations,
-    )
-
     return recommendations
+
+
+
+
+# def attach_gemini_explanations(user_profile, recommendations):
+#     user_tag_names = user_profile.get("tag_names", [])
+
+#     simplified = []
+#     for rec in recommendations[:TOP_K_FOR_AI_EXPLANATIONS]:
+#         cafe = rec["cafe"]
+
+#         simplified.append({
+#             "cafe_id": cafe.get("id"),
+#             "cafe_name": cafe.get("name"),
+#             "score": rec["score"],
+#             "matching_tag_names": rec["matching_tag_names"],
+#             "cafe_tags": [t.get("name") for t in rec.get("cafe_tags", []) if t.get("name")],
+#             "review_stats": rec["review_stats"],
+#             "review_summary": rec.get("review_summary"),
+#             "distance_miles": rec.get("distance_miles"),
+#             "wifi": rec.get("cafe_profile", {}).get("wifi"),
+#             "outlets": rec.get("cafe_profile", {}).get("outlets"),
+#             "price_level": rec.get("cafe_profile", {}).get("price_level"),
+#             "menu_matches": rec.get("menu_matches", []),
+#             "top_menu_items": rec.get("menu_preview", []),
+#             "rules_based_reasons": rec["reasons"],
+#         })
+
+#     try:
+#         explanations = generate_recommendation_explanations_with_gemini(
+#             user_prefs=user_profile,
+#             user_tag_names=user_tag_names,
+#             recommendations=simplified,
+#         )
+
+#         explanation_map = {
+#             item["cafe_id"]: item["explanation"]
+#             for item in explanations
+#             if item.get("cafe_id") and item.get("explanation")
+#         }
+
+#         for rec in recommendations[:TOP_K_FOR_AI_EXPLANATIONS]:
+#             rec["gemini_explanation"] = explanation_map.get(rec["cafe"]["id"])
+#     except Exception:
+#         for rec in recommendations[:TOP_K_FOR_AI_EXPLANATIONS]:
+#             rec["gemini_explanation"] = None
+
+#     return recommendations
