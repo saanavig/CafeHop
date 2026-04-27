@@ -1,6 +1,9 @@
 from supabase import create_client, Client
 from config import SUPABASE_URL, SUPABASE_ANON_KEY
 import os
+import httpx
+
+http_client = httpx.Client(http2=False, timeout=10.0)
 
 # service role key (bypasses RLS for trusted backend operations)
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
