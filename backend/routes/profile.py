@@ -9,7 +9,7 @@ profile_bp = Blueprint("profile_bp", __name__)
 
 
 
-@profile_bp.route("/users/me/name", methods=["GET"])
+@profile_bp.route("/users/me", methods=["GET"])
 @require_auth
 def get_user_name():
     user_id = g.user.get("id")
@@ -34,7 +34,7 @@ def get_user_name():
 
     return jsonify({"name": full}), 200
 
-@profile_bp.route("/users/me/name", methods=["PUT"])
+@profile_bp.route("/users/me", methods=["PUT"])
 @require_auth
 def update_user_name():
     user_id = g.user.get("id")

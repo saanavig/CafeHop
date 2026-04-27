@@ -305,17 +305,21 @@ export default function UserProfileScreen() {
 
             <View style={styles.buttonRow}>
               <Button
-                  style={{ flex: 1, marginRight: scale(8) }}
-                  onPress={() => {
-                    if (isEditing) {
-                      handleSaveProfile(); // save to backend
-                    } else {
-                      setIsEditing(true);
-                    }
-                  }}
-                >
-                  {isEditing ? "Save" : "Edit Profile"}
-                </Button>
+                style={{ flex: 1, marginRight: scale(8) }}
+                onPress={() => {
+                  if (isEditing) {
+                    handleSaveProfile();
+                  } else {
+                    setIsEditing(true);
+                  }
+                }}
+              >
+                <Text>{isEditing ? "Save" : "Edit Profile"}</Text>
+              </Button>
+
+              <Button style={{ flex: 1 }} onPress={() => setShowAddPost(true)}>
+                <Text>Add Post</Text>
+              </Button>
               <Button style={{ flex: 1 }} onPress={() => setShowAddPost(true)}>
                 Add Post
               </Button>
