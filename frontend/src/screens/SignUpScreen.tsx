@@ -16,6 +16,7 @@ import { useNavigation } from "@react-navigation/native";
 
 export default function SignUpScreen() {
   const navigation = useNavigation<any>();
+  const [selectedRole, setSelectedRole] = useState<"user" | "cafe">("user");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -85,14 +86,14 @@ export default function SignUpScreen() {
     //   console.error("Backend error:", err);
     // }
 
-    apiFetch("/users/me", {
-      method: "POST",
-    }).catch((err) => {
-      console.error("Backend error:", err);
-    });
-
+  if (selectedRole === "user") {
     navigation.navigate("Onboarding");
-  };
+  }
+
+  if (selectedRole === "cafe") {
+    navigation.navigate("CafeOnboarding");
+  }
+};
 
   return (
     <View style={styles.container}>
