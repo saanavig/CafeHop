@@ -1,5 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 
+import { Alert, Linking } from "react-native";
 import { CheckCircle, Coffee } from "lucide-react-native";
 import {
   Pressable,
@@ -10,31 +12,63 @@ import {
   View,
 } from "react-native";
 import React, { useState } from "react";
+import { moderateScale, scale, verticalScale } from "../utils/responsive";
 
-import { Alert } from "react-native";
 import Button from "../components/ui/Button";
 import { Image } from "react-native";
 import { apiFetch } from "../api/client";
-import { scale, moderateScale, verticalScale } from "../utils/responsive";
 import { supabase } from "../api/supabaseClient";
 import { useRole } from "../context/RoleContext";
-import * as Location from "expo-location";
 
-const requestLocation = async () => {
-    const result = await Location.requestForegroundPermissionsAsync();
-    if (result.status !== "granted") {
-      throw new Error("Location permission denied");
-    }
+const requestLocation = async (): Promise<{
+  latitude: number;
+  longitude: number;
+} | null> => {
+  console.log("Requesting location permission...");
+
+  const { status } = await Location.requestForegroundPermissionsAsync();
+
+  console.log("Permission status:", status);
+
+  if (status !== "granted") {
+    console.log("Location permission denied");
+
+    Alert.alert(
+      "Location Required",
+      "Please enable location to register your cafe.",
+      [
+        {
+          text: "Open Settings",
+          onPress: () => {
+            console.log("⚙️ Opening settings");
+            Linking.openSettings();
+          },
+        },
+      ]
+    );
+
+    return null;
+  }
+
+  try {
+    console.log("Getting current position...");
 
     const location = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.High,
     });
 
+    console.log("Location received:", location.coords);
+
     return {
       latitude: location.coords.latitude,
       longitude: location.coords.longitude,
     };
-  };
+  } catch (err) {
+    console.error("Error getting location:", err);
+    return null;
+  }
+};
+
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const TOTAL_STEPS = 4;
@@ -115,6 +149,8 @@ export default function CafeOnboarding({ navigation }: any) {
   const maxWidth = scale(480);
 
   const handleFinishSetup = async () => {
+    console.log("Finish setup clicked");
+    
     let imageUrl = null;
 
     if (image) {
@@ -143,7 +179,13 @@ export default function CafeOnboarding({ navigation }: any) {
     }
 
     try {
-      const { latitude, longitude } = await requestLocation();
+      const location = await requestLocation();
+
+      if (!location) {
+        return;
+      }
+
+      const { latitude, longitude } = location;
 
       const payload = {
         name: cafeName,
@@ -202,6 +244,7 @@ export default function CafeOnboarding({ navigation }: any) {
       });
 
       setRole("cafe");
+      console.log("Navigating to Home");
       navigation.navigate("Home");
     } catch (err) {
       console.error("CRASH:", err);
