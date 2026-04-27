@@ -1,5 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
+// import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 
 import { Alert, Linking } from "react-native";
 import { CheckCircle, Coffee } from "lucide-react-native";
@@ -11,7 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { moderateScale, scale, verticalScale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
@@ -40,7 +41,7 @@ const requestLocation = async (): Promise<{
         {
           text: "Open Settings",
           onPress: () => {
-            console.log("⚙️ Opening settings");
+            console.log("Opening settings");
             Linking.openSettings();
           },
         },
@@ -99,6 +100,7 @@ export default function CafeOnboarding({ navigation }: any) {
   const [hours, setHours] = useState<Record<string, DayHours>>(defaultHours);
   const [tagError, setTagError] = useState("");
   const [image, setImage] = useState<string | null>(null);
+  const debounceRef = useRef<any>(null);
   // const [posType, setPosType] = useState<"manual" | "square" | null>(null);
   // const [linkedPOS, setLinkedPOS] = useState<"Square" | null>(null);
   // const [posEmail, setPosEmail] = useState("");
@@ -106,6 +108,12 @@ export default function CafeOnboarding({ navigation }: any) {
   // const [verificationCode, setVerificationCode] = useState("");
   const [priceRange, setPriceRange] = useState<string | null>(null);
   const [priceError, setPriceError] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  // const [debounceTimeout, setDebounceTimeout] = useState<any>(null);
+  const [coordinates, setCoordinates] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) => {
@@ -179,13 +187,13 @@ export default function CafeOnboarding({ navigation }: any) {
     }
 
     try {
-      const location = await requestLocation();
-
-      if (!location) {
+      if (!coordinates) {
+        Alert.alert("Please select a valid address from the dropdown");
         return;
       }
 
-      const { latitude, longitude } = location;
+      const latitude = coordinates.lat;
+      const longitude = coordinates.lng;
 
       const payload = {
         name: cafeName,
@@ -254,7 +262,7 @@ export default function CafeOnboarding({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={[styles.innerContainer, { maxWidth }]}>
           {/* Header */}
           <Coffee size={scale(32)} color="#D4A373" style={{ alignSelf: "center", marginBottom: verticalScale(8) }} />
@@ -283,11 +291,103 @@ export default function CafeOnboarding({ navigation }: any) {
                 onChangeText={setCafeName}
               />
               <TextInput
-                placeholder="Address"
+                placeholder="Cafe Location"
                 style={styles.input}
                 value={address}
-                onChangeText={setAddress}
+                onChangeText={(text) => {
+                  setAddress(text);
+                  setCoordinates(null);
+
+                  if (debounceRef.current) {
+                    clearTimeout(debounceRef.current);
+                  }
+
+                  debounceRef.current = setTimeout(async () => {
+                    if (text.length < 3) {
+                      setSuggestions([]);
+                      return;
+                    }
+
+                    try {
+                      const res = await fetch(
+                        `${API_URL}/api/places/autocomplete?input=${text}`
+                      );
+
+                      const data = await res.json();
+
+                      // if (data.status !== "OK") {
+                      //   console.warn("Places API error:", data.status);
+                      //   return;
+                      // }
+
+                      setSuggestions(data.suggestions || []);
+                    } catch (err) {
+                      console.error("Autocomplete error:", err);
+                    }
+                  }, 300);
+                }}
               />
+              {suggestions.length > 0 && (
+                <View
+                  style={{
+                    maxHeight: 200,
+                    backgroundColor: "#fff",
+                    borderRadius: 10,
+                    marginTop: 4,
+                    borderWidth: 1,
+                    borderColor: "#ddd",
+                    overflow: "hidden",
+                  }}
+                >
+                  <ScrollView keyboardShouldPersistTaps="handled">
+                    {suggestions.map((item) => (
+                      <Pressable
+                        key={item.placePrediction.placeId || item.placePrediction.text.text}
+                        onPress={async () => {
+                          console.log("PLACE OBJECT:", item);
+                          const placeId = item.placePrediction.placeId;
+
+                          const res = await fetch(
+                            `${API_URL}/api/places/details?place_id=${placeId}`
+                          );
+
+                          const data = await res.json();
+                          console.log("DETAILS:", data);
+
+                          if (!data || !data.formattedAddress) {
+                            Alert.alert("Error", "Place details not found");
+                            return;
+                          }
+
+                          setAddress(data.formattedAddress);
+
+                          setCoordinates({
+                            lat: data.location.latitude,
+                            lng: data.location.longitude,
+                          });
+
+                          setTimeout(() => {
+                            setSuggestions([]);
+                          }, 0);
+                          setSuggestions([]);
+                        }}
+                        style={{
+                          padding: 12,
+                          borderBottomWidth: 1,
+                          borderColor: "#eee",
+                        }}
+                      >
+                        <Text style={{ fontWeight: "600" }}>
+                          {item.placePrediction.structuredFormat.mainText.text}
+                        </Text>
+                        <Text style={{ color: "#666", fontSize: 12 }}>
+                          {item.placePrediction.structuredFormat.secondaryText.text}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
               <TextInput
                 placeholder="Contact email or phone"
                 style={styles.input}
@@ -295,6 +395,91 @@ export default function CafeOnboarding({ navigation }: any) {
                 onChangeText={setContact}
                 keyboardType="email-address"
               />
+              {/* <View
+                style={{
+                  position: "absolute",
+                  top: verticalScale(150),
+                  width: "100%",
+                  backgroundColor: "#fff",
+                  borderRadius: 10,
+                  zIndex: 999,
+                  elevation: 5,
+                }}
+              >
+              {suggestions.map((item) => (
+                <Pressable
+                  key={item.placePrediction.placeId}
+                  onPress={async () => {
+                    const placeId = item.placePrediction.placeId;
+
+                    const res = await fetch(
+                      `${API_URL}/api/places/details?place_id=${placeId}`
+                    );
+
+                    const data = await res.json();
+                    console.log("DETAILS:", data);
+
+                    setAddress(item.placePrediction.text.text);
+                    setSuggestions([]);
+
+                    setCoordinates({ lat: 0, lng: 0 });
+                  }}
+                >
+                  <Text>
+                    {item.placePrediction.text.text}
+                  </Text>
+                </Pressable>
+              ))} */}
+              {/* <View
+              style={{
+              maxHeight: 200,
+              backgroundColor: "#fff",
+              borderRadius: 10,
+              marginTop: 4,
+              borderWidth: 1,
+              borderColor: "#ddd",
+              overflow: "hidden",
+            }}
+          > */}
+            {/* <ScrollView keyboardShouldPersistTaps="handled">
+              {suggestions.map((item) => (
+                <Pressable
+                  key={item.placePrediction.placeId}
+                  onPress={async () => {
+                    const placeId = item.placePrediction.placeId;
+
+                    const res = await fetch(
+                      `${API_URL}/api/places/details?place_id=${placeId}`
+                    );
+
+                    const data = await res.json();
+                    console.log("DETAILS:", data);
+
+                    setAddress(item.placePrediction.text.text);
+                    setSuggestions([]);
+                    setCoordinates({
+                      lat: data.location.latitude,
+                      lng: data.location.longitude,
+                    });
+                  }}
+                  style={{
+                    padding: 12,
+                    borderBottomWidth: 1,
+                    borderColor: "#eee",
+                  }}
+                >
+                  <>
+                  <Text style={{ fontWeight: "600" }}>
+                    {item.placePrediction.structuredFormat.mainText.text}
+                  </Text>
+                  <Text style={{ color: "#666", fontSize: 12 }}>
+                    {item.placePrediction.structuredFormat.secondaryText.text}
+                  </Text>
+                </>
+                </Pressable>
+              ))}
+            </ScrollView> */}
+          {/* </View> */}
               <Pressable onPress={pickImage} style={styles.imageUploadBox}>
                 {image ? (
                   <Image source={{ uri: image }} style={styles.imagePreview} />
@@ -306,7 +491,12 @@ export default function CafeOnboarding({ navigation }: any) {
                 title="Continue"
                 variant="caramel"
                 onPress={next}
-                disabled={!cafeName.trim() || !address.trim() || !contact.trim()}
+                disabled={
+                  !cafeName.trim() ||
+                  !address.trim() ||
+                  !contact.trim() ||
+                  !coordinates
+                }
               />
             </View>
           )}
