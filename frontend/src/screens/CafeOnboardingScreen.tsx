@@ -54,7 +54,7 @@ const requestLocation = async (): Promise<{
     console.log("Getting current position...");
 
     const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
+      accuracy: Location.Accuracy.Balanced,
     });
 
     console.log("Location received:", location.coords);
