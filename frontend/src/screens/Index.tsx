@@ -6,10 +6,7 @@ import {
   Text,
   TextInput,
   View,
-<<<<<<< HEAD
   TouchableOpacity,
-=======
->>>>>>> origin/recommendations
 } from "react-native";
 import { Search } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
@@ -23,12 +20,9 @@ import { supabase } from "../api/supabaseClient";
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:3001";
 const fallbackImage = "https://picsum.photos/500/700";
 
-<<<<<<< HEAD
 const FEED_CACHE_KEY = "cafehop_feed_cache";
 const FEED_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-=======
->>>>>>> origin/recommendations
 type FeedPost = Post & {
   cafeId?: string;
   isRecommended?: boolean;
@@ -38,17 +32,12 @@ type UserCoords = {
   lat: number;
   lng: number;
 };
-<<<<<<< HEAD
 
 let sessionFeedCache: FeedPost[] | null = null;
 
 const Index = () => {
   const navigation = useNavigation<any>();
 
-=======
-
-const Index = () => {
->>>>>>> origin/recommendations
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -79,7 +68,6 @@ const Index = () => {
   useEffect(() => {
     if (hasFetchedFeed.current) return;
     hasFetchedFeed.current = true;
-<<<<<<< HEAD
     loadFeed();
   }, []);
 
@@ -90,6 +78,7 @@ const Index = () => {
     }
 
     const raw = await AsyncStorage.getItem(FEED_CACHE_KEY);
+
     if (!raw) return null;
 
     const parsed = JSON.parse(raw);
@@ -148,17 +137,6 @@ const Index = () => {
   const getToken = async () => {
     const { data, error } = await supabase.auth.getSession();
 
-=======
-    getUserLocationAndFetchFeed();
-  }, []);
-
-  const getToken = async () => {
-    const { data, error } = await supabase.auth.getSession();
-
-    console.log("AUTH SESSION USER:", data.session?.user?.id);
-    console.log("HAS ACCESS TOKEN:", !!data.session?.access_token);
-
->>>>>>> origin/recommendations
     if (error) throw error;
 
     const token = data.session?.access_token;
@@ -171,27 +149,12 @@ const Index = () => {
     return new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-<<<<<<< HEAD
           resolve({
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           });
         },
         (error) => reject(error)
-=======
-          const coords = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-
-          console.log("USER LOCATION SUCCESS:", coords);
-          resolve(coords);
-        },
-        (error) => {
-          console.log("USER LOCATION ERROR:", error);
-          reject(error);
-        }
->>>>>>> origin/recommendations
       );
     });
   };
@@ -200,13 +163,7 @@ const Index = () => {
     try {
       const coords = await getUserLocation();
       await fetchFeed(coords);
-    } catch (err) {
-<<<<<<< HEAD
-      console.log("USING FALLBACK LOCATION:", err);
-=======
-      console.log("USING FALLBACK LOCATION BECAUSE LOCATION FAILED:", err);
->>>>>>> origin/recommendations
-
+    } catch {
       await fetchFeed({
         lat: 40.741,
         lng: -73.989,
@@ -223,6 +180,7 @@ const Index = () => {
 
     for (const item of items) {
       const key = getKey(item);
+
       if (!key || seen.has(key)) continue;
 
       seen.add(key);
@@ -272,148 +230,100 @@ const Index = () => {
     };
   };
 
+  const markCafeVisited = async (cafeId: string) => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+
+      if (!userId) return;
+
+      await supabase.from("cafe_visit_logs").insert({
+        user_id: userId,
+        cafe_id: cafeId,
+      });
+
+      const { data: existingVisited } = await supabase
+        .from("user_cafe_interactions")
+        .select("interaction_type")
+        .eq("user_id", userId)
+        .eq("cafe_id", cafeId)
+        .eq("interaction_type", "visited")
+        .maybeSingle();
+
+      if (!existingVisited) {
+        await supabase.from("user_cafe_interactions").insert({
+          user_id: userId,
+          cafe_id: cafeId,
+          interaction_type: "visited",
+        });
+      }
+    } catch (err) {
+      console.error("Mark visited failed:", err);
+    }
+  };
+
   const fetchFeed = async (coords: UserCoords) => {
     try {
       setLoading(true);
 
-<<<<<<< HEAD
       const token = await getToken();
 
-      const recUrl = `${API_URL}/api/recommendations?lat=${coords.lat}&lng=${coords.lng}&limit=10`;
-=======
-      console.log("====================================");
-      console.log("START FETCH FEED");
-      console.log("API URL:", API_URL);
-      console.log("COORDS USED:", coords);
-
-      const token = await getToken();
-
-      const recUrl = `${API_URL}/api/recommendations?lat=${coords.lat}&lng=${coords.lng}&limit=10`;
-      console.log("RECOMMENDATIONS URL:", recUrl);
->>>>>>> origin/recommendations
-
-      const recRes = await fetch(recUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-<<<<<<< HEAD
-      const recData = await recRes.json();
-      const rawRecommendations = recData.recommendations || [];
-
-      let explanationMap: Record<string, string> = {};
-
-      const expUrl = `${API_URL}/api/recommendations/explanations?lat=${coords.lat}&lng=${coords.lng}&limit=10&use_ai=false`;
-=======
-      console.log("RECOMMENDATIONS STATUS:", recRes.status);
-
-      const recData = await recRes.json();
-      console.log("RECOMMENDATIONS RAW RESPONSE:", recData);
-
-      const rawRecommendations = recData.recommendations || [];
-      console.log("RAW RECOMMENDATION COUNT:", rawRecommendations.length);
-
-      let explanationMap: Record<string, string> = {};
-
-      const expUrl = `${API_URL}/api/recommendations/explanations?lat=${coords.lat}&lng=${coords.lng}&limit=10`;
-      console.log("EXPLANATIONS URL:", expUrl);
->>>>>>> origin/recommendations
-
-      try {
-        const expRes = await fetch(expUrl, {
+      const recRes = await fetch(
+        `${API_URL}/api/recommendations?lat=${coords.lat}&lng=${coords.lng}&limit=10`,
+        {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        });
+        }
+      );
 
-<<<<<<< HEAD
+      const recData = await recRes.json();
+      const rawRecommendations = recData.recommendations || [];
+
+      let explanationMap: Record<string, string> = {};
+
+      try {
+        const expRes = await fetch(
+          `${API_URL}/api/recommendations/explanations?lat=${coords.lat}&lng=${coords.lng}&limit=10`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
         const expData = await expRes.json();
         const explanations = expData.explanations || [];
-=======
-        console.log("EXPLANATIONS STATUS:", expRes.status);
-
-        const expData = await expRes.json();
-        console.log("EXPLANATIONS RAW RESPONSE:", expData);
-
-        const explanations = expData.explanations || [];
-        console.log("EXPLANATION COUNT:", explanations.length);
->>>>>>> origin/recommendations
 
         for (const item of explanations) {
           if (item.cafe_id && item.explanation) {
             explanationMap[String(item.cafe_id)] = item.explanation;
           }
         }
-
-<<<<<<< HEAD
-        console.log("EXPLANATION SOURCE:", expData.source);
-=======
-        console.log("EXPLANATION MAP IDS:", Object.keys(explanationMap));
->>>>>>> origin/recommendations
       } catch (err) {
         console.log("EXPLANATIONS FETCH FAILED:", err);
       }
 
-<<<<<<< HEAD
       const allCafeRes = await fetch(`${API_URL}/api/cafe/all`);
       const allCafeData = await allCafeRes.json();
-=======
-      const allCafeUrl = `${API_URL}/api/cafe/all`;
-      console.log("ALL CAFES URL:", allCafeUrl);
-
-      const allCafeRes = await fetch(allCafeUrl);
-      console.log("ALL CAFES STATUS:", allCafeRes.status);
-
-      const allCafeData = await allCafeRes.json();
-      console.log("ALL CAFES RAW RESPONSE:", allCafeData);
->>>>>>> origin/recommendations
 
       const rawAllCafes = Array.isArray(allCafeData)
         ? allCafeData
         : allCafeData.cafes || [];
 
-<<<<<<< HEAD
-=======
-      console.log("RAW ALL CAFES COUNT:", rawAllCafes.length);
-
->>>>>>> origin/recommendations
       const recommendations = uniqueByKey(rawRecommendations, (rec: any) =>
         getRecCafeId(rec)
       );
 
-<<<<<<< HEAD
-=======
-      console.log("UNIQUE RECOMMENDATION COUNT:", recommendations.length);
-      console.log(
-        "UNIQUE RECOMMENDED IDS:",
-        recommendations.map((rec: any) => getRecCafeId(rec))
-      );
-
->>>>>>> origin/recommendations
       const recommendedPosts: FeedPost[] = recommendations.map((rec: any) => {
         const cafe = rec.cafe || {};
         const cafeId = getRecCafeId(rec);
 
         const explanation =
           explanationMap[cafeId] ||
-<<<<<<< HEAD
-          (rec.reasons?.length
-            ? `Recommended because it ${rec.reasons.join(" and ")}.`
-            : "Recommended for your taste.");
-=======
           rec.gemini_explanation ||
           (rec.reasons?.length ? rec.reasons.join(". ") : null) ||
           "Recommended for your taste.";
-
-        console.log("RECOMMENDED CARD CREATED:", {
-          cafeName: cafe.name,
-          cafeId,
-          hasGeminiExplanationFromEndpoint: !!explanationMap[cafeId],
-          hasGeminiExplanationFromRec: !!rec.gemini_explanation,
-          finalExplanationPreview: explanation.slice(0, 120),
-        });
->>>>>>> origin/recommendations
 
         return cafeToPost(cafe, explanation, true);
       });
@@ -426,46 +336,17 @@ const Index = () => {
         cafe.id ? String(cafe.id) : cafe.name?.trim().toLowerCase()
       );
 
-<<<<<<< HEAD
-=======
-      console.log("UNIQUE ALL CAFES COUNT:", allCafes.length);
-
->>>>>>> origin/recommendations
       const regularPosts: FeedPost[] = allCafes
         .filter((cafe: any) => !recommendedIds.has(String(cafe.id)))
         .map((cafe: any) => cafeToPost(cafe, undefined, false));
 
-<<<<<<< HEAD
-=======
-      console.log("RECOMMENDED POSTS COUNT:", recommendedPosts.length);
-      console.log("REGULAR POSTS COUNT:", regularPosts.length);
-
->>>>>>> origin/recommendations
       const finalFeed = uniqueByKey(
         [...recommendedPosts, ...regularPosts],
         (post) => post.cafeId || post.cafeName?.trim().toLowerCase()
       );
 
-      console.log("FINAL FEED COUNT:", finalFeed.length);
-<<<<<<< HEAD
-
       setPosts(finalFeed);
       await saveFeedCache(finalFeed);
-=======
-      console.log(
-        "FINAL FEED ORDER:",
-        finalFeed.map((post) => ({
-          cafeName: post.cafeName,
-          cafeId: post.cafeId,
-          isRecommended: post.isRecommended,
-          captionPreview: post.caption.slice(0, 80),
-        }))
-      );
-      console.log("END FETCH FEED");
-      console.log("====================================");
-
-      setPosts(finalFeed);
->>>>>>> origin/recommendations
     } catch (err) {
       console.error("FEED FETCH ERROR:", err);
     } finally {
@@ -473,7 +354,6 @@ const Index = () => {
     }
   };
 
-<<<<<<< HEAD
   const filteredPosts = posts.filter((post) => {
     const caption = post.caption || "";
     const cafeName = post.cafeName || "";
@@ -484,77 +364,6 @@ const Index = () => {
       cafeName.toLowerCase().includes(searchText.toLowerCase())
     );
   });
-
-  const markCafeVisited = async (cafeId: string) => {
-    try {
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
-
-      if (sessionError) {
-        console.error("Session error:", sessionError);
-        return;
-      }
-
-      const userId = sessionData.session?.user?.id;
-
-      if (!userId) return;
-
-      const { error: visitLogError } = await supabase
-        .from("cafe_visit_logs")
-        .insert({
-          user_id: userId,
-          cafe_id: cafeId,
-        });
-
-      if (visitLogError) {
-        console.error("Visit log error:", visitLogError);
-      }
-
-      const { data: existingVisited, error: existingVisitedError } =
-        await supabase
-          .from("user_cafe_interactions")
-          .select("interaction_type")
-          .eq("user_id", userId)
-          .eq("cafe_id", cafeId)
-          .eq("interaction_type", "visited")
-          .maybeSingle();
-
-      if (existingVisitedError) {
-        console.error("Check visited error:", existingVisitedError);
-        return;
-      }
-
-      // insert visited only once
-      if (!existingVisited) {
-        const { error: visitedInsertError } = await supabase
-          .from("user_cafe_interactions")
-          .insert({
-            user_id: userId,
-            cafe_id: cafeId,
-            interaction_type: "visited",
-          });
-
-        if (visitedInsertError) {
-          console.error("Insert visited error:", visitedInsertError);
-        }
-      }
-    } catch (err) {
-      console.error("Mark visited failed:", err);
-    }
-  };
-
-
-
-=======
-  const filteredPosts = posts.filter(
-    (post) =>
-      post.caption.toLowerCase().includes(search.toLowerCase()) ||
-      post.cafeName.toLowerCase().includes(search.toLowerCase())
-  );
-
-  console.log("RENDER POSTS COUNT:", posts.length);
-  console.log("RENDER FILTERED POSTS COUNT:", filteredPosts.length);
->>>>>>> origin/recommendations
 
   return (
     <View style={styles.container}>
@@ -575,6 +384,7 @@ const Index = () => {
             color="#AAA"
             style={{ marginRight: scale(8) }}
           />
+
           <TextInput
             placeholder="Search posts..."
             placeholderTextColor="#AAA"
@@ -596,11 +406,11 @@ const Index = () => {
             item.cafeId || item.cafeName.trim().toLowerCase()
           }
           renderItem={({ item }) => (
-<<<<<<< HEAD
             <TouchableOpacity
               activeOpacity={0.95}
               onPress={async () => {
                 if (!item.cafeId) return;
+
                 await markCafeVisited(item.cafeId);
 
                 navigation.navigate("CafeProfile", {
@@ -614,13 +424,6 @@ const Index = () => {
                 onModalToggle={(isOpen) => setModalOpen(isOpen)}
               />
             </TouchableOpacity>
-=======
-            <ForYouCard
-              post={item}
-              listHeight={listHeight}
-              onModalToggle={(isOpen) => setModalOpen(isOpen)}
-            />
->>>>>>> origin/recommendations
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>

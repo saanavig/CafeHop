@@ -397,10 +397,6 @@ export default function CafeProfileScreen() {
 
         setMyReview(mine || null);
 
-        if (mine) {
-        setReviewRating(mine.rating);
-        setReviewText(mine.review_text || "");
-        }
     }
 
     setReviewsLoading(false);
@@ -454,11 +450,51 @@ export default function CafeProfileScreen() {
         }
     }
 
+    const { data: ratingRows, error: ratingError } = await supabase
+        .from("reviews")
+        .select("rating")
+        .eq("cafe_id", cafeId);
+
+    if (ratingError) {
+        console.error("Rating fetch error:", ratingError);
+    }
+
+    if (ratingRows && ratingRows.length > 0) {
+        const avg =
+        ratingRows.reduce(
+            (sum, row) => sum + Number(row.rating || 0),
+            0
+        ) / ratingRows.length;
+
+        const averageRating = Number(avg.toFixed(1));
+
+        const { error: cafeRatingError } = await supabase
+        .from("cafes")
+        .update({
+            rating: averageRating,
+        })
+        .eq("id", cafeId);
+
+        if (cafeRatingError) {
+        console.error("Cafe rating update error:", cafeRatingError);
+        } else {
+        setCafe((prev) =>
+            prev
+            ? {
+                ...prev,
+                rating: averageRating,
+                }
+            : prev
+        );
+        }
+    }
+
     await fetchReviews();
+
+    setReviewText("");
+    setReviewRating(5);
+    setReviewError("");
     };
-
-
-
 
 
 
