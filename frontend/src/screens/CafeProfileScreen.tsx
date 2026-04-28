@@ -96,44 +96,51 @@ export default function CafeProfileScreen() {
     const tabFadeAnim = useRef(new Animated.Value(1)).current;
 
     const handleDeleteItem = async (item: any) => {
-    await supabase
-        .from("menu_items")
-        .delete()
-        .eq("id", item.id);
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
 
-    setMenuItems((prev) =>
-        prev.filter((i) => i.id !== item.id)
-    );
+    await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/cafes/${cafeId}/menu/items/${item.id}`, {
+        method: "DELETE",
+        headers: {
+        Authorization: `Bearer ${token}`,
+        },
+    });
+
+    setMenuItems((prev) => prev.filter((i) => i.id !== item.id));
     };
 
     useEffect(() => {
-    const fetchCafe = async () => {
-        const { data, error } = await supabase
-        .from("cafes")
-        .select("id, owner_id")
-        .limit(1)
-        .single();
+        if (!userId) return;
 
-        if (!error && data) {
-        setCafeId(data.id);
-        setOwnerId(data.owner_id);
-        }
-    };
+        const fetchCafe = async () => {
+            const { data, error } = await supabase
+            .from("cafes")
+            .select("id, owner_id")
+            .eq("owner_id", userId)
+            .single();
+
+            if (data) {
+                setCafeId(data.id);
+                setOwnerId(data.owner_id);
+            }
+        };
 
     fetchCafe();
-    }, []);
+    }, [userId]);
 
     const [menuItems, setMenuItems] = useState<any[]>([]);
     useEffect(() => {
         if (!cafeId) return;
 
         const fetchMenu = async () => {
-            const { data } = await supabase
-            .from("menu_items")
-            .select("*")
-            .eq("cafe_id", cafeId);
+        const res = await fetch(
+            `${process.env.EXPO_PUBLIC_API_URL}/api/cafes/${cafeId}/menu`
+        );
 
-            if (data) setMenuItems(data);
+        const data = await res.json();
+
+            if (data?.menu_items) {
+                setMenuItems(data.menu_items);
+            }
         };
 
         fetchMenu();
@@ -152,6 +159,7 @@ export default function CafeProfileScreen() {
             name: item.name,
             price: item.price,
             image_url: item.image_url, 
+            description: item.description, 
             });
         });
 
@@ -220,23 +228,58 @@ export default function CafeProfileScreen() {
         fetchPosts();
     }, [cafeId]);
 
-    const handleCreateCategory = async () => {
-    const newCategory = "New Category";
 
-    const { data, error } = await supabase
-        .from("menu_items")
-        .insert([
-        {
+    const handleCreateCategory = async () => {
+    if (!cafeId) return;
+
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+    const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/cafes/${cafeId}/menu/items`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+            cafe_id: cafeId,
+            name: newName,
+            price: newPrice,
+            category: newCategory,
+            image_url: null,
+            description: newDescription || null,
+        }),
+        }
+    );
+
+    const data = await res.json();
+
+    if (data?.item) {
+        setMenuItems((prev) => [...prev, data.item]);
+    }
+    };
+
+    const handleAddItemWithCategory = async (category: string) => {
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+    const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/cafes/${cafeId}/menu/items`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
             cafe_id: cafeId,
             name: "New Item",
-            price: "$0",
-            category: newCategory,
-        },
-        ])
-        .select();
+            price: "0",
+            category,
+        }),
+        }
+    );
 
-    if (!error && data) {
-        setMenuItems((prev) => [...prev, data[0]]);
+    const data = await res.json();
+
+    if (data?.item) {
+        setMenuItems((prev) => [...prev, data.item]);
     }
     };
 
@@ -246,75 +289,15 @@ export default function CafeProfileScreen() {
         return;
     }
 
-    // update DB
-    const { error } = await supabase
-        .from("menu_items")
-        .update({ category: newCategoryName })
-        .eq("category", oldCategory)
-        .eq("cafe_id", cafeId);
-
-    if (error) {
-        console.error(error);
-    } else {
-        // update UI instantly
-        setMenuItems((prev) =>
+    setMenuItems((prev) =>
         prev.map((item) =>
-            item.category === oldCategory
+        item.category === oldCategory
             ? { ...item, category: newCategoryName }
             : item
         )
-        );
-    }
+    );
 
     setEditingCategory(null);
-    };
-
-    const handleEditItem = async (id: string, field: string, value: string) => {
-        setMenuItems((prev) =>
-            prev.map((item) =>
-            item.id === id ? { ...item, [field]: value } : item
-            )
-        );
-
-        // update database
-        await supabase
-            .from("menu_items")
-            .update({ [field]: value })
-            .eq("id", id);
-        };
-
-    const handleAddItem = async () => {
-    if (!isOwner) return;
-    if (!newName || !newPrice) return;
-
-    const { error } = await supabase.from("menu_items").insert([
-        {
-        cafe_id: cafeId,
-        name: newName,
-        price: newPrice,
-        category: newCategory,
-        },
-    ]);
-
-    if (error) {
-        console.error(error);
-    } else {
-        setMenuItems((prev) => [
-        ...prev,
-        {
-            name: newName,
-            price: newPrice,
-            category: newCategory,
-        },
-        ]);
-        setIsEditing(true); 
-
-        // reset + close
-        setNewName("");
-        setNewPrice("");
-        setNewCategory("");
-        // setShowAddModal(false);
-    }
     };
 
     const inputStyle = {
@@ -334,24 +317,6 @@ export default function CafeProfileScreen() {
             p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p
         )
         );
-    };
-
-    const handleAddItemWithCategory = async (category: string) => {
-    const newItem = {
-        cafe_id: cafeId,
-        name: "New Item",
-        price: "$0",
-        category,
-    };
-
-    const { data, error } = await supabase
-        .from("menu_items")
-        .insert([newItem])
-        .select();
-
-    if (!error && data) {
-        setMenuItems((prev) => [...prev, data[0]]);
-    }
     };
 
     const uploadImage = async (uri: string) => {
@@ -853,22 +818,29 @@ export default function CafeProfileScreen() {
                                         }
                                     }
 
-                                    const { data } = await supabase
-                                    .from("menu_items")
-                                    .insert([
-                                        {
+                                    const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+                                    const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/cafes/${cafeId}/menu/items`, {
+                                        method: "POST",
+                                        headers: {
+                                        "Content-Type": "application/json",
+                                        Authorization: `Bearer ${token}`,
+                                        },
+                                        body: JSON.stringify({
                                         cafe_id: cafeId,
                                         name: newName,
                                         price: newPrice,
                                         category: newCategory,
                                         image_url: imageUrl,
                                         description: newDescription || null,
-                                        },
-                                    ])
-                                    .select();
+                                        }),
+                                    }
+                                    );
 
-                                    if (data) {
-                                        setMenuItems((prev) => [...prev, data[0]]);
+                                    const data = await res.json();
+
+                                    if (data?.item) {
+                                    setMenuItems((prev) => [...prev, data.item]);
                                     }
 
                                     setNewName("");
@@ -960,10 +932,9 @@ export default function CafeProfileScreen() {
                                                 />
 
                                                     <TextInput
-                                                        value={item.name}
-                                                        onChangeText={(text) =>
-                                                            handleEditItem(item.id, "name", text)
-                                                        }
+                                                        value={editingItemId === item.id ? editName : item.name}
+                                                        onChangeText={setEditName}
+                                                        editable={editingItemId === item.id}
                                                         style={{
                                                             flex: 1,
                                                             backgroundColor: "#F3F0EC",
@@ -974,10 +945,9 @@ export default function CafeProfileScreen() {
                                                     />
 
                                                     <TextInput
-                                                        value={item.price}
-                                                        onChangeText={(text) =>
-                                                            handleEditItem(item.id, "price", text)
-                                                        }
+                                                        value={editingItemId === item.id ? editPrice : item.price}
+                                                        onChangeText={setEditPrice}
+                                                        editable={editingItemId === item.id}
                                                         style={{
                                                             width: scale(60),
                                                             textAlign: "right",
@@ -1010,7 +980,7 @@ export default function CafeProfileScreen() {
                                                     </View>
                                                 </>
                                             ) : (
-                                                <View style={{ flexDirection: "row", alignItems: "center", width: "100%" }}>
+                                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
                                                 {/* LEFT SIDE: IMAGE + NAME */}
                                                 <View style={{ flexDirection: "row", alignItems: "center", gap: scale(10) }}>
                                                     <TouchableOpacity
@@ -1130,14 +1100,20 @@ export default function CafeProfileScreen() {
                                                             imageUrl = null;
                                                         }
 
-                                                        await supabase
-                                                            .from("menu_items")
-                                                            .update({
-                                                                name: editName.trim(),
+                                                        const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+                                                        await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/cafes/${cafeId}/menu/items/${item.id}`, {
+                                                            method: "PUT",
+                                                            headers: {
+                                                                "Content-Type": "application/json",
+                                                                Authorization: `Bearer ${token}`,
+                                                            },
+                                                            body: JSON.stringify({
+                                                                name: editName,
                                                                 price: editPrice,
                                                                 image_url: imageUrl,
-                                                            })
-                                                            .eq("id", item.id);
+                                                            }),
+                                                        });
 
                                                         // update UI
                                                         setMenuItems((prev) =>
