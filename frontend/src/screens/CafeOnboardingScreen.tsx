@@ -461,7 +461,7 @@ export default function CafeOnboarding({ navigation }: any) {
                 disabled={
                   !cafeName.trim() ||
                   !address.trim() ||
-                  !email.trim() ||
+                  // !email.trim() ||
                   phone.length !== 10 ||
                   !coordinates
                 }
