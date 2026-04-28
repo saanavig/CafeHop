@@ -125,6 +125,8 @@ export default function UserProfileScreen() {
   const [cafeQuery, setCafeQuery] = useState("");
   const [filteredCafes, setFilteredCafes] = useState<any[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [showMenu, setShowMenu] = useState(false);
+  const [menuPostId, setMenuPostId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!cafeQuery.trim()) {
@@ -367,6 +369,38 @@ export default function UserProfileScreen() {
     }
   };
 
+  const handleDeletePost = async (postId: number) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/posts/${postId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        console.error("Failed to delete");
+        return;
+      }
+
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+
+      // close modal if open
+      if (selectedPost?.id === postId) {
+        setSelectedPost(null);
+      }
+
+    } catch (err) {
+      console.error("Delete error:", err);
+    }
+  };
+
   const openPost = (post: Post) => {
     setSelectedPost(post);
     setCarouselIndex(0);
@@ -528,6 +562,24 @@ export default function UserProfileScreen() {
                         <Layers size={scale(11)} color="#FFF" />
                       </View>
                     )}
+
+                    <TouchableOpacity
+                      onPress={() => {
+                        setMenuPostId(post.id);
+                        setShowMenu(true);
+                      }}
+                      style={{
+                        position: "absolute",
+                        top: 6,
+                        left: 6,
+                        borderRadius: 10,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        zIndex: 10,
+                      }}
+                    >
+                      <Text style={{ color: "#FFF", fontSize: 12 }}>•••</Text>
+                    </TouchableOpacity>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -909,6 +961,59 @@ export default function UserProfileScreen() {
             </View>
           </KeyboardAvoidingView>
         )}
+      </Modal>
+
+      <Modal
+        visible={showMenu}
+        transparent
+        animationType="fade"
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          activeOpacity={1}
+          onPress={() => setShowMenu(false)}
+        >
+          <View
+            style={{
+              width: 260,
+              backgroundColor: "#FFF",
+              borderRadius: 14,
+              paddingVertical: 10,
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => {
+                if (menuPostId) handleDeletePost(menuPostId);
+                setShowMenu(false);
+              }}
+              style={{
+                paddingVertical: 14,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: "#E0635A", fontWeight: "600" }}>
+                Delete Post
+              </Text>
+            </TouchableOpacity>
+
+            <View style={{ height: 1, backgroundColor: "#EEE" }} />
+
+            <TouchableOpacity
+              onPress={() => setShowMenu(false)}
+              style={{
+                paddingVertical: 14,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: "#333" }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
 
       <BottomNav />

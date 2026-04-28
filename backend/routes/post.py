@@ -67,3 +67,42 @@ def upload_post():
         "post": post,
         "media": media_results
     }), 201
+
+@posts_bp.route("/posts/<post_id>", methods=["DELETE"])
+@require_auth
+def delete_post(post_id):
+    user_id = g.user["id"]
+    access_token = g.access_token
+
+    try:
+        from database.supabase_client import supabase_for_user
+        user_supabase = supabase_for_user(access_token)
+
+        # 🔒 ensure user owns post
+        post = user_supabase.table("posts") \
+            .select("id") \
+            .eq("id", post_id) \
+            .eq("user_id", user_id) \
+            .maybe_single() \
+            .execute()
+
+        if not post.data:
+            return jsonify({"error": "Post not found or unauthorized"}), 404
+
+        # delete media first (important for FK)
+        user_supabase.table("post_media") \
+            .delete() \
+            .eq("post_id", post_id) \
+            .execute()
+
+        # delete post
+        user_supabase.table("posts") \
+            .delete() \
+            .eq("id", post_id) \
+            .execute()
+
+        return jsonify({"message": "Post deleted"}), 200
+
+    except Exception as e:
+        print("DELETE ERROR:", e)
+        return jsonify({"error": str(e)}), 500
