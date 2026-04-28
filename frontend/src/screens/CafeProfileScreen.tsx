@@ -93,6 +93,7 @@ export default function CafeProfileScreen() {
     const [reviewText, setReviewText] = useState("");
     const [reviewsLoading, setReviewsLoading] = useState(false);
     const [reviewError, setReviewError] = useState("");
+    const [authLoading, setAuthLoading] = useState(true);
 
   const isOwner = !!userId && !!ownerId && userId === ownerId;
 
@@ -104,17 +105,19 @@ export default function CafeProfileScreen() {
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
       setUserId(data.user?.id || null);
+      setAuthLoading(false);
     };
 
     getUser();
   }, []);
 
   useEffect(() => {
+    if (authLoading) return;
+
     const fetchCafe = async () => {
       setCafeLoading(true);
 
-      const { data: userData } = await supabase.auth.getUser();
-      const currentUserId = userData.user?.id || null;
+      const currentUserId = userId;
 
       if (currentUserId) {
         setUserId(currentUserId);
@@ -148,7 +151,7 @@ export default function CafeProfileScreen() {
     };
 
     fetchCafe();
-  }, [cafeId]);
+  }, [cafeId, userId, authLoading]);
 
   useEffect(() => {
     if (!cafe?.id) return;
