@@ -354,3 +354,40 @@ def create_comment_by_post(post_id):
     except Exception as e:
         print("Error creating post comment:", str(e))
         return jsonify({"error": "Failed to create comment"}), 500
+
+@cafe_bp.route("/cafes/<cafe_id>", methods=["GET"])
+def get_cafe_by_id(cafe_id):
+    try:
+        cafe_response = (
+            supabase.table("cafes")
+            .select("*")
+            .eq("id", cafe_id)
+            .maybe_single()
+            .execute()
+        )
+
+        if not cafe_response.data:
+            return jsonify({"error": "Cafe not found"}), 404
+
+        cafe = cafe_response.data
+
+        hours_response = (
+            supabase.table("cafe_hours")
+            .select("day_of_week, open_time, close_time")
+            .eq("cafe_id", cafe_id)
+            .execute()
+        )
+
+        hours = hours_response.data or []
+
+        return jsonify({
+            "cafe": {
+                **cafe,
+                "hours": hours,
+                "isOpen": is_cafe_open(hours),
+            }
+        }), 200
+
+    except Exception as e:
+        print("Error fetching cafe:", str(e))
+        return jsonify({"error": "Internal server error"}), 500
