@@ -93,6 +93,7 @@ export default function CafeProfileScreen() {
     const [reviewText, setReviewText] = useState("");
     const [reviewsLoading, setReviewsLoading] = useState(false);
     const [reviewError, setReviewError] = useState("");
+    const [authLoading, setAuthLoading] = useState(true);
 
   const isOwner = !!userId && !!ownerId && userId === ownerId;
 
@@ -104,26 +105,36 @@ export default function CafeProfileScreen() {
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
       setUserId(data.user?.id || null);
+      setAuthLoading(false);
     };
 
     getUser();
   }, []);
 
   useEffect(() => {
-    if (!cafeId) {
-      setCafeLoading(false);
-      return;
-    }
-
+    if (authLoading) return;
 
     const fetchCafe = async () => {
       setCafeLoading(true);
 
-      const { data, error } = await supabase
-        .from("cafes")
-        .select("*")
-        .eq("id", cafeId)
-        .single();
+      const currentUserId = userId;
+
+      if (currentUserId) {
+        setUserId(currentUserId);
+      }
+
+      let query = supabase.from("cafes").select("*");
+
+      if (cafeId) {
+        query = query.eq("id", cafeId);
+      } else if (currentUserId) {
+        query = query.eq("owner_id", currentUserId);
+      } else {
+        setCafeLoading(false);
+        return;
+      }
+
+      const { data, error } = await query.maybeSingle();
 
       if (error) {
         console.error("Fetch cafe error:", error);
@@ -132,36 +143,39 @@ export default function CafeProfileScreen() {
       if (data) {
         setCafe(data);
         setOwnerId(data.owner_id || null);
+      } else {
+        setCafe(null);
       }
 
       setCafeLoading(false);
     };
 
     fetchCafe();
-  }, [cafeId]);
+  }, [cafeId, userId, authLoading]);
 
   useEffect(() => {
-    if (!cafeId) return;
+    if (!cafe?.id) return;
 
     const fetchMenu = async () => {
       const { data, error } = await supabase
         .from("menu_items")
         .select("*")
-        .eq("cafe_id", cafeId)
+        .eq("cafe_id", cafe.id)
         .order("created_at", { ascending: true });
 
       if (error) {
         console.error("Fetch menu error:", error);
+        return;
       }
 
-      if (data) setMenuItems(data);
+      setMenuItems(data || []);
     };
 
     fetchMenu();
-  }, [cafeId]);
+  }, [cafe?.id]);
 
   useEffect(() => {
-    if (!cafeId) return;
+    if (!cafe?.id) return;
 
     const fetchPosts = async () => {
       setPostsLoading(true);
@@ -341,7 +355,6 @@ export default function CafeProfileScreen() {
         )
       );
     }
-
     setEditingCategory(null);
   };
 
@@ -372,7 +385,8 @@ export default function CafeProfileScreen() {
 
 
     const fetchReviews = async () => {
-    if (!cafeId) return;
+    if (!cafe?.id) return;
+
 
     setReviewsLoading(true);
 
@@ -396,14 +410,12 @@ export default function CafeProfileScreen() {
         : null;
 
         setMyReview(mine || null);
-
     }
-
     setReviewsLoading(false);
     };
 
     useEffect(() => {
-    if (!cafeId) return;
+    if (!cafe?.id) return;
     fetchReviews();
     }, [cafeId, userId]);
 
@@ -889,7 +901,7 @@ export default function CafeProfileScreen() {
                                 .from("menu_items")
                                 .insert([
                                   {
-                                    cafe_id: cafeId,
+                                    cafe_id: cafe?.id,
                                     name: newName,
                                     price: newPrice,
                                     category: newCategory,
@@ -1076,7 +1088,6 @@ export default function CafeProfileScreen() {
                                   keyboardType="decimal-pad"
                                   style={inputStyle}
                                 />
-
                                 <TouchableOpacity
                                   onPress={async () => {
                                     const result =
@@ -1114,6 +1125,7 @@ export default function CafeProfileScreen() {
                                   </TouchableOpacity>
                                 )}
 
+
                                 <TouchableOpacity
                                   onPress={async () => {
                                     let imageUrl = editImage;
@@ -1125,7 +1137,6 @@ export default function CafeProfileScreen() {
                                     if (!editImage) {
                                       imageUrl = null;
                                     }
-
                                     const { error } = await supabase
                                       .from("menu_items")
                                       .update({
@@ -1152,7 +1163,6 @@ export default function CafeProfileScreen() {
                                           : i
                                       )
                                     );
-
                                     setEditingItemId(null);
                                   }}
                                   style={styles.saveButton}

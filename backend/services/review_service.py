@@ -1,5 +1,6 @@
 from collections import defaultdict
 from database.supabase_client import supabase
+from typing import List, Dict, Optional
 
 
 def get_user_reviews(user_id: str):
@@ -66,7 +67,7 @@ def get_cafe_review_text_map(limit_per_cafe=5):
     return cafe_review_map
 
 
-def build_rule_based_review_summary(review_rows: list[dict] | None):
+def build_rule_based_review_summary(review_rows: Optional[List[Dict]]):
     if not review_rows:
         return None
 

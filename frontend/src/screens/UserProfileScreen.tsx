@@ -35,6 +35,7 @@ type Post = {
   caption?: string;
   saved?: boolean;
   location?: string;
+  tags?: string[];
 };
 
 export default function UserProfileScreen() {
@@ -114,47 +115,221 @@ export default function UserProfileScreen() {
   const [editableName, setEditableName] = useState("");
   const [editableBio, setEditableBio] = useState(profile.bio);
   const [showAddPost, setShowAddPost] = useState(false);
-  const [newPostCaption, setNewPostCaption] = useState("");
-  const [selectedImages, setSelectedImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
+  const [selectedMedia, setSelectedMedia] = useState<
+      { uri: string; type: "image" | "video" }[]
+    >([]);
+  const [selectedCafeId, setSelectedCafeId] = useState<number | null>(null);
+  const [caption, setCaption] = useState("");
+  const [cafes, setCafes] = useState<any[]>([]);
+  const [isPosting, setIsPosting] = useState(false);
+  const [cafeQuery, setCafeQuery] = useState("");
+  const [filteredCafes, setFilteredCafes] = useState<any[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [showMenu, setShowMenu] = useState(false);
+  const [menuPostId, setMenuPostId] = useState<number | null>(null);
 
-  const cafeCaptions = [
-    "Our signature pour-over ☕",
-    "Morning light in the lounge 🌤",
-    "Freshly baked croissants 🥐",
-    "Hand-crafted latte art ✨",
-    "The cozy reading nook 📚",
-    "Espresso bar at golden hour",
-    "Weekly special: matcha tonic 🍵",
-    "Our barista at work ☕",
-    "New seasonal blend is here!",
-    "Cinnamon roll Friday 🍂",
-    "Outdoor terrace is open 🌿",
-    "Meet the team! 👋",
+  useEffect(() => {
+    if (!cafeQuery.trim()) {
+      setFilteredCafes([]);
+      return;
+    }
+
+    const results = cafes.filter((cafe) =>
+      cafe.name.toLowerCase().includes(cafeQuery.toLowerCase())
+    );
+
+    setFilteredCafes(results);
+  }, [cafeQuery, cafes]);
+
+
+  const TAG_OPTIONS = [
+    "Cozy", "Quiet", "Lively", "Outdoor Seating", "Pet Friendly", "WiFi", "Power Outlets",
+    "Specialty Drinks", "Great Pastries", "Vegan Options", "Study-friendly", "Good for Meetings",
+    "Instagrammable", "Late-night", "Early morning"
   ];
 
-  // Generate mock posts with 1–3 images each
-  const [posts, setPosts] = useState<Post[]>(
-    Array.from({ length: 12 }).map((_, i) => {
-      const imageCount = (i % 3) + 1; // 1, 2, or 3 images per post
-      return {
-        id: i,
-        images: Array.from({ length: imageCount }).map((__, j) =>
-          isCafe
-            ? `https://picsum.photos/seed/cafe${i + 10 + j * 5}/400`
-            : `https://picsum.photos/seed/post${i * 3 + j}/400`
-        ),
-        likes: isCafe ? Math.floor(Math.random() * 300) + 50 : Math.floor(Math.random() * 100),
-        liked: false,
-        caption: isCafe ? cafeCaptions[i % cafeCaptions.length] : "Study vibes ☕✨",
-        location: isCafe ? "Brooklyn, NY" : ["Brooklyn, NY", "Williamsburg, NY", "Manhattan, NY", "Queens, NY"][i % 4],
-        saved: false,
-        comments: [
-          { text: "Looks amazing!" },
-          { text: isCafe ? "Can't wait to visit!" : "Love this café" },
-        ],
-      };
-    })
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag)
+        ? prev.filter((t) => t !== tag)
+        : [...prev, tag]
+    );
+  };
+
+  useEffect(() => {
+    const fetchCafes = async () => {
+      try {
+        const response = await fetch(
+          `${process.env.EXPO_PUBLIC_API_URL}/api/cafe/all`
+        );
+
+        const data = await response.json();
+        setCafes(data);
+      } catch (err) {
+        console.error("Error fetching cafes:", err);
+      }
+    };
+
+    fetchCafes();
+  }, []);
+
+  const handleCreatePost = async () => {
+    setIsPosting(true);
+
+    try {
+      if (selectedMedia.length === 0 || !selectedCafeId) {
+        setIsPosting(false);
+        return;
+      }
+
+  const uploadResults = await Promise.all(
+    selectedMedia.map((m) =>
+      uploadImageToSupabase(m.uri, m.type)
+    )
   );
+
+  const validUploads = uploadResults.filter(Boolean);
+
+      if (validUploads.length === 0) {
+        console.error("Uploads failed");
+        setIsPosting(false);
+        return;
+      }
+
+      // const { file_url, file_path, bucket_name } = uploadResult;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/posts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          cafe_id: selectedCafeId,
+          caption,
+          post_type: "user",
+          tags: selectedTags,
+          media: validUploads,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.log(data);
+        console.error("Failed to create post");
+        return;
+      }
+
+      setPosts((prev) => [
+      {
+        id: data.post.id || Date.now(),
+        images: data.media.map((m) => m.file_url),
+        likes: 0,
+        liked: false,
+        caption,
+        location: cafes.find(c => c.id === selectedCafeId)?.name,
+        saved: false,
+        comments: [],
+        tags: selectedTags,
+      },
+      ...prev,
+    ]);
+  
+      setShowAddPost(false);
+      setSelectedMedia([]);
+      setCaption("");
+      setSelectedCafeId(null);
+      setSelectedTags([]);
+
+    } catch (err) {
+      console.error(err);
+    }
+    finally {
+      setIsPosting(false);
+    }
+  };
+
+  const uploadImageToSupabase = async (uri: string, type: "image" | "video") => {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      if (!blob) return null;
+
+      const ext = type === "video" ? "mp4" : "jpg";
+      const fileName = `posts/${Date.now()}-${Math.random()}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from("posts")
+        .upload(fileName, blob, {
+          contentType: type === "video" ? "video/mp4" : "image/jpeg",
+          upsert: true,
+        });
+
+      if (error) {
+        console.error("Upload error:", error);
+        return null;
+      }
+
+      const { data } = supabase.storage
+        .from("posts")
+        .getPublicUrl(fileName);
+
+      return {
+        file_url: data.publicUrl,
+        file_path: fileName,
+        bucket_name: "posts",
+        file_type: type,
+      };
+    } catch (err) {
+      console.error("Upload crash:", err);
+      return null;
+    }
+  };
+
+  const [posts, setPosts] = useState<Post[]>([]);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
+        const res = await fetch(
+          `${process.env.EXPO_PUBLIC_API_URL}/api/posts/me`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const data = await res.json();
+
+        const formatted = data.map((p: any) => ({
+          id: p.id,
+          images: [p.file_url],
+          likes: p.likes_count || 0,
+          liked: false,
+          caption: p.caption,
+          location: p.cafe_name,
+          saved: false,
+          comments: [],
+        }));
+
+        setPosts(formatted);
+      } catch (err) {
+        console.error("Error fetching posts:", err);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
 
   const handleLike = (id: number) => {
     setPosts((prev) =>
@@ -180,31 +355,67 @@ export default function UserProfileScreen() {
     }
   };
 
+  const handleDeletePost = async (postId: number) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/posts/${postId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        console.error("Failed to delete");
+        return;
+      }
+
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+
+      // close modal if open
+      if (selectedPost?.id === postId) {
+        setSelectedPost(null);
+      }
+
+    } catch (err) {
+      console.error("Delete error:", err);
+    }
+  };
+
   const openPost = (post: Post) => {
     setSelectedPost(post);
     setCarouselIndex(0);
   };
 
-  const pickImages = async () => {
-    if (selectedImages.length >= 5) return;
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      alert("Camera roll permission is required.");
+  const pickMedia = async () => {
+    if (selectedMedia.length >= 5) {
+      alert("Max 5 items");
       return;
     }
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") return;
+
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsMultipleSelection: true,
-      selectionLimit: 5 - selectedImages.length,
+      selectionLimit: 5,
       quality: 0.8,
     });
-    if (!result.canceled) {
-      setSelectedImages((prev) => [...prev, ...result.assets].slice(0, 5));
-    }
-  };
 
-  const removePickedImage = (index: number) => {
-    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+    if (!result.canceled) {
+      const newItems = result.assets.map((a) => ({
+        uri: a.uri,
+        type: a.type === "video" ? "video" : "image",
+      }));
+
+      setSelectedMedia((prev) => [...prev, ...newItems].slice(0, 5));
+    }
   };
 
   const handleAddComment = () => {
@@ -221,25 +432,6 @@ export default function UserProfileScreen() {
     setCommentInput("");
   };
 
-  const handleAddPost = () => {
-    if (!newPostCaption.trim() && selectedImages.length === 0) return;
-    const newPost: Post = {
-      id: posts.length,
-      images:
-        selectedImages.length > 0
-          ? selectedImages.map((img) => img.uri)
-          : [`https://picsum.photos/seed/new${posts.length}/400`],
-      likes: 0,
-      liked: false,
-      caption: newPostCaption,
-      saved: false,
-      comments: [],
-    };
-    setPosts([newPost, ...posts]);
-    setNewPostCaption("");
-    setSelectedImages([]);
-    setShowAddPost(false);
-  };
   const handleSaveProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -295,7 +487,7 @@ export default function UserProfileScreen() {
               </View>
               <View style={styles.stat}>
                 <Text style={styles.statNumber}>{isCafe ? "5.4k" : profile.stats.visits}</Text>
-                <Text style={styles.statLabel}>{isCafe ? "Check-ins" : "Visits"}</Text>
+                <Text style={styles.statLabel}>{isCafe ? "Check-ins" : "Cafes Visited"}</Text>
               </View>
               <View style={styles.stat}>
                 <Text style={styles.statNumber}>{isCafe ? "4.8 ★" : profile.stats.favorites}</Text>
@@ -319,9 +511,6 @@ export default function UserProfileScreen() {
 
               <Button style={{ flex: 1 }} onPress={() => setShowAddPost(true)}>
                 <Text>Add Post</Text>
-              </Button>
-              <Button style={{ flex: 1 }} onPress={() => setShowAddPost(true)}>
-                Add Post
               </Button>
             </View>
           </View>
@@ -359,6 +548,24 @@ export default function UserProfileScreen() {
                         <Layers size={scale(11)} color="#FFF" />
                       </View>
                     )}
+
+                    <TouchableOpacity
+                      onPress={() => {
+                        setMenuPostId(post.id);
+                        setShowMenu(true);
+                      }}
+                      style={{
+                        position: "absolute",
+                        top: 6,
+                        left: 6,
+                        borderRadius: 10,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        zIndex: 10,
+                      }}
+                    >
+                      <Text style={{ color: "#FFF", fontSize: 12 }}>•••</Text>
+                    </TouchableOpacity>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -424,48 +631,188 @@ export default function UserProfileScreen() {
           <View style={styles.addPostModal}>
             {/* Header */}
             <View style={styles.addPostHeader}>
-              <TouchableOpacity onPress={() => { setShowAddPost(false); setSelectedImages([]); setNewPostCaption(""); }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowAddPost(false);
+                  setSelectedMedia([]);
+                  setCaption("");
+                }}
+              >
                 <X size={scale(22)} color="#333" />
               </TouchableOpacity>
+
               <Text style={styles.addPostTitle}>New Post</Text>
-              <TouchableOpacity onPress={handleAddPost} disabled={!newPostCaption.trim() && selectedImages.length === 0}>
-                <Text style={[styles.addPostShareBtn, (!newPostCaption.trim() && selectedImages.length === 0) && { opacity: 0.4 }]}>Share</Text>
+
+              <TouchableOpacity
+                onPress={handleCreatePost}
+                disabled={isPosting || selectedMedia.length === 0 || !selectedCafeId}
+              >
+                <Text
+                  style={[
+                    styles.addPostShareBtn,
+                    (isPosting || selectedMedia.length === 0  || !selectedCafeId) && { opacity: 0.4 }
+                  ]}
+                >
+                  Share
+                </Text>
               </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={{ padding: scale(16) }}>
               {/* Image picker area */}
-              <View style={styles.imagePickerRow}>
-                {selectedImages.map((img, i) => (
-                  <View key={i} style={styles.pickedImageWrap}>
-                    <Image source={{ uri: img.uri }} style={styles.pickedImage} />
-                    <TouchableOpacity style={styles.removeImageBtn} onPress={() => removePickedImage(i)}>
-                      <X size={scale(10)} color="#FFF" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-                {selectedImages.length < 5 && (
-                  <TouchableOpacity style={styles.addImageBtn} onPress={pickImages}>
-                    <Camera size={scale(20)} color="#D4A373" />
-                    <Text style={styles.addImageText}>
-                      {selectedImages.length === 0 ? "Add photos" : "Add more"}
-                    </Text>
-                    {selectedImages.length > 0 && (
-                      <Text style={styles.addImageCount}>{selectedImages.length}/5</Text>
-                    )}
+              <View style={{ marginBottom: 16 }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {selectedMedia.map((item, i) => (
+                <View key={i} style={{ position: "relative" }}>
+                  {item.type === "image" ? (
+                    <Image
+                      source={{ uri: item.uri }}
+                      style={{ width: 90, height: 90, borderRadius: 8 }}
+                    />
+                  ) : (
+                    <View
+                      style={{
+                        width: 90,
+                        height: 90,
+                        borderRadius: 8,
+                        backgroundColor: "#000",
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ color: "#FFF" }}>Video</Text>
+                    </View>
+                  )}
+
+                  {/* Remove button */}
+                  <TouchableOpacity
+                    onPress={() =>
+                      setSelectedMedia((prev) => prev.filter((_, idx) => idx !== i))
+                    }
+                    style={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      backgroundColor: "rgba(0,0,0,0.6)",
+                      borderRadius: 10,
+                      padding: 4,
+                    }}
+                  >
+                    <Text style={{ color: "#FFF" }}>X</Text>
                   </TouchableOpacity>
-                )}
+                </View>
+              ))}
+
+              {selectedMedia.length < 5 && (
+                <TouchableOpacity style={styles.addImageBtn} onPress={pickMedia}>
+                  <Camera size={20} color="#D4A373" />
+                  <Text>Add</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            </View>
+
+            {/* Cafe Selector */}
+              <Text style={{ marginBottom: 6, fontWeight: "600" }}>
+                Select Cafe
+              </Text>
+
+              <TextInput
+                placeholder="Search cafe..."
+                value={
+                  selectedCafeId
+                    ? cafes.find((c) => c.id === selectedCafeId)?.name || ""
+                    : cafeQuery
+                }
+                onChangeText={(text) => {
+                  setCafeQuery(text);
+                  setSelectedCafeId(null);
+                }}
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#EEE",
+                  borderRadius: 10,
+                  padding: 10,
+                  marginBottom: 10,
+                }}
+              />
+              {/* Results */}
+              {!selectedCafeId && filteredCafes.map((cafe) => (
+                <TouchableOpacity
+                  key={cafe.id}
+                  onPress={() => {
+                    setSelectedCafeId(cafe.id);
+                    setCafeQuery(cafe.name);
+                    setFilteredCafes([]); 
+                  }}
+                  style={{
+                    paddingVertical: 10,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "#F0F0F0",
+                  }}
+                >
+                  <Text>{cafe.name}</Text>
+                </TouchableOpacity>
+              ))}
+
+              {cafeQuery.length > 0 && filteredCafes.length === 0 && (
+                <Text style={{ color: "#AAA", marginTop: 6 }}>
+                  No cafes found
+                </Text>
+              )}
+
+              {/* {selectedCafeId && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: "#F3E9DC",
+                  padding: 10,
+                  borderRadius: 10,
+                  marginBottom: 10,
+                  justifyContent: "space-between",
+                }}
+              >
               </View>
+            )} */}
 
               {/* Caption */}
               <TextInput
                 placeholder="Write a caption…"
                 placeholderTextColor="#AAA"
-                value={newPostCaption}
-                onChangeText={setNewPostCaption}
+                value={caption}
+                onChangeText={setCaption}
                 multiline
                 style={styles.captionInput}
               />
+
+              {/* Tags */}
+              <Text style={{ fontWeight: "600", marginBottom: 6, marginTop: 6 }}>
+                Tags
+              </Text>
+
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+                {TAG_OPTIONS.map((tag) => {
+                  const selected = selectedTags.includes(tag);
+
+                  return (
+                    <TouchableOpacity
+                      key={tag}
+                      onPress={() => toggleTag(tag)}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 20,
+                        backgroundColor: selected ? "#D4A373" : "#EEE",
+                      }}
+                    >
+                      <Text style={{ color: selected ? "#FFF" : "#333" }}>
+                        {tag}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
@@ -559,6 +906,27 @@ export default function UserProfileScreen() {
                     ))}
                   </View>
                 )}
+
+                {/* Tags */}
+                {selectedPost.tags && selectedPost.tags.length > 0 && (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, marginBottom: 10 }}>
+                  {selectedPost.tags.map((tag, i) => (
+                    <View
+                      key={i}
+                      style={{
+                        backgroundColor: "#EEE",
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
+                        borderRadius: 12,
+                        marginRight: 6,
+                        marginBottom: 6,
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, color: "#555" }}>{tag}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
               </ScrollView>
 
               {/* ── Comment input ── */}
@@ -579,6 +947,59 @@ export default function UserProfileScreen() {
             </View>
           </KeyboardAvoidingView>
         )}
+      </Modal>
+
+      <Modal
+        visible={showMenu}
+        transparent
+        animationType="fade"
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          activeOpacity={1}
+          onPress={() => setShowMenu(false)}
+        >
+          <View
+            style={{
+              width: 260,
+              backgroundColor: "#FFF",
+              borderRadius: 14,
+              paddingVertical: 10,
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => {
+                if (menuPostId) handleDeletePost(menuPostId);
+                setShowMenu(false);
+              }}
+              style={{
+                paddingVertical: 14,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: "#E0635A", fontWeight: "600" }}>
+                Delete Post
+              </Text>
+            </TouchableOpacity>
+
+            <View style={{ height: 1, backgroundColor: "#EEE" }} />
+
+            <TouchableOpacity
+              onPress={() => setShowMenu(false)}
+              style={{
+                paddingVertical: 14,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: "#333" }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
 
       <BottomNav />

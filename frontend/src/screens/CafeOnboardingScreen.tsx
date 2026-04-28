@@ -1,5 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
+// import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 
 import { Alert, Linking } from "react-native";
 import { CheckCircle, Coffee } from "lucide-react-native";
@@ -11,7 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { moderateScale, scale, verticalScale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
@@ -40,7 +41,7 @@ const requestLocation = async (): Promise<{
         {
           text: "Open Settings",
           onPress: () => {
-            console.log("⚙️ Opening settings");
+            console.log("Opening settings");
             Linking.openSettings();
           },
         },
@@ -86,8 +87,6 @@ const defaultHours: Record<string, DayHours> = Object.fromEntries(
   DAYS.map((d) => [d, { open: true, start: "09:00", end: "21:00" }])
 );
 
-// const TOTAL_STEPS = 5;
-// const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
 export default function CafeOnboarding({ navigation }: any) {
   const { setRole } = useRole();
@@ -99,13 +98,17 @@ export default function CafeOnboarding({ navigation }: any) {
   const [hours, setHours] = useState<Record<string, DayHours>>(defaultHours);
   const [tagError, setTagError] = useState("");
   const [image, setImage] = useState<string | null>(null);
-  // const [posType, setPosType] = useState<"manual" | "square" | null>(null);
-  // const [linkedPOS, setLinkedPOS] = useState<"Square" | null>(null);
-  // const [posEmail, setPosEmail] = useState("");
-  // const [posPassword, setPosPassword] = useState("");
-  // const [verificationCode, setVerificationCode] = useState("");
+  const debounceRef = useRef<any>(null);
+  // const [email, setEmail] = useState("");
   const [priceRange, setPriceRange] = useState<string | null>(null);
   const [priceError, setPriceError] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [coordinates, setCoordinates] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) => {
@@ -153,6 +156,16 @@ export default function CafeOnboarding({ navigation }: any) {
     
     let imageUrl = null;
 
+    // if (!email.trim()) {
+    //   Alert.alert("Invalid Email", "Please enter a valid email");
+    //   return;
+    // }
+
+    if (phone.length !== 10) {
+      Alert.alert("Invalid Phone Number", "Phone number must be 10 digits");
+      return;
+    }
+
     if (image) {
       const fileName = `cafe-${Date.now()}-${Math.random()}.jpg`;
 
@@ -179,18 +192,19 @@ export default function CafeOnboarding({ navigation }: any) {
     }
 
     try {
-      const location = await requestLocation();
-
-      if (!location) {
+      if (!coordinates) {
+        Alert.alert("Please select a valid address from the dropdown");
         return;
       }
 
-      const { latitude, longitude } = location;
+      const latitude = coordinates.lat;
+      const longitude = coordinates.lng;
 
       const payload = {
         name: cafeName,
         address,
-        contact,
+        // contact_email: email,
+        contact_phone: phone,
         latitude,
         longitude,
         hours,
@@ -254,7 +268,7 @@ export default function CafeOnboarding({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={[styles.innerContainer, { maxWidth }]}>
           {/* Header */}
           <Coffee size={scale(32)} color="#D4A373" style={{ alignSelf: "center", marginBottom: verticalScale(8) }} />
@@ -283,18 +297,139 @@ export default function CafeOnboarding({ navigation }: any) {
                 onChangeText={setCafeName}
               />
               <TextInput
-                placeholder="Address"
+                placeholder="Cafe Location"
                 style={styles.input}
                 value={address}
-                onChangeText={setAddress}
+                onChangeText={(text) => {
+                  setAddress(text);
+                  setCoordinates(null);
+
+                  if (debounceRef.current) {
+                    clearTimeout(debounceRef.current);
+                  }
+
+                  debounceRef.current = setTimeout(async () => {
+                    if (text.length < 3) {
+                      setSuggestions([]);
+                      return;
+                    }
+
+                    try {
+                      const res = await fetch(
+                        `${API_URL}/api/places/autocomplete?input=${text}`
+                      );
+
+                      const data = await res.json();
+
+                      // if (data.status !== "OK") {
+                      //   console.warn("Places API error:", data.status);
+                      //   return;
+                      // }
+
+                      setSuggestions(data.suggestions || []);
+                    } catch (err) {
+                      console.error("Autocomplete error:", err);
+                    }
+                  }, 300);
+                }}
               />
-              <TextInput
-                placeholder="Contact email or phone"
+              {suggestions.length > 0 && (
+                <View
+                  style={{
+                    maxHeight: 200,
+                    backgroundColor: "#fff",
+                    borderRadius: 10,
+                    marginTop: 4,
+                    borderWidth: 1,
+                    borderColor: "#ddd",
+                    overflow: "hidden",
+                  }}
+                >
+                  <ScrollView keyboardShouldPersistTaps="handled">
+                    {suggestions.map((item) => (
+                      <Pressable
+                        key={item.placePrediction.placeId || item.placePrediction.text.text}
+                        onPress={async () => {
+                          console.log("PLACE OBJECT:", item);
+                          const placeId = item.placePrediction.placeId;
+
+                          const res = await fetch(
+                            `${API_URL}/api/places/details?place_id=${placeId}`
+                          );
+
+                          const data = await res.json();
+                          console.log("DETAILS:", data);
+
+                          if (!data || !data.formattedAddress) {
+                            Alert.alert("Error", "Place details not found");
+                            return;
+                          }
+
+                          setAddress(data.formattedAddress);
+
+                          setCoordinates({
+                            lat: data.location.latitude,
+                            lng: data.location.longitude,
+                          });
+
+                          setTimeout(() => {
+                            setSuggestions([]);
+                          }, 0);
+                          setSuggestions([]);
+                        }}
+                        style={{
+                          padding: 12,
+                          borderBottomWidth: 1,
+                          borderColor: "#eee",
+                        }}
+                      >
+                        <Text style={{ fontWeight: "600" }}>
+                          {item.placePrediction.structuredFormat.mainText.text}
+                        </Text>
+                        <Text style={{ color: "#666", fontSize: 12 }}>
+                          {item.placePrediction.structuredFormat.secondaryText.text}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+              {/* done with location here */}
+
+              {/* <TextInput
+                placeholder="Email"
                 style={styles.input}
-                value={contact}
-                onChangeText={setContact}
+                value={email}
+                onChangeText={setEmail}
                 keyboardType="email-address"
+                autoCapitalize="none"
+              /> */}
+              <TextInput
+                placeholder="Phone Number"
+                style={styles.input}
+                value={phone}
+                onChangeText={(text) => {
+                  const cleaned = text.replace(/\D/g, "").slice(0, 10);
+                  setPhone(cleaned);
+
+                  if (cleaned.length !== 10) {
+                    setPhoneError("Phone number must be 10 digits");
+                  } else {
+                    setPhoneError("");
+                  }
+                }}
+                keyboardType="phone-pad"
+                maxLength={10}
               />
+
+              {phoneError ? (
+                <Text style={{ color: "red", marginBottom: 10 }}>
+                  {phoneError}
+                </Text>
+              ) : null}
+
+
+
               <Pressable onPress={pickImage} style={styles.imageUploadBox}>
                 {image ? (
                   <Image source={{ uri: image }} style={styles.imagePreview} />
@@ -306,7 +441,13 @@ export default function CafeOnboarding({ navigation }: any) {
                 title="Continue"
                 variant="caramel"
                 onPress={next}
-                disabled={!cafeName.trim() || !address.trim() || !contact.trim()}
+                disabled={
+                  !cafeName.trim() ||
+                  !address.trim() ||
+                  // !email.trim() ||
+                  phone.length !== 10 ||
+                  !coordinates
+                }
               />
             </View>
           )}
@@ -357,92 +498,6 @@ export default function CafeOnboarding({ navigation }: any) {
               <Button title="Continue" variant="caramel" onPress={next} />
             </View>
           )}
-
-          {/* STEP 3 — Loyalty Tracking
-          {step === 3 && (
-            <View style={styles.stepSection}>
-              <Text style={styles.stepTitle}>Loyalty Tracking</Text>
-              <Text style={styles.stepDesc}>How will you track customer visits and rewards?</Text>
-              <Button
-                title="Manual Entry (No POS)"
-                variant={posType === "manual" ? "caramel" : "outline"}
-                onPress={() => setPosType("manual")}
-              />
-              <Button
-                title="Integrate with Square POS"
-                variant={posType === "square" ? "caramel" : "outline"}
-                onPress={() => setPosType("square")}
-              />
-              <Button title="Continue" variant="caramel" onPress={next} disabled={!posType} />
-            </View>
-          )} */}
-
-          {/* STEP 4 — Square */}
-          {/* {step === 4 && posType === "square" && (
-            <View style={styles.stepSection}>
-              <Text style={styles.stepTitle}>Connect Square</Text>
-              <Text style={styles.stepDesc}>Link your Square account to automatically track loyalty</Text>
-              {!linkedPOS ? (
-                <Button
-                  title="Connect Square Account"
-                  variant="outline"
-                  onPress={() => setLinkedPOS("Square")}
-                />
-              ) : (
-                <>
-                  <TextInput
-                    placeholder="POS Account Email"
-                    style={styles.input}
-                    value={posEmail}
-                    onChangeText={setPosEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                  <TextInput
-                    placeholder="POS Account Password"
-                    style={styles.input}
-                    secureTextEntry
-                    value={posPassword}
-                    onChangeText={setPosPassword}
-                  />
-                  <TextInput
-                    placeholder="Business verification code"
-                    style={styles.input}
-                    value={verificationCode}
-                    onChangeText={setVerificationCode}
-                  />
-                </>
-              )}
-              <Button
-                title="Continue"
-                variant="caramel"
-                onPress={next}
-                disabled={
-                  !linkedPOS ||
-                  !posEmail.trim() ||
-                  !posPassword.trim() ||
-                  !verificationCode.trim()
-                }
-              />
-            </View>
-          )} */}
-
-          {/* STEP 5 — Confirmation */}
-          {/* {step === 5 && (
-            <View style={styles.stepSection}>
-              <CheckCircle size={48} color="#D4A373" style={{ alignSelf: "center", marginBottom: 16 }} />
-              <Text style={styles.stepTitle}>You're All Set!</Text>
-              <Text style={styles.stepDesc}>
-                Your cafe is registered. Once approved, you can start managing loyalty rewards on CafeHop.
-              </Text>
-              <Button
-                title="Finish Setup"
-                variant="caramel"
-                onPress={handleFinishSetup} 
-              />
-            </View>
-          )} */}
-
           {step === 3 && (
           <View style={styles.stepSection}>
             <Text style={styles.stepTitle}>Pricing</Text>

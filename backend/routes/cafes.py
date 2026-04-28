@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 from database.supabase_client import supabase_admin as supabase
 from datetime import datetime
+import requests
 
 load_dotenv()
 
@@ -50,6 +51,18 @@ def register_cafe():
             .execute()
 
     try:
+
+        email = data.get("contact_email")
+
+        if email:
+            existing = supabase.table("cafes") \
+                .select("id") \
+                .eq("contact_email", email) \
+                .execute()
+
+            if existing.data:
+                return jsonify({"error": "An account with this email already exists"}), 400
+
         # cafe onboarding
         cafe_response = supabase.table("cafes").insert({
             "owner_id": owner_id,
@@ -354,6 +367,65 @@ def create_comment_by_post(post_id):
     except Exception as e:
         print("Error creating post comment:", str(e))
         return jsonify({"error": "Failed to create comment"}), 500
+
+
+# google address for autocomplete
+@cafe_bp.route("/places/autocomplete", methods=["GET"])
+def places_autocomplete():
+    query = request.args.get("input")
+
+    if not query:
+        return jsonify({"error": "Missing input"}), 400
+
+    try:
+        res = requests.post(
+            "https://places.googleapis.com/v1/places:autocomplete",
+            headers={
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": os.getenv("GOOGLE_PLACES_API_KEY"),
+            },
+            json={
+                "input": query,
+                "includedRegionCodes": ["us"]
+            }
+        )
+
+        data = res.json()
+        print("NEW API RESPONSE:", data)
+
+        return jsonify(data)
+
+    except Exception as e:
+        print("ERROR:", str(e))
+        return jsonify({"error": str(e)}), 500
+
+@cafe_bp.route("/places/details", methods=["GET"])
+def place_details():
+    place_id = request.args.get("place_id")
+
+    if not place_id:
+        return jsonify({"error": "Missing place_id"}), 400
+
+    try:
+        api_key = os.getenv("GOOGLE_PLACES_API_KEY")
+
+        url = f"https://places.googleapis.com/v1/places/{place_id}"
+
+        res = requests.get(
+            url,
+            headers={
+                "X-Goog-Api-Key": api_key,
+                "X-Goog-FieldMask": "displayName,formattedAddress,location"
+            }
+        )
+
+        if res.status_code != 200:
+            return jsonify({"error": res.text}), 500
+
+        return jsonify(res.json()), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @cafe_bp.route("/cafes/<cafe_id>", methods=["GET"])
 def get_cafe_by_id(cafe_id):

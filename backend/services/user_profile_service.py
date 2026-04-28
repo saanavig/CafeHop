@@ -52,14 +52,24 @@ def safe_int(value, default=None):
 
 
 def get_user_preferences(user_id: str):
-    response = (
-        supabase.table("user_preferences")
-        .select("*")
-        .eq("user_id", user_id)
-        .maybe_single()
-        .execute()
-    )
-    return response.data or {}
+    try:
+        response = (
+            supabase.table("user_preferences")
+            .select("*")
+            .eq("user_id", user_id)
+            .maybe_single()
+            .execute()
+        )
+
+        if not response or not hasattr(response, "data"):
+            print("⚠️ user_preferences query returned None or invalid response")
+            return {}
+
+        return response.data or {}
+
+    except Exception as e:
+        print("❌ Error fetching user_preferences:", e)
+        return {}
 
 
 def get_user_preference_tags(user_id: str):
