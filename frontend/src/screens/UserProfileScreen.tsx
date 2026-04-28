@@ -449,7 +449,7 @@ export default function UserProfileScreen() {
               </View>
               <View style={styles.stat}>
                 <Text style={styles.statNumber}>{isCafe ? "5.4k" : profile.stats.visits}</Text>
-                <Text style={styles.statLabel}>{isCafe ? "Check-ins" : "Visits"}</Text>
+                <Text style={styles.statLabel}>{isCafe ? "Check-ins" : "Cafes Visited"}</Text>
               </View>
               <View style={styles.stat}>
                 <Text style={styles.statNumber}>{isCafe ? "4.8 ★" : profile.stats.favorites}</Text>

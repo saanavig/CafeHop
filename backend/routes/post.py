@@ -4,6 +4,18 @@ from services.post_service import create_post_with_uploaded_media
 
 posts_bp = Blueprint("posts", __name__)
 
+@posts_bp.route("/posts/me", methods=["GET"])
+@require_auth
+def get_my_posts():
+    user_id = g.user["id"]
+    access_token = g.access_token
+
+    from services.post_service import get_posts_by_user
+
+    posts = get_posts_by_user(access_token, user_id)
+
+    return jsonify(posts), 200
+
 @posts_bp.route("/posts", methods=["POST"])
 @require_auth
 def upload_post():
