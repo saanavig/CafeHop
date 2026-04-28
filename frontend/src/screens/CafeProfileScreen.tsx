@@ -151,27 +151,28 @@ export default function CafeProfileScreen() {
   }, [cafeId]);
 
   useEffect(() => {
-    if (!cafeId) return;
+    if (!cafe?.id) return;
 
     const fetchMenu = async () => {
       const { data, error } = await supabase
         .from("menu_items")
         .select("*")
-        .eq("cafe_id", cafeId)
+        .eq("cafe_id", cafe.id)
         .order("created_at", { ascending: true });
 
       if (error) {
         console.error("Fetch menu error:", error);
+        return;
       }
 
-      if (data) setMenuItems(data);
+      setMenuItems(data || []);
     };
 
     fetchMenu();
-  }, [cafeId]);
+  }, [cafe?.id]);
 
   useEffect(() => {
-    if (!cafeId) return;
+    if (!cafe?.id) return;
 
     const fetchPosts = async () => {
       setPostsLoading(true);
@@ -381,7 +382,7 @@ export default function CafeProfileScreen() {
 
 
     const fetchReviews = async () => {
-    if (!cafeId) return;
+    if (!cafe?.id) return;
 
 
     setReviewsLoading(true);
@@ -411,7 +412,7 @@ export default function CafeProfileScreen() {
     };
 
     useEffect(() => {
-    if (!cafeId) return;
+    if (!cafe?.id) return;
     fetchReviews();
     }, [cafeId, userId]);
 
@@ -897,7 +898,7 @@ export default function CafeProfileScreen() {
                                 .from("menu_items")
                                 .insert([
                                   {
-                                    cafe_id: cafeId,
+                                    cafe_id: cafe?.id,
                                     name: newName,
                                     price: newPrice,
                                     category: newCategory,
