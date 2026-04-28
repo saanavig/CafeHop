@@ -115,7 +115,9 @@ export default function UserProfileScreen() {
   const [editableName, setEditableName] = useState("");
   const [editableBio, setEditableBio] = useState(profile.bio);
   const [showAddPost, setShowAddPost] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<
+      { uri: string; type: "image" | "video" }[]
+    >([]);
   const [selectedCafeId, setSelectedCafeId] = useState<number | null>(null);
   const [caption, setCaption] = useState("");
   const [cafes, setCafes] = useState<any[]>([]);
@@ -187,20 +189,26 @@ export default function UserProfileScreen() {
     setIsPosting(true);
 
     try {
-      if (!selectedImage || !selectedCafeId) {
+      if (selectedMedia.length === 0 || !selectedCafeId) {
         setIsPosting(false);
         return;
       }
 
-      const uploadResult = await uploadImageToSupabase(selectedImage);
+  const uploadResults = await Promise.all(
+    selectedMedia.map((m) =>
+      uploadImageToSupabase(m.uri, m.type)
+    )
+  );
 
-      if (!uploadResult) {
-        console.error("Image upload failed");
+  const validUploads = uploadResults.filter(Boolean);
+
+      if (validUploads.length === 0) {
+        console.error("Uploads failed");
         setIsPosting(false);
         return;
       }
 
-      const { file_url, file_path, bucket_name } = uploadResult;
+      // const { file_url, file_path, bucket_name } = uploadResult;
 
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
@@ -215,11 +223,8 @@ export default function UserProfileScreen() {
           cafe_id: selectedCafeId,
           caption,
           post_type: "user",
-          tags: selectedTags, 
-          bucket_name,
-          file_path,
-          file_url,
-          file_type: "image", 
+          tags: selectedTags,
+          media: validUploads,
         }),
       });
 
@@ -233,8 +238,8 @@ export default function UserProfileScreen() {
 
       setPosts((prev) => [
       {
-        id: data.id || Date.now(),
-        images: [file_url],
+        id: data.post.id || Date.now(),
+        images: data.media.map((m) => m.file_url),
         likes: 0,
         liked: false,
         caption,
@@ -247,7 +252,7 @@ export default function UserProfileScreen() {
     ]);
   
       setShowAddPost(false);
-      setSelectedImage(null);
+      setSelectedMedia([]);
       setCaption("");
       setSelectedCafeId(null);
       setSelectedTags([]);
@@ -260,17 +265,21 @@ export default function UserProfileScreen() {
     }
   };
 
-  const uploadImageToSupabase = async (imageUri: string) => {
+  const uploadImageToSupabase = async (uri: string, type: "image" | "video") => {
     try {
-      const response = await fetch(imageUri);
+      const response = await fetch(uri);
       const blob = await response.blob();
 
-      const fileName = `posts/${Date.now()}.jpg`;
+      if (!blob) return null;
 
-      const { data, error } = await supabase.storage
-        .from("images")
+      const ext = type === "video" ? "mp4" : "jpg";
+      const fileName = `posts/${Date.now()}-${Math.random()}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from("posts")
         .upload(fileName, blob, {
-          contentType: "image/jpeg",
+          contentType: type === "video" ? "video/mp4" : "image/jpeg",
+          upsert: true,
         });
 
       if (error) {
@@ -278,17 +287,18 @@ export default function UserProfileScreen() {
         return null;
       }
 
-      const { data: publicUrlData } = supabase.storage
-        .from("images")
+      const { data } = supabase.storage
+        .from("posts")
         .getPublicUrl(fileName);
 
       return {
-        file_url: publicUrlData.publicUrl,
+        file_url: data.publicUrl,
         file_path: fileName,
-        bucket_name: "images",
+        bucket_name: "posts",
+        file_type: type,
       };
     } catch (err) {
-      console.error(err);
+      console.error("Upload crash:", err);
       return null;
     }
   };
@@ -362,21 +372,29 @@ export default function UserProfileScreen() {
     setCarouselIndex(0);
   };
 
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (status !== "granted") {
-      console.error("Permission required");
+  const pickMedia = async () => {
+    if (selectedMedia.length >= 5) {
+      alert("Max 5 items");
       return;
     }
 
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") return;
+
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsMultipleSelection: true,
+      selectionLimit: 5,
       quality: 0.8,
     });
 
     if (!result.canceled) {
-      setSelectedImage(result.assets[0].uri);
+      const newItems = result.assets.map((a) => ({
+        uri: a.uri,
+        type: a.type === "video" ? "video" : "image",
+      }));
+
+      setSelectedMedia((prev) => [...prev, ...newItems].slice(0, 5));
     }
   };
 
@@ -578,7 +596,7 @@ export default function UserProfileScreen() {
               <TouchableOpacity
                 onPress={() => {
                   setShowAddPost(false);
-                  setSelectedImage(null);
+                  setSelectedMedia([]);
                   setCaption("");
                 }}
               >
@@ -589,12 +607,12 @@ export default function UserProfileScreen() {
 
               <TouchableOpacity
                 onPress={handleCreatePost}
-                disabled={isPosting || !selectedImage || !selectedCafeId}
+                disabled={isPosting || selectedMedia.length === 0 || !selectedCafeId}
               >
                 <Text
                   style={[
                     styles.addPostShareBtn,
-                    (isPosting || !selectedImage || !selectedCafeId) && { opacity: 0.4 }
+                    (isPosting || selectedMedia.length === 0  || !selectedCafeId) && { opacity: 0.4 }
                   ]}
                 >
                   Share
@@ -605,17 +623,55 @@ export default function UserProfileScreen() {
             <ScrollView contentContainerStyle={{ padding: scale(16) }}>
               {/* Image picker area */}
               <View style={{ marginBottom: 16 }}>
-              {selectedImage ? (
-                <Image
-                  source={{ uri: selectedImage }}
-                  style={{ width: 120, height: 120, borderRadius: 10 }}
-                />
-              ) : (
-                <TouchableOpacity style={styles.addImageBtn} onPress={pickImage}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {selectedMedia.map((item, i) => (
+                <View key={i} style={{ position: "relative" }}>
+                  {item.type === "image" ? (
+                    <Image
+                      source={{ uri: item.uri }}
+                      style={{ width: 90, height: 90, borderRadius: 8 }}
+                    />
+                  ) : (
+                    <View
+                      style={{
+                        width: 90,
+                        height: 90,
+                        borderRadius: 8,
+                        backgroundColor: "#000",
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ color: "#FFF" }}>Video</Text>
+                    </View>
+                  )}
+
+                  {/* Remove button */}
+                  <TouchableOpacity
+                    onPress={() =>
+                      setSelectedMedia((prev) => prev.filter((_, idx) => idx !== i))
+                    }
+                    style={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      backgroundColor: "rgba(0,0,0,0.6)",
+                      borderRadius: 10,
+                      padding: 4,
+                    }}
+                  >
+                    <Text style={{ color: "#FFF" }}>X</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              {selectedMedia.length < 5 && (
+                <TouchableOpacity style={styles.addImageBtn} onPress={pickMedia}>
                   <Camera size={20} color="#D4A373" />
-                  <Text>Select Image</Text>
+                  <Text>Add</Text>
                 </TouchableOpacity>
               )}
+            </View>
             </View>
 
             {/* Cafe Selector */}

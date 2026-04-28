@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, g
 from database.auth_middleware import require_auth
 from services.post_service import create_post_with_uploaded_media
+from database.supabase_client import supabase
 
 posts_bp = Blueprint("posts", __name__)
 
@@ -14,6 +15,7 @@ def get_my_posts():
 
     posts = get_posts_by_user(access_token, user_id)
 
+
     return jsonify(posts), 200
 
 @posts_bp.route("/posts", methods=["POST"])
@@ -23,27 +25,45 @@ def upload_post():
     access_token = g.access_token
 
     data = request.get_json()
+    print("REQUEST DATA:", data)
+
     cafe_id = data.get("cafe_id")
     caption = data.get("caption", "")
     post_type = data.get("post_type", "user")
-    bucket_name = data.get("bucket_name")
-    file_path = data.get("file_path")
-    file_url = data.get("file_url")
-    file_type = data.get("file_type")
+    media_list = data.get("media", [])
 
-    if not cafe_id or not file_url or not file_type:
+    print("MEDIA LIST:", media_list) 
+
+    if not cafe_id or not media_list:
         return jsonify({"error": "Missing required fields"}), 400
 
-    result = create_post_with_uploaded_media(
+    from services.post_service import create_post, create_post_media
+
+    post = create_post(
         access_token=access_token,
         user_id=user_id,
         cafe_id=cafe_id,
         caption=caption,
-        post_type=post_type,
-        bucket_name=bucket_name,
-        file_path=file_path,
-        file_url=file_url,
-        file_type=file_type,
+        post_type=post_type
     )
 
-    return jsonify(result), 201
+    print("POST CREATED:", post) 
+
+    media_results = []
+    for m in media_list:
+        print("PROCESSING MEDIA:", m) 
+        media = create_post_media(
+            access_token=access_token,
+            post_id=post["id"],
+            bucket_name=m["bucket_name"],
+            file_path=m["file_path"],
+            file_url=m["file_url"],
+            file_type=m["file_type"],
+        )
+        media_results.append(media)
+
+    return jsonify({
+        "message": "Post created",
+        "post": post,
+        "media": media_results
+    }), 201

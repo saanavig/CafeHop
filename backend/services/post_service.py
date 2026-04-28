@@ -1,4 +1,4 @@
-from database.supabase_client import supabase
+from database.supabase_client import supabase, supabase_for_user
 
 def create_post(access_token, user_id, cafe_id, caption, post_type="user"):
     user_supabase = supabase_for_user(access_token)
@@ -13,8 +13,6 @@ def create_post(access_token, user_id, cafe_id, caption, post_type="user"):
     return response.data[0]
 
 def get_posts_by_user(access_token, user_id):
-    from database.supabase_client import supabase
-
     response = supabase.table("posts") \
         .select("id, caption, cafe_id, cafes(name), post_media(file_url)") \
         .eq("user_id", user_id) \
