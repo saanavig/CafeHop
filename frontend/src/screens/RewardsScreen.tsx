@@ -21,6 +21,7 @@ import Button from "../components/ui/Button";
 import RewardsCard from "../components/ui/RewardsCard";
 import { supabase } from "../api/supabaseClient";
 import { useRole } from "../context/RoleContext";
+import QRCode from "react-native-qrcode-svg";
 
 interface Reward {
   id: number;
@@ -86,12 +87,13 @@ export default function RewardsScreen({ navigation }) {
   const { role } = useRole();
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
-  const [earnedPoints, setEarnedPoints] = useState(0);
+  // const [earnedPoints, setEarnedPoints] = useState(0);
   const [tier, setTier] = useState("bronze");
   const [catalogRewards, setCatalogRewards] = useState<Reward[]>([]);
   const [transactions, setTransactions] = useState<{ id: string; points_change: number; reason: string; created_at: string }[]>([]);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const toastAnim = useRef(new Animated.Value(-scale(80))).current;
+  const [showQR, setShowQR] = useState(false);
 
   const showToast = (message: string, type: "success" | "error" = "error") => {
     setToast({ message, type });
@@ -108,43 +110,43 @@ export default function RewardsScreen({ navigation }) {
   const slideAnim = useRef(new Animated.Value(18)).current;
   const [points, setPoints] = useState(0);
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
-  const [showScan, setShowScan] = useState(false);
-  const [scanSuccess, setScanSuccess] = useState(false);
+  // const [showScan, setShowScan] = useState(false);
+  // const [scanSuccess, setScanSuccess] = useState(false);
 
-  const handleScan = async () => {
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
+  // const handleScan = async () => {
+  //   try {
+  //     const { data: sessionData } = await supabase.auth.getSession();
+  //     const token = sessionData.session?.access_token;
 
-      const res = await fetch(`${API_URL}/purchase/submit`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          cafe_id: 1,
-          amount: 10,
-          latitude: 40.74,
-          longitude: -74.03,
-          submission_token: Date.now().toString(),
-          receipt_timestamp: new Date().toISOString(),
-        }),
-      });
+  //     const res = await fetch(`${API_URL}/purchase/submit`, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //       body: JSON.stringify({
+  //         cafe_id: 1,
+  //         amount: 10,
+  //         latitude: 40.74,
+  //         longitude: -74.03,
+  //         submission_token: Date.now().toString(),
+  //         receipt_timestamp: new Date().toISOString(),
+  //       }),
+  //     });
 
-      const data = await res.json();
+  //     const data = await res.json();
 
-      if (res.ok) {
-        setPoints(data.total_points);
-        setEarnedPoints(data.points_earned);
-        setScanSuccess(true);
-      } else {
-        showToast(data.error ?? "Something went wrong");
-      }
-    } catch (err) {
-      console.error("Scan error:", err);
-    }
-  };
+  //     if (res.ok) {
+  //       setPoints(data.total_points);
+  //       setEarnedPoints(data.points_earned);
+  //       setScanSuccess(true);
+  //     } else {
+  //       showToast(data.error ?? "Something went wrong");
+  //     }
+  //   } catch (err) {
+  //     console.error("Scan error:", err);
+  //   }
+  // };
 
   const fetchTierAndCatalog = async () => {
     try {
@@ -239,37 +241,63 @@ export default function RewardsScreen({ navigation }) {
     setShowNewProgram(false);
   };
 
-  const handleRedeem = async () => {
-    if (!selectedReward) return;
+  const handleRedeem = () => {
+    setShowQR(true);
+  };
 
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
+  // const handleRedeem = async () => {
+  //   if (!selectedReward) return;
 
-      const res = await fetch(`${API_URL}/redeem`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          cafe_id: 1, // TEMP
-          points: selectedReward.points,
-        }),
-      });
+  //   try {
+  //     const { data: sessionData } = await supabase.auth.getSession();
+  //     const token = sessionData.session?.access_token;
 
-      const data = await res.json();
+  //     const res = await fetch(`${API_URL}/redeem`, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //       body: JSON.stringify({
+  //         cafe_id: 1, // TEMP
+  //         points: selectedReward.points,
+  //       }),
+  //     });
 
-      if (res.ok) {
-        setPoints(data.remaining_points);
-        setSelectedReward(null);
-        showToast("Reward redeemed!", "success");
-      } else {
-        showToast(data.error ?? "Redemption failed");
-      }
-    } catch (err) {
-      console.error("Redeem error:", err);
-    }
+  //     const data = await res.json();
+
+  //     if (res.ok) {
+  //       setPoints(data.remaining_points);
+  //       setSelectedReward(null);
+  //       showToast("Reward redeemed!", "success");
+  //     } else {
+  //       showToast(data.error ?? "Redemption failed");
+  //     }
+  //   } catch (err) {
+  //     console.error("Redeem error:", err);
+  //   }
+  // };
+
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getSession();
+      const id = data.session?.user.id;
+      setUserId(id ?? null);
+    };
+    getUser();
+  }, []);
+
+  const generateQRValue = () => {
+    if (!selectedReward) return "";
+
+    return JSON.stringify({
+      user_id: userId,
+      reward: selectedReward.title,
+      points: selectedReward.points,
+      timestamp: Date.now(),
+    });
   };
 
   const toggleProgram = (id: number) => {
@@ -443,7 +471,7 @@ export default function RewardsScreen({ navigation }) {
                 themeColor={tierInfo.themeColor}
                 description="Earn points and unlock perks"
                 role={role}
-                onScan={() => setShowScan(true)}
+                // onScan={() => setShowScan(true)}
               />
             );
           })()}
@@ -514,7 +542,7 @@ export default function RewardsScreen({ navigation }) {
       </Animated.ScrollView>
 
       {/* Scan Modal */}
-      <Modal visible={showScan} transparent animationType="fade">
+      {/* <Modal visible={showScan} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             {!scanSuccess ? (
@@ -531,10 +559,10 @@ export default function RewardsScreen({ navigation }) {
             )}
           </View>
         </View>
-      </Modal>
+      </Modal> */}
 
       {/* Redeem Modal */}
-      <Modal visible={!!selectedReward} transparent animationType="fade">
+      {/* <Modal visible={!!selectedReward} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             {selectedReward && (
@@ -544,9 +572,72 @@ export default function RewardsScreen({ navigation }) {
                 <Button title="Confirm Redemption" onPress={handleRedeem} />
               </>
             )}
-            <Pressable style={styles.closeBtn} onPress={() => setSelectedReward(null)}>
+            onPress={() => {
+              setSelectedReward(null);
+                setShowQR(false);
+              }}
               <Text style={{ color: "#999" }}>Close</Text>
             </Pressable>
+          </View>
+        </View>
+      </Modal> */}
+
+      {/* Redeem Modal */}
+      <Modal visible={!!selectedReward} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+
+            {/* CONFIRM VIEW */}
+            {selectedReward && !showQR && (
+              <>
+                <Text style={styles.modalTitle}>
+                  Redeem {selectedReward.title}?
+                </Text>
+
+                <Text style={styles.modalText}>
+                  This costs {selectedReward.points} points.
+                </Text>
+
+                <Button
+                  title="Confirm Redemption"
+                  onPress={handleRedeem}
+                />
+              </>
+            )}
+
+            {/* QR VIEW */}
+            {selectedReward && showQR && (
+              <>
+                <Text style={styles.modalTitle}>
+                  Show this to cafe
+                </Text>
+
+                <QRCode
+                  value={generateQRValue()}
+                  size={160}
+                />
+
+                <Button
+                  title="Done"
+                  onPress={() => {
+                    setSelectedReward(null);
+                    setShowQR(false);
+                  }}
+                />
+              </>
+            )}
+
+            {/* CLOSE BUTTON */}
+            <Pressable
+              style={styles.closeBtn}
+              onPress={() => {
+                setSelectedReward(null);
+                setShowQR(false);
+              }}
+            >
+              <Text style={{ color: "#999" }}>Close</Text>
+            </Pressable>
+
           </View>
         </View>
       </Modal>

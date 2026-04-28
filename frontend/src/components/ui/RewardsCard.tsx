@@ -17,7 +17,7 @@ interface RewardsCardProps {
   description?: string;
   themeColor?: "caramel" | "gold";
   role: "customer" | "cafe";
-  onScan?: () => void;
+  // onScan?: () => void;
 }
 
 export default function RewardsCard({
@@ -27,7 +27,7 @@ export default function RewardsCard({
   description,
   themeColor = "caramel",
   role,
-  onScan,
+  // onScan,
 }: RewardsCardProps) {
 
   const progress = (points / nextReward) * 100;
@@ -116,7 +116,7 @@ export default function RewardsCard({
       </View>
 
       {/* CTA */}
-      {role === "customer" && (
+      {/* {role === "customer" && (
         <Button
           variant="outline"
           onPress={onScan || (() => {})}
@@ -129,7 +129,7 @@ export default function RewardsCard({
 
           <ChevronRight size={scale(16)} color="#D4A373" />
         </Button>
-      )}
+      )} */}
     </View>
   );
 }
