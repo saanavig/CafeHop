@@ -114,8 +114,10 @@ export default function UserProfileScreen() {
   const [editableName, setEditableName] = useState("");
   const [editableBio, setEditableBio] = useState(profile.bio);
   const [showAddPost, setShowAddPost] = useState(false);
-  const [newPostCaption, setNewPostCaption] = useState("");
-  const [selectedImages, setSelectedImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedCafeId, setSelectedCafeId] = useState<string | null>(null);
+  const [caption, setCaption] = useState("");
+  const [cafes, setCafes] = useState<any[]>([]);
 
   const cafeCaptions = [
     "Our signature pour-over ☕",
@@ -132,7 +134,116 @@ export default function UserProfileScreen() {
     "Meet the team! 👋",
   ];
 
-  // Generate mock posts with 1–3 images each
+  useEffect(() => {
+    const fetchCafes = async () => {
+      try {
+        const response = await fetch(
+          `${process.env.EXPO_PUBLIC_API_URL}/api/cafe/all`
+        );
+
+        const data = await response.json();
+        setCafes(data);
+      } catch (err) {
+        console.error("Error fetching cafes:", err);
+      }
+    };
+
+    fetchCafes();
+  }, []);
+
+  const handleCreatePost = async () => {
+    try {
+      if (!selectedImage) {
+        alert("Please select an image");
+        return;
+      }
+
+      if (!selectedCafeId) {
+        alert("Please select a cafe");
+        return;
+      }
+
+      const uploadResult = await uploadImageToSupabase(selectedImage);
+
+      if (!uploadResult) {
+        alert("Image upload failed");
+        return;
+      }
+
+      const { file_url, file_path, bucket_name } = uploadResult;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/posts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          cafe_id: selectedCafeId,
+          caption,
+          post_type: "user",
+          bucket_name,
+          file_path,
+          file_url,
+          file_type: "image",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.log(data);
+        alert("Failed to create post");
+        return;
+      }
+
+      alert("Post created!");
+      setShowAddPost(false);
+      setSelectedImage(null);
+      setCaption("");
+      setSelectedCafeId(null);
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const uploadImageToSupabase = async (imageUri: string) => {
+    try {
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+
+      const fileName = `posts/${Date.now()}.jpg`;
+
+      const { data, error } = await supabase.storage
+        .from("images")
+        .upload(fileName, blob, {
+          contentType: "image/jpeg",
+        });
+
+      if (error) {
+        console.error("Upload error:", error);
+        return null;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("images")
+        .getPublicUrl(fileName);
+
+      return {
+        file_url: publicUrlData.publicUrl,
+        file_path: fileName,
+        bucket_name: "images",
+      };
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
+  };
+
   const [posts, setPosts] = useState<Post[]>(
     Array.from({ length: 12 }).map((_, i) => {
       const imageCount = (i % 3) + 1; // 1, 2, or 3 images per post
@@ -185,26 +296,22 @@ export default function UserProfileScreen() {
     setCarouselIndex(0);
   };
 
-  const pickImages = async () => {
-    if (selectedImages.length >= 5) return;
+  const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
     if (status !== "granted") {
-      alert("Camera roll permission is required.");
+      alert("Permission required");
       return;
     }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      selectionLimit: 5 - selectedImages.length,
       quality: 0.8,
     });
-    if (!result.canceled) {
-      setSelectedImages((prev) => [...prev, ...result.assets].slice(0, 5));
-    }
-  };
 
-  const removePickedImage = (index: number) => {
-    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+    if (!result.canceled) {
+      setSelectedImage(result.assets[0].uri);
+    }
   };
 
   const handleAddComment = () => {
@@ -221,25 +328,6 @@ export default function UserProfileScreen() {
     setCommentInput("");
   };
 
-  const handleAddPost = () => {
-    if (!newPostCaption.trim() && selectedImages.length === 0) return;
-    const newPost: Post = {
-      id: posts.length,
-      images:
-        selectedImages.length > 0
-          ? selectedImages.map((img) => img.uri)
-          : [`https://picsum.photos/seed/new${posts.length}/400`],
-      likes: 0,
-      liked: false,
-      caption: newPostCaption,
-      saved: false,
-      comments: [],
-    };
-    setPosts([newPost, ...posts]);
-    setNewPostCaption("");
-    setSelectedImages([]);
-    setShowAddPost(false);
-  };
   const handleSaveProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -319,9 +407,6 @@ export default function UserProfileScreen() {
 
               <Button style={{ flex: 1 }} onPress={() => setShowAddPost(true)}>
                 <Text>Add Post</Text>
-              </Button>
-              <Button style={{ flex: 1 }} onPress={() => setShowAddPost(true)}>
-                Add Post
               </Button>
             </View>
           </View>
@@ -424,45 +509,89 @@ export default function UserProfileScreen() {
           <View style={styles.addPostModal}>
             {/* Header */}
             <View style={styles.addPostHeader}>
-              <TouchableOpacity onPress={() => { setShowAddPost(false); setSelectedImages([]); setNewPostCaption(""); }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowAddPost(false);
+                  setSelectedImage(null);
+                  setCaption("");
+                }}
+              >
                 <X size={scale(22)} color="#333" />
               </TouchableOpacity>
+
               <Text style={styles.addPostTitle}>New Post</Text>
-              <TouchableOpacity onPress={handleAddPost} disabled={!newPostCaption.trim() && selectedImages.length === 0}>
-                <Text style={[styles.addPostShareBtn, (!newPostCaption.trim() && selectedImages.length === 0) && { opacity: 0.4 }]}>Share</Text>
+
+              <TouchableOpacity
+                onPress={handleCreatePost}
+                disabled={!selectedImage || !selectedCafeId}
+              >
+                <Text
+                  style={[
+                    styles.addPostShareBtn,
+                    (!selectedImage || !selectedCafeId) && { opacity: 0.4 }
+                  ]}
+                >
+                  Share
+                </Text>
               </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={{ padding: scale(16) }}>
               {/* Image picker area */}
-              <View style={styles.imagePickerRow}>
-                {selectedImages.map((img, i) => (
-                  <View key={i} style={styles.pickedImageWrap}>
-                    <Image source={{ uri: img.uri }} style={styles.pickedImage} />
-                    <TouchableOpacity style={styles.removeImageBtn} onPress={() => removePickedImage(i)}>
-                      <X size={scale(10)} color="#FFF" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-                {selectedImages.length < 5 && (
-                  <TouchableOpacity style={styles.addImageBtn} onPress={pickImages}>
-                    <Camera size={scale(20)} color="#D4A373" />
-                    <Text style={styles.addImageText}>
-                      {selectedImages.length === 0 ? "Add photos" : "Add more"}
+              <View style={{ marginBottom: 16 }}>
+              {selectedImage ? (
+                <Image
+                  source={{ uri: selectedImage }}
+                  style={{ width: 120, height: 120, borderRadius: 10 }}
+                />
+              ) : (
+                <TouchableOpacity style={styles.addImageBtn} onPress={pickImage}>
+                  <Camera size={20} color="#D4A373" />
+                  <Text>Select Image</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Cafe Selector */}
+              <Text style={{ marginBottom: 6, fontWeight: "600" }}>
+                Select Cafe
+              </Text>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginBottom: 16 }}
+              >
+                {cafes.map((cafe) => (
+                  <TouchableOpacity
+                    key={cafe.id}
+                    onPress={() => setSelectedCafeId(cafe.id)}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 20,
+                      backgroundColor:
+                        selectedCafeId === cafe.id ? "#D4A373" : "#EEE",
+                      marginRight: 8,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: selectedCafeId === cafe.id ? "#FFF" : "#333",
+                      }}
+                    >
+                      {cafe.name}
                     </Text>
-                    {selectedImages.length > 0 && (
-                      <Text style={styles.addImageCount}>{selectedImages.length}/5</Text>
-                    )}
                   </TouchableOpacity>
-                )}
-              </View>
+                ))}
+              </ScrollView>
 
               {/* Caption */}
               <TextInput
                 placeholder="Write a caption…"
                 placeholderTextColor="#AAA"
-                value={newPostCaption}
-                onChangeText={setNewPostCaption}
+                value={caption}
+                onChangeText={setCaption}
                 multiline
                 style={styles.captionInput}
               />
