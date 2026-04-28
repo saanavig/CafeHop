@@ -110,23 +110,28 @@ export default function CafeProfileScreen() {
   }, []);
 
   useEffect(() => {
-    if (!cafeId) {
-      setCafeLoading(false);
-      return;
-    }
-
-    let isMounted = true;
-
     const fetchCafe = async () => {
       setCafeLoading(true);
 
-      const { data, error } = await supabase
-        .from("cafes")
-        .select("*")
-        .eq("id", cafeId)
-        .single();
+      const { data: userData } = await supabase.auth.getUser();
+      const currentUserId = userData.user?.id || null;
 
-      if (!isMounted) return;
+      if (currentUserId) {
+        setUserId(currentUserId);
+      }
+
+      let query = supabase.from("cafes").select("*");
+
+      if (cafeId) {
+        query = query.eq("id", cafeId);
+      } else if (currentUserId) {
+        query = query.eq("owner_id", currentUserId);
+      } else {
+        setCafeLoading(false);
+        return;
+      }
+
+      const { data, error } = await query.maybeSingle();
 
       if (error) {
         console.error("Fetch cafe error:", error);
@@ -135,16 +140,14 @@ export default function CafeProfileScreen() {
       if (data) {
         setCafe(data);
         setOwnerId(data.owner_id || null);
+      } else {
+        setCafe(null);
       }
 
       setCafeLoading(false);
     };
 
     fetchCafe();
-
-    return () => {
-      isMounted = false;
-    };
   }, [cafeId]);
 
   useEffect(() => {
