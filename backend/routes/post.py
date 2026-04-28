@@ -78,7 +78,6 @@ def delete_post(post_id):
         from database.supabase_client import supabase_for_user
         user_supabase = supabase_for_user(access_token)
 
-        # 🔒 ensure user owns post
         post = user_supabase.table("posts") \
             .select("id") \
             .eq("id", post_id) \

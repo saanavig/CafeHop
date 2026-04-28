@@ -155,20 +155,6 @@ export default function UserProfileScreen() {
         : [...prev, tag]
     );
   };
-  const cafeCaptions = [
-    "Our signature pour-over ☕",
-    "Morning light in the lounge 🌤",
-    "Freshly baked croissants 🥐",
-    "Hand-crafted latte art ✨",
-    "The cozy reading nook 📚",
-    "Espresso bar at golden hour",
-    "Weekly special: matcha tonic 🍵",
-    "Our barista at work ☕",
-    "New seasonal blend is here!",
-    "Cinnamon roll Friday 🍂",
-    "Outdoor terrace is open 🌿",
-    "Meet the team! 👋",
-  ];
 
   useEffect(() => {
     const fetchCafes = async () => {
