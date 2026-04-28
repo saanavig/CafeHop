@@ -87,8 +87,6 @@ const defaultHours: Record<string, DayHours> = Object.fromEntries(
   DAYS.map((d) => [d, { open: true, start: "09:00", end: "21:00" }])
 );
 
-// const TOTAL_STEPS = 5;
-// const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
 export default function CafeOnboarding({ navigation }: any) {
   const { setRole } = useRole();
@@ -125,21 +123,6 @@ export default function CafeOnboarding({ navigation }: any) {
       return updated;
     });
   };
-
-
-  // useEffect(() => {
-  //   const loadEmail = async () => {
-  //     const {
-  //       data: { user },
-  //     } = await supabase.auth.getUser();
-
-  //     if (user?.email) {
-  //       setEmail(user.email);
-  //     }
-  //   };
-
-  //   loadEmail();
-  // }, []);
 
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -515,92 +498,6 @@ export default function CafeOnboarding({ navigation }: any) {
               <Button title="Continue" variant="caramel" onPress={next} />
             </View>
           )}
-
-          {/* STEP 3 — Loyalty Tracking
-          {step === 3 && (
-            <View style={styles.stepSection}>
-              <Text style={styles.stepTitle}>Loyalty Tracking</Text>
-              <Text style={styles.stepDesc}>How will you track customer visits and rewards?</Text>
-              <Button
-                title="Manual Entry (No POS)"
-                variant={posType === "manual" ? "caramel" : "outline"}
-                onPress={() => setPosType("manual")}
-              />
-              <Button
-                title="Integrate with Square POS"
-                variant={posType === "square" ? "caramel" : "outline"}
-                onPress={() => setPosType("square")}
-              />
-              <Button title="Continue" variant="caramel" onPress={next} disabled={!posType} />
-            </View>
-          )} */}
-
-          {/* STEP 4 — Square */}
-          {/* {step === 4 && posType === "square" && (
-            <View style={styles.stepSection}>
-              <Text style={styles.stepTitle}>Connect Square</Text>
-              <Text style={styles.stepDesc}>Link your Square account to automatically track loyalty</Text>
-              {!linkedPOS ? (
-                <Button
-                  title="Connect Square Account"
-                  variant="outline"
-                  onPress={() => setLinkedPOS("Square")}
-                />
-              ) : (
-                <>
-                  <TextInput
-                    placeholder="POS Account Email"
-                    style={styles.input}
-                    value={posEmail}
-                    onChangeText={setPosEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                  <TextInput
-                    placeholder="POS Account Password"
-                    style={styles.input}
-                    secureTextEntry
-                    value={posPassword}
-                    onChangeText={setPosPassword}
-                  />
-                  <TextInput
-                    placeholder="Business verification code"
-                    style={styles.input}
-                    value={verificationCode}
-                    onChangeText={setVerificationCode}
-                  />
-                </>
-              )}
-              <Button
-                title="Continue"
-                variant="caramel"
-                onPress={next}
-                disabled={
-                  !linkedPOS ||
-                  !posEmail.trim() ||
-                  !posPassword.trim() ||
-                  !verificationCode.trim()
-                }
-              />
-            </View>
-          )} */}
-
-          {/* STEP 5 — Confirmation */}
-          {/* {step === 5 && (
-            <View style={styles.stepSection}>
-              <CheckCircle size={48} color="#D4A373" style={{ alignSelf: "center", marginBottom: 16 }} />
-              <Text style={styles.stepTitle}>You're All Set!</Text>
-              <Text style={styles.stepDesc}>
-                Your cafe is registered. Once approved, you can start managing loyalty rewards on CafeHop.
-              </Text>
-              <Button
-                title="Finish Setup"
-                variant="caramel"
-                onPress={handleFinishSetup} 
-              />
-            </View>
-          )} */}
-
           {step === 3 && (
           <View style={styles.stepSection}>
             <Text style={styles.stepTitle}>Pricing</Text>
