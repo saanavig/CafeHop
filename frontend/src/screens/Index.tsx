@@ -8,8 +8,9 @@ import {
   View,
   TouchableOpacity,
 } from "react-native";
-import { Search } from "lucide-react-native";
+import { Bell, Search } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import ForYouCard, { Post } from "../components/ui/ForYouCard";
@@ -366,17 +367,26 @@ const Index = () => {
   });
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={styles.container}>
       <Animated.View
         style={[
           styles.header,
           {
+            paddingTop: scale(12),
             opacity: headerFade,
             transform: [{ translateY: headerSlide }],
           },
         ]}
       >
-        <Text style={styles.title}>CAFÉHOP</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>CAFÉHOP</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Notifications")}
+            style={styles.bellBtn}
+          >
+            <Bell size={scale(22)} color="#D4A373" strokeWidth={2} />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.searchRow}>
           <Search
@@ -445,7 +455,7 @@ const Index = () => {
       </View>
 
       <BottomNav />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -457,17 +467,33 @@ const styles = StyleSheet.create({
     backgroundColor: "#F7F3F0",
   },
   header: {
-    paddingTop: scale(30),
     paddingBottom: scale(14),
     paddingHorizontal: scale(16),
     alignItems: "center",
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    justifyContent: "center",
+    marginBottom: scale(12),
+    position: "relative",
   },
   title: {
     fontSize: moderateScale(28),
     fontWeight: "bold",
     fontFamily: "PlayfairDisplay_700Bold",
-    marginBottom: scale(12),
     color: "#2C1810",
+  },
+  bellBtn: {
+    position: "absolute",
+    right: 0,
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    backgroundColor: "rgba(212,163,115,0.12)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   searchRow: {
     flexDirection: "row",
