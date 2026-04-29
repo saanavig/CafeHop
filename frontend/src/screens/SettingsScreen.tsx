@@ -22,6 +22,7 @@ import {
 } from "lucide-react-native";
 import React, { useEffect, useRef } from "react";
 import { moderateScale, scale } from "../utils/responsive";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
@@ -40,7 +41,6 @@ const SettingsScreen = () => {
   const navigation = useNavigation<any>();
   const { role } = useRole();
   const { user, signOut } = useAuth();
-
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
 
@@ -77,9 +77,9 @@ const SettingsScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={styles.container}>
       <Animated.ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: scale(16) }]}
         showsVerticalScrollIndicator={false}
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
       >
@@ -172,7 +172,7 @@ const SettingsScreen = () => {
 
       {/* Bottom Nav */}
       <BottomNav />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -182,7 +182,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F7F3F0",
   },
   scrollContent: {
-    paddingTop: scale(40),
     paddingBottom: scale(100),
     alignItems: "center",
   },

@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { Bookmark, Camera, Grid3X3, Heart, Layers, MapPin, Plus, Star, Store, User, X } from "lucide-react-native";
+
 import React, { useEffect, useRef, useState } from "react";
 import { deviceWidth, moderateScale, scale } from "../utils/responsive";
 
@@ -22,6 +23,7 @@ import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
 import { supabase } from "../api/supabaseClient";
 import { useRole } from "../context/RoleContext";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const SCREEN_WIDTH = deviceWidth;
 
@@ -411,7 +413,7 @@ export default function UserProfileScreen() {
     if (!result.canceled) {
       const newItems = result.assets.map((a) => ({
         uri: a.uri,
-        type: a.type === "video" ? "video" : "image",
+        type: (a.type === "video" ? "video" : "image") as "video" | "image",
       }));
 
       setSelectedMedia((prev) => [...prev, ...newItems].slice(0, 5));
@@ -455,9 +457,9 @@ export default function UserProfileScreen() {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={styles.container}>
       <Animated.ScrollView
-        contentContainerStyle={{ paddingBottom: scale(100) }}
+        contentContainerStyle={{ paddingTop: scale(8), paddingBottom: scale(100) }}
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
       >
         <View style={{ width: contentWidth, alignSelf: "center" }}>
@@ -636,183 +638,127 @@ export default function UserProfileScreen() {
                   setShowAddPost(false);
                   setSelectedMedia([]);
                   setCaption("");
+                  setSelectedCafeId(null);
+                  setCafeQuery("");
+                  setSelectedTags([]);
                 }}
               >
                 <X size={scale(22)} color="#333" />
               </TouchableOpacity>
-
               <Text style={styles.addPostTitle}>New Post</Text>
-
               <TouchableOpacity
                 onPress={handleCreatePost}
                 disabled={isPosting || selectedMedia.length === 0 || !selectedCafeId}
               >
-                <Text
-                  style={[
-                    styles.addPostShareBtn,
-                    (isPosting || selectedMedia.length === 0  || !selectedCafeId) && { opacity: 0.4 }
-                  ]}
-                >
-                  Share
-                </Text>
+                <View style={[
+                  styles.shareButton,
+                  (isPosting || selectedMedia.length === 0 || !selectedCafeId) && styles.shareButtonDisabled,
+                ]}>
+                  <Text style={styles.shareButtonText}>{isPosting ? "Posting…" : "Share"}</Text>
+                </View>
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={{ padding: scale(16) }}>
-              {/* Image picker area */}
-              <View style={{ marginBottom: 16 }}>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {selectedMedia.map((item, i) => (
-                <View key={i} style={{ position: "relative" }}>
-                  {item.type === "image" ? (
-                    <Image
-                      source={{ uri: item.uri }}
-                      style={{ width: 90, height: 90, borderRadius: 8 }}
-                    />
-                  ) : (
-                    <View
-                      style={{
-                        width: 90,
-                        height: 90,
-                        borderRadius: 8,
-                        backgroundColor: "#000",
-                        justifyContent: "center",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Text style={{ color: "#FFF" }}>Video</Text>
-                    </View>
-                  )}
+            <ScrollView contentContainerStyle={{ padding: scale(16) }} showsVerticalScrollIndicator={false}>
 
-                  {/* Remove button */}
-                  <TouchableOpacity
-                    onPress={() =>
-                      setSelectedMedia((prev) => prev.filter((_, idx) => idx !== i))
-                    }
-                    style={{
-                      position: "absolute",
-                      top: 4,
-                      right: 4,
-                      backgroundColor: "rgba(0,0,0,0.6)",
-                      borderRadius: 10,
-                      padding: 4,
-                    }}
-                  >
-                    <Text style={{ color: "#FFF" }}>X</Text>
-                  </TouchableOpacity>
+              {/* Media area */}
+              {selectedMedia.length === 0 ? (
+                <TouchableOpacity onPress={pickMedia} style={styles.mediaEmptyBox}>
+                  <Camera size={scale(36)} color="#D4A373" />
+                  <Text style={styles.mediaEmptyTitle}>Add Photos or Videos</Text>
+                  <Text style={styles.mediaEmptySubtitle}>Tap to select up to 5 files</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={{ marginBottom: scale(16) }}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: scale(10) }}>
+                    {selectedMedia.map((item, i) => (
+                      <View key={i} style={{ position: "relative" }}>
+                        {item.type === "image" ? (
+                          <Image source={{ uri: item.uri }} style={styles.mediaThumb} />
+                        ) : (
+                          <View style={[styles.mediaThumb, { backgroundColor: "#1A1A1A", justifyContent: "center", alignItems: "center" }]}>
+                            <Text style={{ color: "#FFF", fontWeight: "600", fontSize: moderateScale(12) }}>▶ Video</Text>
+                          </View>
+                        )}
+                        <TouchableOpacity
+                          onPress={() => setSelectedMedia((prev) => prev.filter((_, idx) => idx !== i))}
+                          style={styles.removeMediaBtn}
+                        >
+                          <X size={scale(12)} color="#FFF" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                    {selectedMedia.length < 5 && (
+                      <TouchableOpacity style={styles.addMoreMedia} onPress={pickMedia}>
+                        <Camera size={scale(22)} color="#D4A373" />
+                        <Text style={{ color: "#D4A373", fontSize: moderateScale(11), fontWeight: "600", marginTop: 4 }}>Add</Text>
+                      </TouchableOpacity>
+                    )}
+                  </ScrollView>
                 </View>
-              ))}
-
-              {selectedMedia.length < 5 && (
-                <TouchableOpacity style={styles.addImageBtn} onPress={pickMedia}>
-                  <Camera size={20} color="#D4A373" />
-                  <Text>Add</Text>
-                </TouchableOpacity>
               )}
-            </View>
-            </View>
-
-            {/* Cafe Selector */}
-              <Text style={{ marginBottom: 6, fontWeight: "600" }}>
-                Select Cafe
-              </Text>
-
-              <TextInput
-                placeholder="Search cafe..."
-                value={
-                  selectedCafeId
-                    ? cafes.find((c) => c.id === selectedCafeId)?.name || ""
-                    : cafeQuery
-                }
-                onChangeText={(text) => {
-                  setCafeQuery(text);
-                  setSelectedCafeId(null);
-                }}
-                style={{
-                  borderWidth: 1,
-                  borderColor: "#EEE",
-                  borderRadius: 10,
-                  padding: 10,
-                  marginBottom: 10,
-                }}
-              />
-              {/* Results */}
-              {!selectedCafeId && filteredCafes.map((cafe) => (
-                <TouchableOpacity
-                  key={cafe.id}
-                  onPress={() => {
-                    setSelectedCafeId(cafe.id);
-                    setCafeQuery(cafe.name);
-                    setFilteredCafes([]); 
-                  }}
-                  style={{
-                    paddingVertical: 10,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "#F0F0F0",
-                  }}
-                >
-                  <Text>{cafe.name}</Text>
-                </TouchableOpacity>
-              ))}
-
-              {cafeQuery.length > 0 && filteredCafes.length === 0 && (
-                <Text style={{ color: "#AAA", marginTop: 6 }}>
-                  No cafes found
-                </Text>
-              )}
-
-              {/* {selectedCafeId && (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  backgroundColor: "#F3E9DC",
-                  padding: 10,
-                  borderRadius: 10,
-                  marginBottom: 10,
-                  justifyContent: "space-between",
-                }}
-              >
-              </View>
-            )} */}
 
               {/* Caption */}
-              <TextInput
-                placeholder="Write a caption…"
-                placeholderTextColor="#AAA"
-                value={caption}
-                onChangeText={setCaption}
-                multiline
-                style={styles.captionInput}
-              />
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Caption</Text>
+                <TextInput
+                  placeholder="Write something about this moment…"
+                  placeholderTextColor="#BBB"
+                  value={caption}
+                  onChangeText={setCaption}
+                  multiline
+                  style={styles.captionInput}
+                />
+              </View>
+
+              {/* Cafe Selector */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Cafe</Text>
+                <TextInput
+                  placeholder="Search for a cafe…"
+                  placeholderTextColor="#BBB"
+                  value={selectedCafeId ? cafes.find((c) => c.id === selectedCafeId)?.name || "" : cafeQuery}
+                  onChangeText={(text) => { setCafeQuery(text); setSelectedCafeId(null); }}
+                  style={styles.cafeSearchInput}
+                />
+                {!selectedCafeId && filteredCafes.length > 0 && (
+                  <View style={styles.cafeDropdown}>
+                    {filteredCafes.slice(0, 5).map((cafe) => (
+                      <TouchableOpacity
+                        key={cafe.id}
+                        onPress={() => { setSelectedCafeId(cafe.id); setCafeQuery(cafe.name); setFilteredCafes([]); }}
+                        style={styles.cafeDropdownItem}
+                      >
+                        <MapPin size={scale(13)} color="#D4A373" />
+                        <Text style={styles.cafeDropdownText}>{cafe.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+                {cafeQuery.length > 0 && !selectedCafeId && filteredCafes.length === 0 && (
+                  <Text style={{ color: "#BBB", fontSize: moderateScale(12), marginTop: 4 }}>No cafes found</Text>
+                )}
+              </View>
 
               {/* Tags */}
-              <Text style={{ fontWeight: "600", marginBottom: 6, marginTop: 6 }}>
-                Tags
-              </Text>
-
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-                {TAG_OPTIONS.map((tag) => {
-                  const selected = selectedTags.includes(tag);
-
-                  return (
-                    <TouchableOpacity
-                      key={tag}
-                      onPress={() => toggleTag(tag)}
-                      style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 20,
-                        backgroundColor: selected ? "#D4A373" : "#EEE",
-                      }}
-                    >
-                      <Text style={{ color: selected ? "#FFF" : "#333" }}>
-                        {tag}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Tags</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: scale(8) }}>
+                  {TAG_OPTIONS.map((tag) => {
+                    const selected = selectedTags.includes(tag);
+                    return (
+                      <TouchableOpacity
+                        key={tag}
+                        onPress={() => toggleTag(tag)}
+                        style={[styles.tagChip, selected && styles.tagChipSelected]}
+                      >
+                        <Text style={[styles.tagChipText, selected && styles.tagChipTextSelected]}>{tag}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
+
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
@@ -1003,7 +949,7 @@ export default function UserProfileScreen() {
       </Modal>
 
       <BottomNav />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -1058,30 +1004,68 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: "#EEE",
   },
   addPostTitle: { fontSize: moderateScale(16), fontWeight: "700", color: "#1A1A1A" },
-  addPostShareBtn: { fontSize: moderateScale(15), fontWeight: "700", color: "#D4A373" },
-  imagePickerRow: {
-    flexDirection: "row", flexWrap: "wrap", gap: scale(8), marginBottom: scale(16),
+  shareButton: {
+    backgroundColor: "#D4A373", borderRadius: scale(20),
+    paddingHorizontal: scale(16), paddingVertical: scale(7),
   },
-  pickedImageWrap: { position: "relative" },
-  pickedImage: { width: scale(90), height: scale(90), borderRadius: scale(8) },
-  removeImageBtn: {
-    position: "absolute", top: scale(4), right: scale(4),
-    backgroundColor: "rgba(0,0,0,0.55)", borderRadius: scale(10),
-    width: scale(18), height: scale(18), justifyContent: "center", alignItems: "center",
+  shareButtonDisabled: { backgroundColor: "#E8D5C0", opacity: 0.6 },
+  shareButtonText: { color: "#FFF", fontWeight: "700", fontSize: moderateScale(14) },
+  mediaEmptyBox: {
+    height: scale(200), borderRadius: scale(16), borderWidth: 1.5,
+    borderColor: "#E0D8D0", borderStyle: "dashed",
+    justifyContent: "center", alignItems: "center", gap: scale(8),
+    backgroundColor: "rgba(212,163,115,0.04)", marginBottom: scale(20),
   },
+  mediaEmptyTitle: { fontSize: moderateScale(15), fontWeight: "700", color: "#2C1810" },
+  mediaEmptySubtitle: { fontSize: moderateScale(12), color: "#AAA" },
+  mediaThumb: { width: scale(110), height: scale(110), borderRadius: scale(12) },
+  removeMediaBtn: {
+    position: "absolute", top: scale(6), right: scale(6),
+    backgroundColor: "rgba(0,0,0,0.6)", borderRadius: scale(12),
+    width: scale(22), height: scale(22), justifyContent: "center", alignItems: "center",
+  },
+  addMoreMedia: {
+    width: scale(110), height: scale(110), borderRadius: scale(12),
+    borderWidth: 1.5, borderColor: "#D4A373", borderStyle: "dashed",
+    justifyContent: "center", alignItems: "center",
+    backgroundColor: "rgba(212,163,115,0.04)",
+  },
+  inputGroup: { marginBottom: scale(20) },
+  inputLabel: { fontSize: moderateScale(13), fontWeight: "700", color: "#2C1810", marginBottom: scale(8) },
+  captionInput: {
+    fontSize: moderateScale(14), color: "#1A1A1A", lineHeight: moderateScale(22),
+    minHeight: scale(90), textAlignVertical: "top",
+    borderWidth: 1, borderColor: "#E8DFD5", borderRadius: scale(12),
+    padding: scale(12), backgroundColor: "#F7F3F0",
+  },
+  cafeSearchInput: {
+    borderWidth: 1, borderColor: "#E8DFD5", borderRadius: scale(12),
+    padding: scale(12), backgroundColor: "#F7F3F0",
+    fontSize: moderateScale(14), color: "#1A1A1A",
+  },
+  cafeDropdown: {
+    borderWidth: 1, borderColor: "#E8DFD5", borderRadius: scale(12),
+    backgroundColor: "#FFF", marginTop: scale(4), overflow: "hidden",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3,
+  },
+  cafeDropdownItem: {
+    flexDirection: "row", alignItems: "center", gap: scale(8),
+    paddingHorizontal: scale(14), paddingVertical: scale(12),
+    borderBottomWidth: 1, borderBottomColor: "#F0EAE4",
+  },
+  cafeDropdownText: { fontSize: moderateScale(14), color: "#1A1A1A" },
+  tagChip: {
+    paddingHorizontal: scale(12), paddingVertical: scale(6),
+    borderRadius: scale(20), borderWidth: 1, borderColor: "#DDD", backgroundColor: "#F7F3F0",
+  },
+  tagChipSelected: { borderColor: "#D4A373", backgroundColor: "#FFF0E6" },
+  tagChipText: { fontSize: moderateScale(12), color: "#666" },
+  tagChipTextSelected: { color: "#D4A373", fontWeight: "600" },
   addImageBtn: {
     width: scale(90), height: scale(90), borderRadius: scale(8),
     borderWidth: 1.5, borderColor: "#D4A373", borderStyle: "dashed",
     justifyContent: "center", alignItems: "center", gap: scale(4),
     backgroundColor: "rgba(212,163,115,0.06)",
-  },
-  addImageText: { fontSize: moderateScale(11), color: "#D4A373", fontWeight: "600", textAlign: "center" },
-  addImageCount: { fontSize: moderateScale(10), color: "#AAA" },
-  captionInput: {
-    fontSize: moderateScale(15), color: "#1A1A1A", lineHeight: moderateScale(22),
-    minHeight: scale(100), textAlignVertical: "top",
-    borderWidth: 1, borderColor: "#EEE", borderRadius: scale(10),
-    padding: scale(12), backgroundColor: "#FAFAFA",
   },
 
   // ── Post Detail Modal ──

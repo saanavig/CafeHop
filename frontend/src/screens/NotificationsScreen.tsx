@@ -18,6 +18,7 @@ import { moderateScale, scale } from "../utils/responsive";
 import React from "react";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const customerNotifications = [
   {
@@ -79,6 +80,7 @@ const NotificationsScreen = () => {
   const title = isCustomer ? "Notifications" : "Customer Visits";
 
   return (
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "#F7F3F0" }}>
     <ScrollView contentContainerStyle={styles.container}>
       {/* Header */}
       <View style={styles.header}>
@@ -132,6 +134,7 @@ const NotificationsScreen = () => {
         )}
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -139,7 +142,8 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     backgroundColor: "#F7F3F0",
-    paddingVertical: scale(16),
+    paddingTop: scale(8),
+    paddingBottom: scale(16),
   },
   header: {
     flexDirection: "row",
