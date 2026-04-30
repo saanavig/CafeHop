@@ -13,17 +13,19 @@ import {
   View,
 } from "react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useFocusEffect } from "@react-navigation/native";
 import { moderateScale, scale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
+import QRCode from "react-native-qrcode-svg";
+// import { TextInput as RNTextInput } from "react-native";
 import RewardsCard from "../components/ui/RewardsCard";
 import { supabase } from "../api/supabaseClient";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
 
 interface Reward {
-  id: number;
+  id: string;
   title: string;
   cafe: string;
   points: number;
@@ -31,24 +33,25 @@ interface Reward {
   popular: boolean;
 }
 
-const initialRewards: Reward[] = [
-  {
-    id: 1,
-    title: "Free Latte",
-    cafe: "Any participating cafe",
-    points: 500,
-    image: require("../assets/latte-art.jpg"),
-    popular: true,
-  },
-  {
-    id: 2,
-    title: "20% Off Order",
-    cafe: "The Roastery",
-    points: 300,
-    image: require("../assets/cafe-1.jpg"),
-    popular: false,
-  },
+const TIER_CONFIG = [
+  { name: "bronze", min: 0 },
+  { name: "silver", min: 1000 },
+  { name: "gold", min: 3000 },
+  { name: "platinum", min: 7000 },
 ];
+
+const getTierData = (points: number) => {
+  for (let i = TIER_CONFIG.length - 1; i >= 0; i--) {
+    if (points >= TIER_CONFIG[i].min) {
+      return {
+        tier: TIER_CONFIG[i].name,
+        current: TIER_CONFIG[i].min,
+        next: TIER_CONFIG[i + 1]?.min ?? TIER_CONFIG[i].min + 3000,
+      };
+    }
+  }
+  return { tier: "bronze", current: 0, next: 1000 };
+};
 
 // ─── Cafe-owner mock data ────────────────────────────────────────────────────
 interface CafeProgram {
@@ -86,12 +89,30 @@ export default function RewardsScreen({ navigation }) {
   const { role } = useRole();
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
-  const [earnedPoints, setEarnedPoints] = useState(0);
+  // const [earnedPoints, setEarnedPoints] = useState(0);
   const [tier, setTier] = useState("bronze");
   const [catalogRewards, setCatalogRewards] = useState<Reward[]>([]);
-  const [transactions, setTransactions] = useState<{ id: string; points_change: number; reason: string; created_at: string }[]>([]);
+  // const [transactions, setTransactions] = useState<{ id: string; points_change: number; reason: string; created_at: string }[]>([]);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const toastAnim = useRef(new Animated.Value(-scale(80))).current;
+  const [showQR, setShowQR] = useState(false);
+  const searchRef = useRef<React.ElementRef<typeof TextInput>>(null);
+  const [selectedCafe, setSelectedCafe] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [showCafePicker, setShowCafePicker] = useState(false);
+  const [cafeSearch, setCafeSearch] = useState("");
+  const [cafes, setCafes] = useState<{ id: string; name: string }[]>([]);
+
+  const getTier = (points: number): string => {
+    if (points >= 7000) return "platinum";
+    if (points >= 3000) return "gold";
+    if (points >= 1000) return "silver";
+    return "bronze";
+  };
+
+  // const tierData = getTierData(points);
 
   const showToast = (message: string, type: "success" | "error" = "error") => {
     setToast({ message, type });
@@ -103,48 +124,15 @@ export default function RewardsScreen({ navigation }) {
     }, 3000);
   };
 
+  const filteredCafes = cafes.filter((cafe) =>
+    cafe.name.toLowerCase().includes(cafeSearch.toLowerCase())
+  );
+
   // Entry animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(18)).current;
   const [points, setPoints] = useState(0);
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
-  const [showScan, setShowScan] = useState(false);
-  const [scanSuccess, setScanSuccess] = useState(false);
-
-  const handleScan = async () => {
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-
-      const res = await fetch(`${API_URL}/purchase/submit`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          cafe_id: 1,
-          amount: 10,
-          latitude: 40.74,
-          longitude: -74.03,
-          submission_token: Date.now().toString(),
-          receipt_timestamp: new Date().toISOString(),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setPoints(data.total_points);
-        setEarnedPoints(data.points_earned);
-        setScanSuccess(true);
-      } else {
-        showToast(data.error ?? "Something went wrong");
-      }
-    } catch (err) {
-      console.error("Scan error:", err);
-    }
-  };
 
   const fetchTierAndCatalog = async () => {
     try {
@@ -152,29 +140,80 @@ export default function RewardsScreen({ navigation }) {
       const userId = sessionData.session?.user.id;
       if (!userId) return;
 
-      const [{ data: loyaltyData }, { data: catalogData }, { data: txData }] = await Promise.all([
-        supabase.from("loyalty_accounts").select("tier").eq("user_id", userId).single(),
-        supabase.from("rewards_catalog").select("id, name, description, points_required").eq("active", true).order("points_required"),
-        supabase.from("loyalty_transactions").select("id, points_change, reason, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
-      ]);
+      const { data: catalogData } = selectedCafe
+      ? await supabase
+          .from("rewards")
+          .select("id, points_required, cafe_id, active, title")
+          .eq("active", true)
+          .eq("cafe_id", selectedCafe.id)
+          .order("points_required")
+      : { data: [] };
 
-      if (loyaltyData?.tier) setTier(loyaltyData.tier);
-      if (txData) setTransactions(txData);
+      // if (loyaltyData?.tier) setTier(loyaltyData.tier);
+      // if (txData) setTransactions(txData);
 
-      if (catalogData && catalogData.length > 0) {
-        setCatalogRewards(
-          catalogData.map((r: any, i: number) => ({
-            id: i + 1,
-            title: r.name,
-            cafe: "Any participating cafe",
-            points: r.points_required,
-            image: require("../assets/latte-art.jpg"),
-            popular: i === 0,
-          }))
-        );
-      }
+      setCatalogRewards(
+        (catalogData || []).map((r: any, i: number) => ({
+          id: r.id,
+          title: r.title,
+          cafe: r.cafes?.name || selectedCafe?.name || "",
+          points: r.points_required,
+          image: require("../assets/latte-art.jpg"),
+          popular: i === 0,
+        }))
+      );
+
+      console.log("Selected cafe:", selectedCafe);
+      console.log("Catalog raw:", catalogData);
+  
+      console.log("Catalog processed:", catalogRewards);
     } catch (err) {
       console.error("fetchTierAndCatalog error:", err);
+    }
+  };
+
+  const redeemReward = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      const res = await fetch(`${API_URL}/api/redeem`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          reward_id: String(selectedReward?.id),
+          cafe_id: String(selectedCafe?.id),
+          submission_token: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
+          timestamp: Date.now(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data.error || "Failed to redeem");
+        return;
+      }
+
+      showToast("Reward redeemed!", "success");
+
+      setSelectedReward(null);
+      setShowQR(false);
+
+      // navigation.navigate("RedemptionSuccess", {
+      //   reward: selectedReward,
+      //   cafe: selectedCafe,
+      // });
+
+      fetchPoints();
+      fetchTierAndCatalog();
+
+    } catch (err) {
+      console.error(err);
+      showToast("Something went wrong");
     }
   };
 
@@ -182,7 +221,6 @@ export default function RewardsScreen({ navigation }) {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
-      const userId = sessionData.session?.user.id;
 
       const res = await fetch(`${API_URL}/api/users/me/points`, {
         headers: {
@@ -191,18 +229,65 @@ export default function RewardsScreen({ navigation }) {
       });
 
       const data = await res.json();
-      setPoints(data.points);
+
+      if (!res.ok) {
+        console.error("Error fetching points:", data);
+        return;
+      }
+
+      const pts = data.points ?? 0;
+      setPoints(pts);
+
+      const computedTier = getTier(pts);
+      setTier(computedTier);
+
     } catch (err) {
-      console.error("Error fetching points:", err);
+      console.error("Fetch points error:", err);
     }
   };
 
   useFocusEffect(
     useCallback(() => {
       fetchPoints();
-      fetchTierAndCatalog();
+      fetchCafes();
     }, [])
   );
+
+  useEffect(() => {
+    if (selectedCafe) {
+      fetchTierAndCatalog();
+    } else {
+      setCatalogRewards([]);
+    }
+  }, [selectedCafe]);
+  // useEffect(() => {
+  //   if (selectedCafe) {
+  //     fetchTierAndCatalog();
+  //   }
+  // }, [selectedCafe]);
+
+  const fetchCafes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("cafes")
+        .select("id, name")
+        .order("name");
+
+      if (error) {
+        console.error("Error fetching cafes:", error);
+        return;
+      }
+
+      setCafes(data || []);
+
+      // if (data && data.length > 0 && !selectedCafe) {
+      //   setSelectedCafe(data[0]);
+      // }
+
+    } catch (err) {
+      console.error("Fetch cafes error:", err);
+    }
+  };
 
   useEffect(() => {
     Animated.parallel([
@@ -211,8 +296,19 @@ export default function RewardsScreen({ navigation }) {
     ]).start();
   }, []);
 
+
+  useEffect(() => {
+    if (showCafePicker) {
+      setTimeout(() => {
+      if (searchRef.current) {
+        searchRef.current.focus();
+      }
+    }, 100);
+    }
+  }, [showCafePicker]);
+
   // Customer state
-  const [availableRewards] = useState<Reward[]>(initialRewards);
+  // const [availableRewards] = useState<Reward[]>(initialRewards);
 
   // Cafe state
   const [programs, setPrograms] = useState<CafeProgram[]>(cafePrograms);
@@ -239,37 +335,31 @@ export default function RewardsScreen({ navigation }) {
     setShowNewProgram(false);
   };
 
-  const handleRedeem = async () => {
-    if (!selectedReward) return;
+  const handleRedeem = () => {
+    setShowQR(true);
+  };
 
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
+  const [userId, setUserId] = useState<string | null>(null);
 
-      const res = await fetch(`${API_URL}/redeem`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          cafe_id: 1, // TEMP
-          points: selectedReward.points,
-        }),
-      });
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getSession();
+      const id = data.session?.user.id;
+      setUserId(id ?? null);
+    };
+    getUser();
+  }, []);
 
-      const data = await res.json();
+  const generateQRValue = () => {
+    if (!selectedReward || !selectedCafe || !userId) return "";
 
-      if (res.ok) {
-        setPoints(data.remaining_points);
-        setSelectedReward(null);
-        showToast("Reward redeemed!", "success");
-      } else {
-        showToast(data.error ?? "Redemption failed");
-      }
-    } catch (err) {
-      console.error("Redeem error:", err);
-    }
+    return JSON.stringify({
+      user_id: userId,
+      cafe_id: selectedCafe.id,
+      reward_id: selectedReward.id,
+      submission_token: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
+      timestamp: Date.now(),
+    });
   };
 
   const toggleProgram = (id: number) => {
@@ -314,6 +404,37 @@ export default function RewardsScreen({ navigation }) {
             {/* Programs */}
             <View style={styles.section}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Select Cafe</Text>
+
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {cafes.map((cafe) => {
+                      const isSelected = selectedCafe?.id === cafe.id;
+
+                      return (
+                        <TouchableOpacity
+                          key={cafe.id}
+                          onPress={() => setSelectedCafe(cafe)}
+                          style={[
+                            styles.cafeChip,
+                            isSelected && styles.cafeChipSelected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.cafeChipText,
+                              isSelected && { color: "#FFF" },
+                            ]}
+                          >
+                            {cafe.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
                 <Text style={styles.sectionTitle}>Active Programs</Text>
                 <TouchableOpacity style={styles.addBtn} onPress={() => setShowNewProgram(true)}>
                   <Text style={styles.addBtnText}>+ New</Text>
@@ -429,21 +550,25 @@ export default function RewardsScreen({ navigation }) {
 
           {/* Rewards Card */}
           {(() => {
-            const TIER_MAP: Record<string, { label: string; nextThreshold: number; themeColor: "caramel" | "gold" }> = {
-              bronze: { label: "BRONZE", nextThreshold: 1000, themeColor: "caramel" },
-              silver: { label: "SILVER", nextThreshold: 3000, themeColor: "caramel" },
-              gold:   { label: "GOLD",   nextThreshold: 5000, themeColor: "gold" },
+            const tierData = getTierData(points);
+
+            const TIER_STYLES: Record<string, { label: string; themeColor: "caramel" | "gold" }> = {
+              bronze: { label: "BRONZE", themeColor: "caramel" },
+              silver: { label: "SILVER", themeColor: "caramel" },
+              gold: { label: "GOLD", themeColor: "gold" },
+              platinum: { label: "PLATINUM", themeColor: "gold" },
             };
-            const tierInfo = TIER_MAP[tier] ?? TIER_MAP.bronze;
+
+            const tierStyle = TIER_STYLES[tierData.tier];
+
             return (
               <RewardsCard
-                points={points}
-                status={tierInfo.label}
-                nextReward={tierInfo.nextThreshold}
-                themeColor={tierInfo.themeColor}
+                points={points - tierData.current}
+                status={tierStyle.label}
+                nextReward={tierData.next - tierData.current}
+                themeColor={tierStyle.themeColor}
                 description="Earn points and unlock perks"
                 role={role}
-                onScan={() => setShowScan(true)}
               />
             );
           })()}
@@ -452,8 +577,20 @@ export default function RewardsScreen({ navigation }) {
             onPress={() => navigation.navigate("ReceiptUpload")}
           />
 
+          {/* ─── SELECT CAFE (CUSTOMER ONLY) ─── */}
+          <TouchableOpacity
+              style={styles.cafeSelector}
+              onPress={() => setShowCafePicker(true)}
+            >
+
+            <Text style={styles.cafeSelectorText}>
+              {selectedCafe ? selectedCafe.name : "Select a cafe"}
+            </Text>
+          </TouchableOpacity>
+
+
           {/* Transaction History */}
-          {transactions.length > 0 && (
+          {/* {transactions.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Points History</Text>
               {transactions.map((tx) => {
@@ -483,13 +620,18 @@ export default function RewardsScreen({ navigation }) {
                 );
               })}
             </View>
-          )}
+          )} */}
 
           {/* Rewards List */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Available Rewards</Text>
 
-            {(catalogRewards.length > 0 ? catalogRewards : availableRewards).map((reward) => {
+            {!selectedCafe ? (
+              <Text style={{ color: "#777" }}>
+                Select a cafe to view rewards
+              </Text>
+            ) : (
+              catalogRewards.map((reward) => {
               const canAfford = points >= reward.points;
               return (
                 <View key={reward.id} style={styles.rewardCard}>
@@ -502,53 +644,154 @@ export default function RewardsScreen({ navigation }) {
                   <Button
                     title="Redeem"
                     size="sm"
-                    variant={canAfford ? "caramel" : "outline"}
-                    disabled={!canAfford}
-                    onPress={() => setSelectedReward(reward)}
+                      variant={canAfford && selectedCafe ? "caramel" : "outline"}
+                      disabled={!canAfford || !selectedCafe}
+                      onPress={() => {
+                        if (!selectedCafe) return;
+                        setSelectedReward(reward);
+                        setShowQR(false);
+                      }}
                   />
                 </View>
               );
-            })}
+            })
+            )}
           </View>
         </View>
       </Animated.ScrollView>
 
-      {/* Scan Modal */}
-      <Modal visible={showScan} transparent animationType="fade">
+      {/* Redeem Modal */}
+      <Modal visible={!!selectedReward || showQR} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            {!scanSuccess ? (
+
+            {/* ─── HEADER ─── */}
+            <View style={{ alignItems: "center", marginBottom: 16 }}>
+              <Text style={styles.modalTitle}>Show this to cafe</Text>
+              <Text style={styles.modalSubtitle}>
+                Present this QR code to redeem your reward
+              </Text>
+            </View>
+
+            {/* ─── REWARD INFO ─── */}
+            {selectedReward && (
+              <View style={styles.rewardPreview}>
+                <Image source={selectedReward.image} style={styles.rewardPreviewImage} />
+                <View>
+                  <Text style={styles.rewardPreviewTitle}>{selectedReward.title}</Text>
+                  <Text style={styles.rewardPreviewCafe}>{selectedReward.cafe}</Text>
+                  <Text style={styles.rewardPreviewPoints}>{selectedReward.points} pts</Text>
+                </View>
+              </View>
+            )}
+
+            {!showQR ? (
               <>
-                <Text style={styles.modalTitle}>Scan Cafe QR Code</Text>
-                <View style={styles.fakeQR} />
-                <Button title="Simulate Scan" onPress={handleScan} />
+                <Button title="Confirm Redemption" onPress={() => setShowQR(true)} />
               </>
             ) : (
               <>
-                <Text style={styles.modalTitle}>+{earnedPoints} Points Earned 🎉</Text>
-                <Button title="Close" onPress={() => { setShowScan(false); setScanSuccess(false); }} />
+              {/* ─── QR CODE ─── */}
+              {/* <View style={styles.qrContainer}>
+                {generateQRValue() !== "" && (
+                  <QRCode value={generateQRValue()} size={180} />
+                )}
+
+                <Button
+                  title="Complete Redemption"
+                  onPress={redeemReward}
+                />
+              </View> */}
+
+              {showQR && (
+                <>
+                  <View style={styles.qrContainer}>
+                    <QRCode value={generateQRValue()} size={180} />
+                  </View>
+
+                  <Button title="Reward Redeemed" onPress={redeemReward} />
+                </>
+              )}
               </>
             )}
+
+            {/* ─── BUTTONS ─── */}
+            <Button
+              title="Done"
+              onPress={() => {
+                setSelectedReward(null);
+                setShowQR(false);
+              }}
+            />
+
+            <Pressable
+              style={styles.closeBtn}
+              onPress={() => {
+                setSelectedReward(null);
+                setShowQR(false);
+              }}
+            >
+              <Text style={{ color: "#999" }}>Close</Text>
+            </Pressable>
+
           </View>
         </View>
       </Modal>
 
-      {/* Redeem Modal */}
-      <Modal visible={!!selectedReward} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            {selectedReward && (
-              <>
-                <Text style={styles.modalTitle}>Redeem {selectedReward.title}?</Text>
-                <Text style={styles.modalText}>This costs {selectedReward.points} points.</Text>
-                <Button title="Confirm Redemption" onPress={handleRedeem} />
-              </>
-            )}
-            <Pressable style={styles.closeBtn} onPress={() => setSelectedReward(null)}>
-              <Text style={{ color: "#999" }}>Close</Text>
-            </Pressable>
-          </View>
-        </View>
+      <Modal visible={showCafePicker} transparent animationType="fade">
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalCard}>
+
+                  <Text style={styles.modalTitle}>Select a Cafe</Text>
+
+                  <TextInput
+                    ref={searchRef}
+                    placeholder="Search cafes..."
+                    value={cafeSearch}
+                    onChangeText={setCafeSearch}
+                    style={styles.searchInput}
+                  />
+
+                  <ScrollView style={{ maxHeight: 300 }}>
+                    {filteredCafes.map((cafe) => (
+                      <TouchableOpacity
+                        key={cafe.id}
+                        style={styles.cafeOption}
+                        onPress={() => {
+                          setSelectedCafe(cafe);
+                          setShowCafePicker(false);
+                          setCafeSearch("");
+                        }}
+                      >
+                        <Text style={styles.cafeOptionText}>{cafe.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+
+                    {filteredCafes.length === 0 && (
+                      <Text style={{ color: "#777", textAlign: "center", marginTop: 20 }}>
+                        No cafes found
+                      </Text>
+                    )}
+                  </ScrollView>
+
+                  <Pressable
+                    style={styles.closeBtn}
+                    onPress={() => {
+                      setShowCafePicker(false);
+                      setCafeSearch("");
+                    }}
+                  >
+                    <Text style={{ color: "#999" }}>Cancel</Text>
+                  </Pressable>
+
+                  {/* {cafeSearch.length > 0 && (
+                    <TouchableOpacity onPress={() => setCafeSearch("")}>
+                      <Text style={{ color: "#D4A373", marginBottom: 10 }}>Clear</Text>
+                    </TouchableOpacity>
+                  )} */}
+
+                </View>
+              </View>
       </Modal>
 
       <BottomNav />
@@ -813,5 +1056,115 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(13),
     fontWeight: "600",
     textAlign: "center",
+  },
+
+  modalSubtitle: {
+    color: "#777",
+    fontSize: moderateScale(13),
+    textAlign: "center",
+    marginTop: 4,
+  },
+
+  rewardPreview: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(12),
+    backgroundColor: "#F7F3F0",
+    padding: scale(12),
+    borderRadius: scale(12),
+    marginBottom: scale(16),
+  },
+
+  rewardPreviewImage: {
+    width: scale(50),
+    height: scale(50),
+    borderRadius: scale(10),
+  },
+
+  rewardPreviewTitle: {
+    fontWeight: "600",
+    fontSize: moderateScale(14),
+  },
+
+  rewardPreviewCafe: {
+    fontSize: moderateScale(12),
+    color: "#777",
+  },
+
+  rewardPreviewPoints: {
+    fontSize: moderateScale(12),
+    color: "#D4A373",
+    fontWeight: "600",
+    marginTop: 2,
+  },
+
+  qrContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF",
+    padding: scale(16),
+    borderRadius: scale(16),
+    marginBottom: scale(20),
+
+    // subtle shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+
+  cafeChip: {
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(8),
+    borderRadius: scale(20),
+    backgroundColor: "#EEE",
+    marginRight: scale(10),
+  },
+
+  cafeChipSelected: {
+    backgroundColor: "#D4A373",
+  },
+
+  cafeChipText: {
+    fontSize: moderateScale(13),
+    color: "#555",
+    fontWeight: "500",
+  },
+
+  cafeSelector: {
+    backgroundColor: "#FFF",
+    padding: scale(14),
+    borderRadius: scale(14),
+    marginTop: scale(16),
+    borderWidth: 1,
+    borderColor: "#E5DED8",
+  },
+
+  cafeSelectorText: {
+    fontSize: moderateScale(14),
+    color: "#444",
+  },
+
+  cafeOption: {
+    paddingVertical: scale(12),
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEE",
+  },
+
+  cafeOptionText: {
+    fontSize: moderateScale(14),
+    color: "#1A1A1A",
+  },
+
+  searchInput: {
+    borderWidth: 1,
+    borderColor: "#E5DED8",
+    borderRadius: scale(10),
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(10),
+    marginBottom: scale(12),
+    fontSize: moderateScale(14),
+    backgroundColor: "#F7F3F0",
   },
 });

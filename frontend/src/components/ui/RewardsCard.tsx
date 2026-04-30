@@ -1,14 +1,14 @@
-import React, { useEffect, useRef } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
   Animated,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
+import { ChevronRight, Gift, Star } from "lucide-react-native";
+import React, { useEffect, useRef } from "react";
+import { moderateScale, scale, verticalScale } from "../../utils/responsive";
 
-import { Gift, ChevronRight, Star } from "lucide-react-native";
 import Button from "./Button";
-import { scale, moderateScale, verticalScale } from "../../utils/responsive";
 
 interface RewardsCardProps {
   points: number;
@@ -17,7 +17,7 @@ interface RewardsCardProps {
   description?: string;
   themeColor?: "caramel" | "gold";
   role: "customer" | "cafe";
-  onScan?: () => void;
+  // onScan?: () => void;
 }
 
 export default function RewardsCard({
@@ -27,11 +27,12 @@ export default function RewardsCard({
   description,
   themeColor = "caramel",
   role,
-  onScan,
+  // onScan,
 }: RewardsCardProps) {
 
-  const progress = (points / nextReward) * 100;
+  const progress = Math.min((points / nextReward) * 100, 100);
   const progressAnim = useRef(new Animated.Value(0)).current;
+
 
   useEffect(() => {
     Animated.timing(progressAnim, {
@@ -99,7 +100,7 @@ export default function RewardsCard({
             Progress to next reward
           </Text>
           <Text style={styles.progressText}>
-            {nextReward - points} pts away
+              {Math.max(nextReward - points, 0)} pts away
           </Text>
         </View>
 
@@ -116,7 +117,7 @@ export default function RewardsCard({
       </View>
 
       {/* CTA */}
-      {role === "customer" && (
+      {/* {role === "customer" && (
         <Button
           variant="outline"
           onPress={onScan || (() => {})}
@@ -129,7 +130,7 @@ export default function RewardsCard({
 
           <ChevronRight size={scale(16)} color="#D4A373" />
         </Button>
-      )}
+      )} */}
     </View>
   );
 }
