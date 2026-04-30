@@ -139,7 +139,7 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 #         return jsonify({"error": "Submission failed"}), 500
 
 # redeem points
-@purchase_bp.route("/redeem", methods=["POST"])
+@purchase_bp.route("/points/redeem", methods=["POST"])
 @require_auth
 def redeem_points():
     data = request.get_json()

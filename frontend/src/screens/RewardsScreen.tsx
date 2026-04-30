@@ -25,7 +25,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
 
 interface Reward {
-  id: number;
+  id: string;
   title: string;
   cafe: string;
   points: number;
@@ -143,7 +143,7 @@ export default function RewardsScreen({ navigation }) {
       const { data: catalogData } = selectedCafe
       ? await supabase
           .from("rewards")
-          .select("points_required, cafe_id, active, title")
+          .select("id, points_required, cafe_id, active, title")
           .eq("active", true)
           .eq("cafe_id", selectedCafe.id)
           .order("points_required")
@@ -184,11 +184,11 @@ export default function RewardsScreen({ navigation }) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-        reward_id: selectedReward?.id,
-        cafe_id: selectedCafe?.id,
-        submission_token: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
-        timestamp: Date.now(),
-      }),
+          reward_id: String(selectedReward?.id),
+          cafe_id: String(selectedCafe?.id),
+          submission_token: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
+          timestamp: Date.now(),
+        }),
       });
 
       const data = await res.json();

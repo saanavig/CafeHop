@@ -98,6 +98,8 @@ def redeem_reward():
     data = request.get_json(silent=True) or {}
     user_id = g.user["id"]
 
+    print("REDEEM DATA:", data)
+
     if not data:
         return jsonify({"error": "Invalid request body"}), 400
 
@@ -133,27 +135,25 @@ def redeem_reward():
 
     try:
         reward = supabase.table("rewards") \
-        .select("points_required, cafe_id, active") \
-        .eq("id", reward_id) \
-        .single() \
-        .execute()
+            .select("points_required, cafe_id, active, title") \
+            .eq("id", reward_id) \
+            .execute()
 
-        if not reward or not reward.data:
+        print("REWARD RAW:", reward)
+
+        if not reward.data:
             return jsonify({"error": "Reward not found"}), 400
 
+        reward_data = reward.data[0]
+
         if (
-            not reward.data["active"]
-            or reward.data["cafe_id"] != cafe_id
+            not reward_data["active"]
+            or reward_data["cafe_id"] != cafe_id
         ):
             return jsonify({"error": "Invalid reward for this cafe"}), 400
 
-        points_needed = reward.data["points_required"]
+        points_needed = reward.data[0]["points_required"]
         current_points = get_user_points(user_id)
-
-        # updated_points = get_user_points(user_id)
-
-        # if updated_points < points_needed:
-        #     return jsonify({"error": "Not enough points"}), 400
 
         if current_points < points_needed:
             return jsonify({"error": "Not enough points"}), 400
@@ -163,16 +163,18 @@ def redeem_reward():
         supabase.table("point_transactions").insert({
             "user_id": user_id,
             "points_change": -points_needed,
-            "reason": f"Redeemed: {reward.data.get('title', 'Reward')}",
+            "reason": f"Redeemed: {reward_data.get('title', 'Reward')}",
             "submission_token": submission_token
         }).execute()
 
-        supabase.table("redemptions").insert({
+        supabase.table("reward_redemptions").insert({
             "user_id": user_id,
             "reward_id": reward_id,
             "cafe_id": cafe_id,
+            "points_spent": points_needed,
+            "status": "completed",  # optional but good
             "created_at": int(time.time() * 1000)
-        }).execute()
+        })
 
         remaining_points = get_user_points(user_id)
 
