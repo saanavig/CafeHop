@@ -203,6 +203,11 @@ export default function RewardsScreen({ navigation }) {
       setSelectedReward(null);
       setShowQR(false);
 
+      // navigation.navigate("RedemptionSuccess", {
+      //   reward: selectedReward,
+      //   cafe: selectedCafe,
+      // });
+
       fetchPoints();
       fetchTierAndCatalog();
 
@@ -682,16 +687,31 @@ export default function RewardsScreen({ navigation }) {
 
             {!showQR ? (
               <>
-                <Button title="Confirm Redemption" onPress={redeemReward} />
+                <Button title="Confirm Redemption" onPress={() => setShowQR(true)} />
               </>
             ) : (
               <>
               {/* ─── QR CODE ─── */}
-              <View style={styles.qrContainer}>
+              {/* <View style={styles.qrContainer}>
                 {generateQRValue() !== "" && (
                   <QRCode value={generateQRValue()} size={180} />
                 )}
-              </View>
+
+                <Button
+                  title="Complete Redemption"
+                  onPress={redeemReward}
+                />
+              </View> */}
+
+              {showQR && (
+                <>
+                  <View style={styles.qrContainer}>
+                    <QRCode value={generateQRValue()} size={180} />
+                  </View>
+
+                  <Button title="Reward Redeemed" onPress={redeemReward} />
+                </>
+              )}
               </>
             )}
 
