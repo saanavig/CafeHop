@@ -18,6 +18,7 @@ import { moderateScale, scale } from "../utils/responsive";
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
 import QRCode from "react-native-qrcode-svg";
+// import { TextInput as RNTextInput } from "react-native";
 import RewardsCard from "../components/ui/RewardsCard";
 import { supabase } from "../api/supabaseClient";
 import { useFocusEffect } from "@react-navigation/native";
@@ -32,24 +33,24 @@ interface Reward {
   popular: boolean;
 }
 
-const initialRewards: Reward[] = [
-  {
-    id: 1,
-    title: "Free Latte",
-    cafe: "Any participating cafe",
-    points: 500,
-    image: require("../assets/latte-art.jpg"),
-    popular: true,
-  },
-  {
-    id: 2,
-    title: "20% Off Order",
-    cafe: "The Roastery",
-    points: 300,
-    image: require("../assets/cafe-1.jpg"),
-    popular: false,
-  },
-];
+// const initialRewards: Reward[] = [
+//   {
+//     id: 1,
+//     title: "Free Latte",
+//     cafe: selectedCafe?.name || "",
+//     points: 500,
+//     image: require("../assets/latte-art.jpg"),
+//     popular: true,
+//   },
+//   {
+//     id: 2,
+//     title: "20% Off Order",
+//     cafe: "The Roastery",
+//     points: 300,
+//     image: require("../assets/cafe-1.jpg"),
+//     popular: false,
+//   },
+// ];
 
 // ─── Cafe-owner mock data ────────────────────────────────────────────────────
 interface CafeProgram {
@@ -94,12 +95,15 @@ export default function RewardsScreen({ navigation }) {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const toastAnim = useRef(new Animated.Value(-scale(80))).current;
   const [showQR, setShowQR] = useState(false);
+  const searchRef = useRef<React.ElementRef<typeof TextInput>>(null);
   const [selectedCafe, setSelectedCafe] = useState<{
     id: string;
     name: string;
   } | null>(null);
-  const [cafes, setCafes] = useState<{ id: string; name: string }[]>([]);
   const [showCafePicker, setShowCafePicker] = useState(false);
+  const [cafeSearch, setCafeSearch] = useState("");
+  const [cafes, setCafes] = useState<{ id: string; name: string }[]>([]);
+
 
   const showToast = (message: string, type: "success" | "error" = "error") => {
     setToast({ message, type });
@@ -110,6 +114,10 @@ export default function RewardsScreen({ navigation }) {
       );
     }, 3000);
   };
+
+  const filteredCafes = cafes.filter((cafe) =>
+    cafe.name.toLowerCase().includes(cafeSearch.toLowerCase())
+  );
 
   // Entry animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -125,27 +133,70 @@ export default function RewardsScreen({ navigation }) {
 
       const [{ data: loyaltyData }, { data: catalogData }, { data: txData }] = await Promise.all([
         supabase.from("loyalty_accounts").select("tier").eq("user_id", userId).single(),
-        supabase.from("rewards").select("id, name, description, points_required").eq("active", true).order("points_required"),
+        selectedCafe
+        ? supabase
+            .from("rewards")
+            .select("id, title, description, points_required, cafe_id, cafes(name)")
+            .eq("active", true)
+            .eq("cafe_id", selectedCafe.id)
+            .order("points_required")
+        : Promise.resolve({ data: [] }),
         supabase.from("loyalty_transactions").select("id, points_change, reason, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
       ]);
 
       if (loyaltyData?.tier) setTier(loyaltyData.tier);
       if (txData) setTransactions(txData);
 
-      if (catalogData && catalogData.length > 0) {
-        setCatalogRewards(
-          catalogData.map((r: any, i: number) => ({
-            id: i + 1,
-            title: r.name,
-            cafe: "Any participating cafe",
-            points: r.points_required,
-            image: require("../assets/latte-art.jpg"),
-            popular: i === 0,
-          }))
-        );
-      }
+      setCatalogRewards(
+        (catalogData || []).map((r: any, i: number) => ({
+          id: r.id,
+          title: r.title,
+          cafe: r.cafes?.name || selectedCafe?.name || "",
+          points: r.points_required,
+          image: require("../assets/latte-art.jpg"),
+          popular: i === 0,
+        }))
+      );
     } catch (err) {
       console.error("fetchTierAndCatalog error:", err);
+    }
+  };
+
+  const redeemReward = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      const res = await fetch(`${API_URL}/api/rewards/redeem`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          reward_id: selectedReward?.id,
+          cafe_id: selectedCafe?.id,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data.error || "Failed to redeem");
+        return;
+      }
+
+      showToast("Reward redeemed!", "success");
+
+      setSelectedReward(null);
+      setShowQR(false);
+
+      fetchPoints();
+      fetchTierAndCatalog();
+
+    } catch (err) {
+      console.error(err);
+      showToast("Something went wrong");
     }
   };
 
@@ -171,16 +222,22 @@ export default function RewardsScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       fetchPoints();
-      fetchTierAndCatalog();
-      fetchCafes(); 
+      fetchCafes();
     }, [])
   );
 
   useEffect(() => {
     if (selectedCafe) {
       fetchTierAndCatalog();
+    } else {
+      setCatalogRewards([]);
     }
   }, [selectedCafe]);
+  // useEffect(() => {
+  //   if (selectedCafe) {
+  //     fetchTierAndCatalog();
+  //   }
+  // }, [selectedCafe]);
 
   const fetchCafes = async () => {
     try {
@@ -207,8 +264,19 @@ export default function RewardsScreen({ navigation }) {
     ]).start();
   }, []);
 
+
+  useEffect(() => {
+    if (showCafePicker) {
+      setTimeout(() => {
+      if (searchRef.current) {
+        searchRef.current.focus();
+      }
+    }, 100);
+    }
+  }, [showCafePicker]);
+
   // Customer state
-  const [availableRewards] = useState<Reward[]>(initialRewards);
+  // const [availableRewards] = useState<Reward[]>(initialRewards);
 
   // Cafe state
   const [programs, setPrograms] = useState<CafeProgram[]>(cafePrograms);
@@ -251,13 +319,13 @@ export default function RewardsScreen({ navigation }) {
   }, []);
 
   const generateQRValue = () => {
-    if (!selectedReward) return "";
+    if (!selectedReward || !selectedCafe || !userId) return "";
 
     return JSON.stringify({
       user_id: userId,
-      cafe_id: selectedCafe?.id,
-      reward: selectedReward.title,
-      points: selectedReward.points,
+      cafe_id: selectedCafe.id,
+      reward_id: selectedReward.id,
+      submission_token: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
       timestamp: Date.now(),
     });
   };
@@ -309,12 +377,12 @@ export default function RewardsScreen({ navigation }) {
                   <Text style={styles.sectionTitle}>Select Cafe</Text>
 
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {["Cafe A", "Cafe B", "The Roastery"].map((cafe) => {
-                      const isSelected = selectedCafe === cafe;
+                    {cafes.map((cafe) => {
+                      const isSelected = selectedCafe?.id === cafe.id;
 
                       return (
                         <TouchableOpacity
-                          key={cafe}
+                          key={cafe.id}
                           onPress={() => setSelectedCafe(cafe)}
                           style={[
                             styles.cafeChip,
@@ -327,7 +395,7 @@ export default function RewardsScreen({ navigation }) {
                               isSelected && { color: "#FFF" },
                             ]}
                           >
-                            {cafe}
+                            {cafe.name}
                           </Text>
                         </TouchableOpacity>
                       );
@@ -484,6 +552,7 @@ export default function RewardsScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
 
+
           {/* Transaction History */}
           {transactions.length > 0 && (
             <View style={styles.section}>
@@ -541,7 +610,11 @@ export default function RewardsScreen({ navigation }) {
                     size="sm"
                       variant={canAfford && selectedCafe ? "caramel" : "outline"}
                       disabled={!canAfford || !selectedCafe}
-                      onPress={() => setSelectedReward(reward)}
+                      onPress={() => {
+                        if (!selectedCafe) return;
+                        setSelectedReward(reward);
+                        setShowQR(false);
+                      }}
                   />
                 </View>
               );
@@ -578,13 +651,15 @@ export default function RewardsScreen({ navigation }) {
 
             {!showQR ? (
               <>
-                <Button title="Confirm Redemption" onPress={handleRedeem} />
+                <Button title="Confirm Redemption" onPress={redeemReward} />
               </>
             ) : (
               <>
               {/* ─── QR CODE ─── */}
               <View style={styles.qrContainer}>
-                <QRCode value={generateQRValue()} size={180} />
+                {generateQRValue() !== "" && (
+                  <QRCode value={generateQRValue()} size={180} />
+                )}
               </View>
               </>
             )}
@@ -618,27 +693,51 @@ export default function RewardsScreen({ navigation }) {
 
                   <Text style={styles.modalTitle}>Select a Cafe</Text>
 
+                  <TextInput
+                    ref={searchRef}
+                    placeholder="Search cafes..."
+                    value={cafeSearch}
+                    onChangeText={setCafeSearch}
+                    style={styles.searchInput}
+                  />
+
                   <ScrollView style={{ maxHeight: 300 }}>
-                    {cafes.map((cafe) => (
+                    {filteredCafes.map((cafe) => (
                       <TouchableOpacity
                         key={cafe.id}
                         style={styles.cafeOption}
                         onPress={() => {
                           setSelectedCafe(cafe);
                           setShowCafePicker(false);
+                          setCafeSearch("");
                         }}
                       >
                         <Text style={styles.cafeOptionText}>{cafe.name}</Text>
                       </TouchableOpacity>
                     ))}
+
+                    {filteredCafes.length === 0 && (
+                      <Text style={{ color: "#777", textAlign: "center", marginTop: 20 }}>
+                        No cafes found
+                      </Text>
+                    )}
                   </ScrollView>
 
                   <Pressable
                     style={styles.closeBtn}
-                    onPress={() => setShowCafePicker(false)}
+                    onPress={() => {
+                      setShowCafePicker(false);
+                      setCafeSearch("");
+                    }}
                   >
                     <Text style={{ color: "#999" }}>Cancel</Text>
                   </Pressable>
+
+                  {cafeSearch.length > 0 && (
+                    <TouchableOpacity onPress={() => setCafeSearch("")}>
+                      <Text style={{ color: "#D4A373", marginBottom: 10 }}>Clear</Text>
+                    </TouchableOpacity>
+                  )}
 
                 </View>
               </View>
@@ -1005,5 +1104,16 @@ const styles = StyleSheet.create({
   cafeOptionText: {
     fontSize: moderateScale(14),
     color: "#1A1A1A",
+  },
+
+  searchInput: {
+    borderWidth: 1,
+    borderColor: "#E5DED8",
+    borderRadius: scale(10),
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(10),
+    marginBottom: scale(12),
+    fontSize: moderateScale(14),
+    backgroundColor: "#F7F3F0",
   },
 });
