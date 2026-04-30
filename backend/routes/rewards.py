@@ -23,7 +23,7 @@ def user_points():
 def user_points_history():
     user_id = g.user["id"]
 
-    history = get_user_points_history(user_id)
+    history = get_points_activity(user_id)
 
     return jsonify({
         "user_id": user_id,
@@ -95,7 +95,7 @@ def get_rewards_for_cafe(cafe_id):
 @rewards_bp.route("/redeem", methods=["POST"])
 @require_auth
 def redeem_reward():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     user_id = g.user["id"]
 
     if not data:
@@ -114,7 +114,7 @@ def redeem_reward():
     if not submission_token:
         return jsonify({"error": "Missing submission_token"}), 400
 
-    existing = supabase.table("loyalty_transactions") \
+    existing = supabase.table("point_transactions") \
         .select("id") \
         .eq("submission_token", submission_token) \
         .execute()
@@ -158,16 +158,12 @@ def redeem_reward():
         if current_points < points_needed:
             return jsonify({"error": "Not enough points"}), 400
 
-        updated_points = get_user_points(user_id)
-
-        if updated_points < points_needed:
-            return jsonify({"error": "Not enough points"}), 400
 
         # Deduct points
-        supabase.table("loyalty_transactions").insert({
+        supabase.table("point_transactions").insert({
             "user_id": user_id,
             "points_change": -points_needed,
-            "reason": "Reward redemption",
+            "reason": f"Redeemed: {reward.data.get('title', 'Reward')}",
             "submission_token": submission_token
         }).execute()
 
@@ -189,3 +185,24 @@ def redeem_reward():
     except Exception as e:
         print("Redeem error:", e)
         return jsonify({"error": "Internal error"}), 500
+    
+def get_points_activity(user_id: str):
+    res = supabase.table("point_transactions") \
+        .select("points_change, reason, created_at") \
+        .eq("user_id", user_id) \
+        .order("created_at", desc=True) \
+        .execute()
+
+    if not res.data:
+        return []
+
+    return [
+        {
+            "points": t["points_change"],
+            "reason": t["reason"],
+            "date": t["created_at"],
+            "type": "earn" if t["points_change"] > 0 else "redeem",
+            "display": f"{'+' if t['points_change'] > 0 else ''}{t['points_change']} pts"
+        }
+        for t in res.data
+    ]

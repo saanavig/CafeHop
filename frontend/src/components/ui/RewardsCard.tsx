@@ -1,14 +1,14 @@
-import React, { useEffect, useRef } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
   Animated,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
+import { ChevronRight, Gift, Star } from "lucide-react-native";
+import React, { useEffect, useRef } from "react";
+import { moderateScale, scale, verticalScale } from "../../utils/responsive";
 
-import { Gift, ChevronRight, Star } from "lucide-react-native";
 import Button from "./Button";
-import { scale, moderateScale, verticalScale } from "../../utils/responsive";
 
 interface RewardsCardProps {
   points: number;
@@ -30,8 +30,9 @@ export default function RewardsCard({
   // onScan,
 }: RewardsCardProps) {
 
-  const progress = (points / nextReward) * 100;
+  const progress = Math.min((points / nextReward) * 100, 100);
   const progressAnim = useRef(new Animated.Value(0)).current;
+
 
   useEffect(() => {
     Animated.timing(progressAnim, {
@@ -99,7 +100,7 @@ export default function RewardsCard({
             Progress to next reward
           </Text>
           <Text style={styles.progressText}>
-            {nextReward - points} pts away
+              {Math.max(nextReward - points, 0)} pts away
           </Text>
         </View>
 

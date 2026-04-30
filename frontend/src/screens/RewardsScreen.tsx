@@ -33,24 +33,25 @@ interface Reward {
   popular: boolean;
 }
 
-// const initialRewards: Reward[] = [
-//   {
-//     id: 1,
-//     title: "Free Latte",
-//     cafe: selectedCafe?.name || "",
-//     points: 500,
-//     image: require("../assets/latte-art.jpg"),
-//     popular: true,
-//   },
-//   {
-//     id: 2,
-//     title: "20% Off Order",
-//     cafe: "The Roastery",
-//     points: 300,
-//     image: require("../assets/cafe-1.jpg"),
-//     popular: false,
-//   },
-// ];
+const TIER_CONFIG = [
+  { name: "bronze", min: 0 },
+  { name: "silver", min: 1000 },
+  { name: "gold", min: 3000 },
+  { name: "platinum", min: 7000 },
+];
+
+const getTierData = (points: number) => {
+  for (let i = TIER_CONFIG.length - 1; i >= 0; i--) {
+    if (points >= TIER_CONFIG[i].min) {
+      return {
+        tier: TIER_CONFIG[i].name,
+        current: TIER_CONFIG[i].min,
+        next: TIER_CONFIG[i + 1]?.min ?? TIER_CONFIG[i].min + 3000,
+      };
+    }
+  }
+  return { tier: "bronze", current: 0, next: 1000 };
+};
 
 // ─── Cafe-owner mock data ────────────────────────────────────────────────────
 interface CafeProgram {
@@ -91,7 +92,7 @@ export default function RewardsScreen({ navigation }) {
   // const [earnedPoints, setEarnedPoints] = useState(0);
   const [tier, setTier] = useState("bronze");
   const [catalogRewards, setCatalogRewards] = useState<Reward[]>([]);
-  const [transactions, setTransactions] = useState<{ id: string; points_change: number; reason: string; created_at: string }[]>([]);
+  // const [transactions, setTransactions] = useState<{ id: string; points_change: number; reason: string; created_at: string }[]>([]);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const toastAnim = useRef(new Animated.Value(-scale(80))).current;
   const [showQR, setShowQR] = useState(false);
@@ -104,6 +105,14 @@ export default function RewardsScreen({ navigation }) {
   const [cafeSearch, setCafeSearch] = useState("");
   const [cafes, setCafes] = useState<{ id: string; name: string }[]>([]);
 
+  const getTier = (points: number): string => {
+    if (points >= 7000) return "platinum";
+    if (points >= 3000) return "gold";
+    if (points >= 1000) return "silver";
+    return "bronze";
+  };
+
+  // const tierData = getTierData(points);
 
   const showToast = (message: string, type: "success" | "error" = "error") => {
     setToast({ message, type });
@@ -131,21 +140,17 @@ export default function RewardsScreen({ navigation }) {
       const userId = sessionData.session?.user.id;
       if (!userId) return;
 
-      const [{ data: loyaltyData }, { data: catalogData }, { data: txData }] = await Promise.all([
-        supabase.from("loyalty_accounts").select("tier").eq("user_id", userId).single(),
-        selectedCafe
-        ? supabase
-            .from("rewards")
-            .select("id, title, description, points_required, cafe_id, cafes(name)")
-            .eq("active", true)
-            .eq("cafe_id", selectedCafe.id)
-            .order("points_required")
-        : Promise.resolve({ data: [] }),
-        supabase.from("loyalty_transactions").select("id, points_change, reason, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
-      ]);
+      const { data: catalogData } = selectedCafe
+      ? await supabase
+          .from("rewards")
+          .select("points_required, cafe_id, active, title")
+          .eq("active", true)
+          .eq("cafe_id", selectedCafe.id)
+          .order("points_required")
+      : { data: [] };
 
-      if (loyaltyData?.tier) setTier(loyaltyData.tier);
-      if (txData) setTransactions(txData);
+      // if (loyaltyData?.tier) setTier(loyaltyData.tier);
+      // if (txData) setTransactions(txData);
 
       setCatalogRewards(
         (catalogData || []).map((r: any, i: number) => ({
@@ -157,6 +162,11 @@ export default function RewardsScreen({ navigation }) {
           popular: i === 0,
         }))
       );
+
+      console.log("Selected cafe:", selectedCafe);
+      console.log("Catalog raw:", catalogData);
+  
+      console.log("Catalog processed:", catalogRewards);
     } catch (err) {
       console.error("fetchTierAndCatalog error:", err);
     }
@@ -167,16 +177,18 @@ export default function RewardsScreen({ navigation }) {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
-      const res = await fetch(`${API_URL}/api/rewards/redeem`, {
+      const res = await fetch(`${API_URL}/api/redeem`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          reward_id: selectedReward?.id,
-          cafe_id: selectedCafe?.id,
-        }),
+        reward_id: selectedReward?.id,
+        cafe_id: selectedCafe?.id,
+        submission_token: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
+        timestamp: Date.now(),
+      }),
       });
 
       const data = await res.json();
@@ -204,7 +216,6 @@ export default function RewardsScreen({ navigation }) {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
-      const userId = sessionData.session?.user.id;
 
       const res = await fetch(`${API_URL}/api/users/me/points`, {
         headers: {
@@ -213,9 +224,20 @@ export default function RewardsScreen({ navigation }) {
       });
 
       const data = await res.json();
-      setPoints(data.points);
+
+      if (!res.ok) {
+        console.error("Error fetching points:", data);
+        return;
+      }
+
+      const pts = data.points ?? 0;
+      setPoints(pts);
+
+      const computedTier = getTier(pts);
+      setTier(computedTier);
+
     } catch (err) {
-      console.error("Error fetching points:", err);
+      console.error("Fetch points error:", err);
     }
   };
 
@@ -252,6 +274,11 @@ export default function RewardsScreen({ navigation }) {
       }
 
       setCafes(data || []);
+
+      // if (data && data.length > 0 && !selectedCafe) {
+      //   setSelectedCafe(data[0]);
+      // }
+
     } catch (err) {
       console.error("Fetch cafes error:", err);
     }
@@ -518,21 +545,25 @@ export default function RewardsScreen({ navigation }) {
 
           {/* Rewards Card */}
           {(() => {
-            const TIER_MAP: Record<string, { label: string; nextThreshold: number; themeColor: "caramel" | "gold" }> = {
-              bronze: { label: "BRONZE", nextThreshold: 1000, themeColor: "caramel" },
-              silver: { label: "SILVER", nextThreshold: 3000, themeColor: "caramel" },
-              gold:   { label: "GOLD",   nextThreshold: 5000, themeColor: "gold" },
+            const tierData = getTierData(points);
+
+            const TIER_STYLES: Record<string, { label: string; themeColor: "caramel" | "gold" }> = {
+              bronze: { label: "BRONZE", themeColor: "caramel" },
+              silver: { label: "SILVER", themeColor: "caramel" },
+              gold: { label: "GOLD", themeColor: "gold" },
+              platinum: { label: "PLATINUM", themeColor: "gold" },
             };
-            const tierInfo = TIER_MAP[tier] ?? TIER_MAP.bronze;
+
+            const tierStyle = TIER_STYLES[tierData.tier];
+
             return (
               <RewardsCard
-                points={points}
-                status={tierInfo.label}
-                nextReward={tierInfo.nextThreshold}
-                themeColor={tierInfo.themeColor}
+                points={points - tierData.current}
+                status={tierStyle.label}
+                nextReward={tierData.next - tierData.current}
+                themeColor={tierStyle.themeColor}
                 description="Earn points and unlock perks"
                 role={role}
-                // onScan={() => setShowScan(true)}
               />
             );
           })()}
@@ -554,7 +585,7 @@ export default function RewardsScreen({ navigation }) {
 
 
           {/* Transaction History */}
-          {transactions.length > 0 && (
+          {/* {transactions.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Points History</Text>
               {transactions.map((tx) => {
@@ -584,7 +615,7 @@ export default function RewardsScreen({ navigation }) {
                 );
               })}
             </View>
-          )}
+          )} */}
 
           {/* Rewards List */}
           <View style={styles.section}>
@@ -733,11 +764,11 @@ export default function RewardsScreen({ navigation }) {
                     <Text style={{ color: "#999" }}>Cancel</Text>
                   </Pressable>
 
-                  {cafeSearch.length > 0 && (
+                  {/* {cafeSearch.length > 0 && (
                     <TouchableOpacity onPress={() => setCafeSearch("")}>
                       <Text style={{ color: "#D4A373", marginBottom: 10 }}>Clear</Text>
                     </TouchableOpacity>
-                  )}
+                  )} */}
 
                 </View>
               </View>
