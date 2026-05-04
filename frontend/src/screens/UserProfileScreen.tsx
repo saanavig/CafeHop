@@ -15,15 +15,14 @@ import {
   View,
 } from "react-native";
 import { Bookmark, Camera, Grid3X3, Heart, Layers, MapPin, Plus, Star, Store, User, X } from "lucide-react-native";
-
 import React, { useEffect, useRef, useState } from "react";
 import { deviceWidth, moderateScale, scale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../api/supabaseClient";
 import { useRole } from "../context/RoleContext";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 const SCREEN_WIDTH = deviceWidth;
 
@@ -129,6 +128,78 @@ export default function UserProfileScreen() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showMenu, setShowMenu] = useState(false);
   const [menuPostId, setMenuPostId] = useState<number | null>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [cafeId, setCafeId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getCafe = async () => {
+      if (!isCafe) return;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("cafes")
+        .select("id")
+        .eq("owner_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching cafe:", error);
+        return;
+      }
+
+      if (data) {
+        setCafeId(data.id);
+      }
+    };
+
+    getCafe();
+  }, [isCafe]);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      setReviewsLoading(true);
+
+      try {
+        if (isCafe) {
+          const { data, error } = await supabase
+            .from("reviews")
+            .select("*, cafes(name)")
+            .eq("cafe_id", cafeId)
+            .order("created_at", { ascending: false });
+
+          if (error) {
+            console.error(error);
+            return;
+          }
+
+          setReviews(data || []);
+        } else {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const { data, error } = await supabase
+            .from("reviews")
+            .select("*, cafes(name)")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false });
+
+          if (error) {
+            console.error(error);
+            return;
+          }
+
+          setReviews(data || []);
+        }
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, [isCafe]);
 
   useEffect(() => {
     if (!cafeQuery.trim()) {
@@ -577,28 +648,40 @@ export default function UserProfileScreen() {
             {activeTab === "reviews" && (
               <View style={styles.reviewsContainer}>
                 <Text style={styles.sectionTitle}>{isCafe ? "Customer Reviews" : "Reviews"}</Text>
-                {(isCafe
-                  ? [
-                      { text: "Best flat white in Brooklyn. Always consistent!", stars: 5 },
-                      { text: "Love the reading nook — perfect for WFH days.", stars: 5 },
-                      { text: "Croissants are fresh every morning. Highly recommend!", stars: 4 },
-                      { text: "Staff are super friendly, great ambience.", stars: 5 },
-                      { text: "The matcha latte is absolutely divine.", stars: 4 },
-                    ]
-                  : Array.from({ length: 5 }).map(() => ({
-                      text: "Great place! Love the atmosphere and coffee quality.",
-                      stars: 4,
-                    }))
-                ).map((review, i) => (
-                  <View key={i} style={styles.reviewItem}>
-                    <Text style={styles.reviewText}>{review.text}</Text>
-                    <View style={styles.reviewStars}>
-                      {Array.from({ length: 5 }).map((_, j) => (
-                        <Star key={j} size={scale(16)} color={j < review.stars ? "#D4A373" : "#ddd"} fill={j < review.stars ? "#D4A373" : "transparent"} />
-                      ))}
+                {reviewsLoading ? (
+                  <Text style={styles.emptyText}>Loading reviews...</Text>
+                ) : reviews.length === 0 ? (
+                  <Text style={styles.emptyText}>No reviews yet.</Text>
+                ) : (
+                  reviews.map((review) => (
+                    <View key={review.id} style={styles.reviewItem}>
+                      <View style={styles.reviewStars}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            size={scale(16)}
+                            color={star <= review.rating ? "#D4A373" : "#ddd"}
+                            fill={star <= review.rating ? "#D4A373" : "transparent"}
+                          />
+                        ))}
+                      </View>
+
+                      <Text style={styles.reviewText}>
+                        {review.review_text || "No written review"}
+                      </Text>
+
+                      {!isCafe && (
+                        <Text style={{ fontSize: 12, color: "#888", marginTop: 4 }}>
+                          {review.cafes?.name || "Cafe"}
+                        </Text>
+                      )}
+
+                      <Text style={{ fontSize: 11, color: "#AAA", marginTop: 4 }}>
+                        {new Date(review.created_at).toLocaleDateString()}
+                      </Text>
                     </View>
-                  </View>
-                ))}
+                  ))
+                )}
               </View>
             )}
 
