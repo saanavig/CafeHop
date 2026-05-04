@@ -646,44 +646,51 @@ export default function UserProfileScreen() {
 
             {/* Reviews */}
             {activeTab === "reviews" && (
-              <View style={styles.reviewsContainer}>
-                <Text style={styles.sectionTitle}>{isCafe ? "Customer Reviews" : "Reviews"}</Text>
-                {reviewsLoading ? (
-                  <Text style={styles.emptyText}>Loading reviews...</Text>
-                ) : reviews.length === 0 ? (
-                  <Text style={styles.emptyText}>No reviews yet.</Text>
-                ) : (
-                  reviews.map((review) => (
-                    <View key={review.id} style={styles.reviewItem}>
-                      <View style={styles.reviewStars}>
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            size={scale(16)}
-                            color={star <= review.rating ? "#D4A373" : "#ddd"}
-                            fill={star <= review.rating ? "#D4A373" : "transparent"}
-                          />
-                        ))}
-                      </View>
+  <View style={styles.reviewsContainer}>
+    <Text style={styles.sectionTitle}>
+      {isCafe ? "Customer Reviews" : "Reviews"}
+    </Text>
 
-                      <Text style={styles.reviewText}>
-                        {review.review_text || "No written review"}
-                      </Text>
+    {reviewsLoading ? (
+      <Text style={styles.emptyText}>Loading reviews...</Text>
+    ) : reviews.length === 0 ? (
+      <Text style={styles.emptyText}>No reviews yet.</Text>
+    ) : (
+      reviews.map((review) => (
+        <View key={review.id} style={styles.reviewItem}>
+          
+          {/* TOP ROW: Cafe + Date */}
+          <View style={styles.reviewHeaderRow}>
+            <Text style={styles.reviewCafeName}>
+              {review.cafes?.name || "Cafe"}
+            </Text>
 
-                      {!isCafe && (
-                        <Text style={{ fontSize: 12, color: "#888", marginTop: 4 }}>
-                          {review.cafes?.name || "Cafe"}
-                        </Text>
-                      )}
+            <Text style={styles.reviewDate}>
+              {new Date(review.created_at).toLocaleDateString()}
+            </Text>
+          </View>
 
-                      <Text style={{ fontSize: 11, color: "#AAA", marginTop: 4 }}>
-                        {new Date(review.created_at).toLocaleDateString()}
-                      </Text>
-                    </View>
-                  ))
-                )}
-              </View>
-            )}
+          {/* Stars */}
+          <View style={styles.reviewStars}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Star
+                key={star}
+                size={scale(16)}
+                color={star <= review.rating ? "#D4A373" : "#ddd"}
+                fill={star <= review.rating ? "#D4A373" : "transparent"}
+              />
+            ))}
+          </View>
+
+          {/* Review Text */}
+          <Text style={styles.reviewText}>
+            {review.review_text || "No written review"}
+          </Text>
+        </View>
+      ))
+    )}
+  </View>
+)}
 
             {/* Saved */}
             {activeTab === "saved" && !isCafe && (
@@ -1204,4 +1211,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(14), paddingBottom: scale(8),
   },
   locationText: { fontSize: moderateScale(12), color: "#D4A373", fontWeight: "500" },
+
+  reviewHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: scale(6),
+  },
+
+  reviewCafeName: {
+    fontSize: moderateScale(13),
+    fontWeight: "600",
+    color: "#1A1A1A",
+  },
+
+  reviewDate: {
+    fontSize: moderateScale(11),
+    color: "#AAA",
+  },
 });
