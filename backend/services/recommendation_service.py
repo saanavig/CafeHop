@@ -127,7 +127,34 @@ def build_interaction_map_from_profile(user_profile):
 
 
 def build_cafe_profile(cafe, cafe_tags, menu_items, review_stats):
-    attributes = cafe.get("attributes") or {}
+    raw_attributes = cafe.get("attributes") or {}
+
+    if isinstance(raw_attributes, dict):
+        attributes = raw_attributes
+
+    elif isinstance(raw_attributes, list):
+        normalized_attrs = [
+            str(x).strip().lower()
+            for x in raw_attributes
+            if x
+        ]
+
+        attributes = {
+            "raw": normalized_attrs,
+            "wifi": "wifi" in normalized_attrs,
+            "outlets": (
+                "power outlets" in normalized_attrs
+                or "outlets" in normalized_attrs
+            ),
+            "noise_level": None,
+            "atmosphere": normalized_attrs,
+            "vibe": normalized_attrs,
+            "food_preferences": normalized_attrs,
+            "work_preferences": normalized_attrs,
+        }
+
+    else:
+        attributes = {}
 
     tag_names = []
     for tag in cafe_tags:
@@ -156,15 +183,14 @@ def build_cafe_profile(cafe, cafe_tags, menu_items, review_stats):
         "description": cafe.get("description"),
         "price_level": cafe.get("price_level"),
         "attributes": attributes,
-        "wifi": cafe.get("wifi", attributes.get("wifi")),
-        "outlets": cafe.get("outlets", attributes.get("outlets")),
-        "noise_level": cafe.get("noise_level", attributes.get("noise_level")),
+        "wifi": cafe.get("wifi") if cafe.get("wifi") is not None else attributes.get("wifi"),
+        "outlets": cafe.get("outlets") if cafe.get("outlets") is not None else attributes.get("outlets"),
+        "noise_level": cafe.get("noise_level") if cafe.get("noise_level") is not None else attributes.get("noise_level"),
         "tag_names": list(dict.fromkeys(tag_names)),
         "menu_item_names": list(dict.fromkeys(menu_names)),
         "menu_categories": list(dict.fromkeys(menu_categories)),
         "review_stats": review_stats or {"avg_rating": None, "review_count": 0},
     }
-
 
 def score_distance(distance_miles, max_distance):
     if distance_miles is None:

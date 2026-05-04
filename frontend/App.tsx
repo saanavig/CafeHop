@@ -31,6 +31,7 @@ import SplashScreen from "./src/screens/SplashScreen";
 import UserProfileScreen from "./src/screens/UserProfileScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "./src/context/AuthContext";
+import CafeQRScannerScreen from "./src/screens/CafeQRScannerScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -84,6 +85,7 @@ function AppContent() {
         <Stack.Screen name="Rewards" component={RewardsScreen} />
         <Stack.Screen name="Analytics" component={AnalyticsScreen} />
         <Stack.Screen name="CafeEdit" component={CafeEditScreen} />
+        <Stack.Screen name="CafeQRScanner" component={CafeQRScannerScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
