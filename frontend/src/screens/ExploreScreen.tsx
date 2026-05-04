@@ -63,6 +63,12 @@ if (Platform.OS !== "web") {
   Marker = maps.Marker;
 }
 
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
 const SHEET_HEIGHT = height * 0.52;
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -83,6 +89,7 @@ export default function ExploreScreen() {
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [saved, setSaved]                 = useState<string[]>([]);
   const [selectedFilter, setSelectedFilter] = useState("All");
+  const webMapRef = useRef<HTMLDivElement | null>(null);
 
   type Cafe = {
     id: string;
@@ -128,6 +135,7 @@ export default function ExploreScreen() {
   const [cafeRewards, setCafeRewards]     = useState<any[]>([]);
   const [cafeAiProfile, setCafeAiProfile] = useState<{ vibe_summary?: string; best_for?: string[] } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const mapRef = useRef<any>(null);
 
   const tabFade     = useRef(new Animated.Value(1)).current;
   const detailSlide = useRef(new Animated.Value(height)).current;
@@ -290,6 +298,7 @@ export default function ExploreScreen() {
     });
   }, []);
 
+
   useEffect(() => {
     // pinAnimRefs.current.forEach((a) => a.stop());
     // pinAnimRefs.current = [];
@@ -320,20 +329,6 @@ export default function ExploreScreen() {
       y: Math.random() * 0.8,
     },
   }));
-
-  const normalizeAttributes = (attrs: any): string[] => {
-    if (!attrs) return [];
-
-    if (Array.isArray(attrs)) {
-      return attrs.map((a) => a.toLowerCase());
-    }
-
-    if (typeof attrs === "string") {
-      return attrs.toLowerCase().split(",").map((a) => a.trim());
-    }
-
-    return [];
-  };
 
   const filteredCafes: Cafe[] = mergedCafes.filter((c) => {
     const matchesSearch = c.name
@@ -375,10 +370,114 @@ export default function ExploreScreen() {
     });
   };
 
-  // const toggleFilter = (id: string) =>
-  //   setActiveFilters((prev) =>
-  //     prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
-  //   );
+  const waitForMapContainer = (callback: () => void) => {
+    let attempts = 0;
+
+    const check = () => {
+      const el = webMapRef.current;
+
+      if (
+        el &&
+        el instanceof HTMLElement &&
+        el.offsetWidth > 0 &&
+        el.offsetHeight > 0
+      ) {
+        callback();
+      } else {
+        attempts++;
+        if (attempts < 10) {
+          requestAnimationFrame(check);
+        }
+      }
+    };
+
+    check();
+  };
+
+  const initMap = () => {
+    if (!webMapRef.current) return;
+    if (!(webMapRef.current instanceof HTMLElement)) return;
+    if (!window.google || !window.google.maps) return;
+    if (!userLocation) return;
+
+    if (!mapRef.current) {
+      mapRef.current = new window.google.maps.Map(webMapRef.current, {
+        center: {
+          lat: userLocation.lat,
+          lng: userLocation.lng,
+        },
+        zoom: 13,
+      });
+
+      // store markers array
+      mapRef.current.markers = [];
+    }
+
+    const map = mapRef.current;
+
+    if (map.markers) {
+      map.markers.forEach((m: any) => m.setMap(null));
+    }
+    map.markers = [];
+
+    filteredCafes.forEach((cafe) => {
+      if (!cafe.latitude || !cafe.longitude) return;
+
+      const marker = new window.google.maps.Marker({
+        position: {
+          lat: cafe.latitude,
+          lng: cafe.longitude,
+        },
+        map,
+        title: cafe.name,
+      });
+
+      marker.addListener("click", () => {
+        openDetail(cafe);
+      });
+
+      map.markers.push(marker);
+    });
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+
+    // already loaded
+    if (window.google && window.google.maps) {
+      initMap();
+      return;
+    }
+
+    // prevent duplicate script
+    if (document.getElementById("google-maps-script")) return;
+
+    const script = document.createElement("script");
+    script.id = "google-maps-script";
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+
+    script.onload = () => {
+    console.log("Google Maps loaded");
+
+    waitForMapContainer(() => {
+      initMap();
+    });
+  };
+
+    document.body.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    if (!window.google || !window.google.maps) return;
+    if (!webMapRef.current) return;
+
+    waitForMapContainer(() => {
+      initMap();
+    });
+  }, [filteredCafes, userLocation, search]);
 
   const toggleSave = async (id: string) => {
     const isSaved = saved.includes(id);
@@ -404,16 +503,24 @@ export default function ExploreScreen() {
 
       {/* ── PANNABLE MAP ────────────────────────────────────── */}
       {Platform.OS === "web" ? (
-      <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
-        <iframe
-          src={`https://www.google.com/maps?q=${userLocation?.lat || 40.743},${userLocation?.lng || -74.032}&z=14&output=embed`}
+      <View
           style={{
-            border: "none",
-            width: "100%",
-            height: "100%",
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
           }}
-        />
-      </View>
+        >
+          {/* @ts-ignore */}
+          <div
+            ref={webMapRef}
+            style={{
+              width: "100%",
+              height: "100%",
+            }}
+          />
+        </View>
     ) : (
         <MapView
           style={StyleSheet.absoluteFill}
