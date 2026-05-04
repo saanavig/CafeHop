@@ -27,11 +27,9 @@ import {
   Navigation,
   Phone,
   Search,
-  Share2,
   Star,
   Wifi,
   X,
-  Zap,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { moderateScale, scale } from "../utils/responsive";
@@ -437,7 +435,14 @@ export default function ExploreScreen() {
     });
 
       marker.addListener("click", () => {
-        openDetail(cafe);
+        // setSelectedCafeId(cafe.id);
+
+        map.panTo({
+          lat: cafe.latitude,
+          lng: cafe.longitude,
+        });
+
+        navigation.navigate("CafeProfile", { cafe });
       });
 
       map.markers.push(marker);
@@ -927,7 +932,7 @@ export default function ExploreScreen() {
                             <Text style={styles.contactText}>{selectedCafe.website_url || "—"}</Text>
                           </View>
                           <View style={[styles.contactRow, { borderBottomWidth: 0 }]}>
-                            <Instagram size={scale(15)} color="#D4A373" />
+                            <Globe size={scale(15)} color="#D4A373" />
                             <Text style={styles.contactText}>{selectedCafe.instagram_url || "—"}</Text>
                           </View>
                         </View>
