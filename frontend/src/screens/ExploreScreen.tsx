@@ -23,21 +23,19 @@ import {
   Coffee,
   Gift,
   Globe,
-  Instagram,
   MapPin,
   Navigation,
   Phone,
   Search,
-  Share2,
   Star,
   Wifi,
   X,
-  Zap,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { moderateScale, scale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
+import { Platform } from "react-native";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
@@ -54,114 +52,20 @@ const FILTERS = [
   "Open Now",
 ];
 
-const allCafes = [
-  {
-    id: 1,
-    name: "The Roastery",
-    category: "Specialty Coffee",
-    description: "A beloved neighborhood spot renowned for single-origin pour-overs and house-baked pastries. Perfect for work sessions or lazy weekend mornings.",
-    image: require("../assets/cafe-1.jpg"),
-    photos: [
-      require("../assets/cafe-1.jpg"),
-      require("../assets/latte-art.jpg"),
-      require("../assets/cafe-2.jpg"),
-    ],
-    rating: 4.8,
-    distance: "0.3 mi",
-    amenities: ["Wi-Fi", "Outlets", "Coffee"],
-    vibes: ["Cozy", "Quiet"],
-    isOpen: true,
-    priceRange: "$$",
-    reviews: 234,
-    phone: "+1 (718) 555-0101",
-    website: "theroastery.com",
-    instagram: "@theroastery_bk",
-    address: "42 Brew St, Brooklyn",
-    fullHours: {
-      Mon: "7:00 AM – 8:00 PM",
-      Tue: "7:00 AM – 8:00 PM",
-      Wed: "7:00 AM – 8:00 PM",
-      Thu: "7:00 AM – 8:00 PM",
-      Fri: "7:00 AM – 9:00 PM",
-      Sat: "8:00 AM – 9:00 PM",
-      Sun: "9:00 AM – 6:00 PM",
-    },
-    pin: { x: 0.44, y: 0.30 },
-  },
-  {
-    id: 2,
-    name: "Bean & Leaf",
-    category: "Café · Tea Bar",
-    description: "Light-filled minimalist café with an extensive tea menu alongside excellent espresso drinks. A calm escape from the city's energy.",
-    image: require("../assets/cafe-2.jpg"),
-    photos: [
-      require("../assets/cafe-2.jpg"),
-      require("../assets/cafe-3.jpg"),
-      require("../assets/latte-art.jpg"),
-    ],
-    rating: 4.6,
-    distance: "0.5 mi",
-    amenities: ["Wi-Fi", "Coffee"],
-    vibes: ["Bright", "Minimal"],
-    isOpen: true,
-    priceRange: "$",
-    reviews: 189,
-    phone: "+1 (718) 555-0202",
-    website: "beanandleaf.co",
-    instagram: "@beanandleaf",
-    address: "15 Green Ave, Williamsburg",
-    fullHours: {
-      Mon: "8:00 AM – 7:00 PM",
-      Tue: "8:00 AM – 7:00 PM",
-      Wed: "8:00 AM – 7:00 PM",
-      Thu: "8:00 AM – 7:00 PM",
-      Fri: "8:00 AM – 8:00 PM",
-      Sat: "9:00 AM – 8:00 PM",
-      Sun: "10:00 AM – 5:00 PM",
-    },
-    pin: { x: 0.66, y: 0.50 },
-  },
-  {
-    id: 3,
-    name: "Brew Culture",
-    category: "Third Wave Coffee",
-    description: "Industrial-chic space with a rotating selection of micro-roasted beans. Known for exceptional cold brew and a late-night crowd.",
-    image: require("../assets/cafe-3.jpg"),
-    photos: [
-      require("../assets/cafe-3.jpg"),
-      require("../assets/cafe-1.jpg"),
-      require("../assets/latte-art.jpg"),
-    ],
-    rating: 4.9,
-    distance: "0.8 mi",
-    amenities: ["Wi-Fi", "Outlets", "Coffee"],
-    vibes: ["Industrial", "Hipster"],
-    isOpen: false,
-    priceRange: "$$$",
-    reviews: 412,
-    phone: "+1 (718) 555-0303",
-    website: "brewculture.nyc",
-    instagram: "@brewculture",
-    address: "88 Culture Blvd, Bushwick",
-    fullHours: {
-      Mon: "Closed",
-      Tue: "9:00 AM – 10:00 PM",
-      Wed: "9:00 AM – 10:00 PM",
-      Thu: "9:00 AM – 10:00 PM",
-      Fri: "9:00 AM – 11:00 PM",
-      Sat: "10:00 AM – 11:00 PM",
-      Sun: "10:00 AM – 8:00 PM",
-    },
-    pin: { x: 0.26, y: 0.58 },
-  },
-];
+let MapView: any = null;
+let Marker: any = null;
 
-// const FILTER_OPTIONS = [
-//   { id: "open",    label: "Open Now",     Icon: Clock   },
-//   { id: "wifi",    label: "Wi-Fi",        Icon: Wifi    },
-//   { id: "outlets", label: "Outlets",      Icon: Zap     },
-//   { id: "coffee",  label: "Great Coffee", Icon: Coffee  },
-// ];
+if (Platform.OS !== "web") {
+  const maps = eval("require")("react-native-maps");
+  MapView = maps.default;
+  Marker = maps.Marker;
+}
+
+declare global {
+  interface Window {
+    google: any;
+  }
+}
 
 const SHEET_HEIGHT = height * 0.52;
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -183,6 +87,7 @@ export default function ExploreScreen() {
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const [saved, setSaved]                 = useState<string[]>([]);
   const [selectedFilter, setSelectedFilter] = useState("All");
+  const webMapRef = useRef<HTMLDivElement | null>(null);
 
   type Cafe = {
     id: string;
@@ -228,6 +133,7 @@ export default function ExploreScreen() {
   const [cafeRewards, setCafeRewards]     = useState<any[]>([]);
   const [cafeAiProfile, setCafeAiProfile] = useState<{ vibe_summary?: string; best_for?: string[] } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const mapRef = useRef<any>(null);
 
   const tabFade     = useRef(new Animated.Value(1)).current;
   const detailSlide = useRef(new Animated.Value(height)).current;
@@ -262,7 +168,7 @@ export default function ExploreScreen() {
   const MAX_PINS = 60;
   const pulseScales  = useRef(Array.from({ length: MAX_PINS }, () => new Animated.Value(1))).current;
   const pulseOpacity = useRef(Array.from({ length: MAX_PINS }, () => new Animated.Value(0.6))).current;
-  const pinAnimRefs  = useRef<Animated.CompositeAnimation[]>([]);
+  // const pinAnimRefs  = useRef<Animated.CompositeAnimation[]>([]);
 
   useEffect(() => {
     fetchCafes();
@@ -390,9 +296,10 @@ export default function ExploreScreen() {
     });
   }, []);
 
+
   useEffect(() => {
-    pinAnimRefs.current.forEach((a) => a.stop());
-    pinAnimRefs.current = [];
+    // pinAnimRefs.current.forEach((a) => a.stop());
+    // pinAnimRefs.current = [];
     const count = Math.min(cafes.length, MAX_PINS);
     for (let i = 0; i < count; i++) {
       const loop = Animated.loop(
@@ -409,7 +316,7 @@ export default function ExploreScreen() {
         ])
       );
       loop.start();
-      pinAnimRefs.current.push(loop);
+      // pinAnimRefs.current.push(loop);
     }
   }, [cafes.length]);
 
@@ -420,20 +327,6 @@ export default function ExploreScreen() {
       y: Math.random() * 0.8,
     },
   }));
-
-  const normalizeAttributes = (attrs: any): string[] => {
-    if (!attrs) return [];
-
-    if (Array.isArray(attrs)) {
-      return attrs.map((a) => a.toLowerCase());
-    }
-
-    if (typeof attrs === "string") {
-      return attrs.toLowerCase().split(",").map((a) => a.trim());
-    }
-
-    return [];
-  };
 
   const filteredCafes: Cafe[] = mergedCafes.filter((c) => {
     const matchesSearch = c.name
@@ -475,10 +368,125 @@ export default function ExploreScreen() {
     });
   };
 
-  // const toggleFilter = (id: string) =>
-  //   setActiveFilters((prev) =>
-  //     prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
-  //   );
+  const waitForMapContainer = (callback: () => void) => {
+    let attempts = 0;
+
+    const check = () => {
+      const el = webMapRef.current;
+
+      if (
+        el &&
+        el instanceof HTMLElement &&
+        el.offsetWidth > 0 &&
+        el.offsetHeight > 0
+      ) {
+        callback();
+      } else {
+        attempts++;
+        if (attempts < 10) {
+          requestAnimationFrame(check);
+        }
+      }
+    };
+
+    check();
+  };
+
+  const initMap = () => {
+    if (!webMapRef.current) return;
+    if (!(webMapRef.current instanceof HTMLElement)) return;
+    if (!window.google || !window.google.maps) return;
+    if (!userLocation) return;
+
+    if (!mapRef.current) {
+      mapRef.current = new window.google.maps.Map(webMapRef.current, {
+        center: {
+          lat: userLocation.lat,
+          lng: userLocation.lng,
+        },
+        zoom: 13,
+      });
+
+      // store markers array
+      mapRef.current.markers = [];
+    }
+
+    const map = mapRef.current;
+
+    if (map.markers) {
+      map.markers.forEach((m: any) => m.setMap(null));
+    }
+    map.markers = [];
+
+    filteredCafes.forEach((cafe) => {
+      if (!cafe.latitude || !cafe.longitude) return;
+
+      const marker = new window.google.maps.Marker({
+      position: {
+        lat: cafe.latitude,
+        lng: cafe.longitude,
+      },
+      map,
+      title: cafe.name,
+      icon: {
+        url: "https://cdn-icons-png.flaticon.com/512/924/924514.png",
+        scaledSize: new window.google.maps.Size(36, 36),
+      },
+    });
+
+      marker.addListener("click", () => {
+        // setSelectedCafeId(cafe.id);
+
+        map.panTo({
+          lat: cafe.latitude,
+          lng: cafe.longitude,
+        });
+
+        navigation.navigate("CafeProfile", { cafeId: cafe.id });
+      });
+
+      map.markers.push(marker);
+    });
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+
+    // already loaded
+    if (window.google && window.google.maps) {
+      initMap();
+      return;
+    }
+
+    // prevent duplicate script
+    if (document.getElementById("google-maps-script")) return;
+
+    const script = document.createElement("script");
+    script.id = "google-maps-script";
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+
+    script.onload = () => {
+    console.log("Google Maps loaded");
+
+    waitForMapContainer(() => {
+      initMap();
+    });
+  };
+
+    document.body.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    if (!window.google || !window.google.maps) return;
+    if (!webMapRef.current) return;
+
+    waitForMapContainer(() => {
+      initMap();
+    });
+  }, [filteredCafes, userLocation, search]);
 
   const toggleSave = async (id: string) => {
     const isSaved = saved.includes(id);
@@ -503,77 +511,66 @@ export default function ExploreScreen() {
       <StatusBar barStyle="dark-content" />
 
       {/* ── PANNABLE MAP ────────────────────────────────────── */}
-      <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          { transform: [{ translateX: mapOffset.x }, { translateY: mapOffset.y }] },
-        ]}
-        {...mapPanResponder.panHandlers}
-      >
-        <View style={styles.mapBg}>
-          <View style={[styles.park,  { top: "14%", left: "54%", width: 88, height: 64 }]} />
-          <View style={[styles.park,  { top: "62%", left: "8%",  width: 66, height: 48 }]} />
-          <View style={[styles.water, { top: "68%", left: "52%", width: 110, height: 56 }]} />
-          {[
-            { t: "7%",  l: "4%",  w: 100, h: 68 },
-            { t: "20%", l: "28%", w: 82,  h: 54 },
-            { t: "10%", l: "64%", w: 92,  h: 66 },
-            { t: "44%", l: "38%", w: 72,  h: 48 },
-            { t: "54%", l: "70%", w: 86,  h: 52 },
-            { t: "30%", l: "72%", w: 60,  h: 42 },
-          ].map((b, i) => (
-            <View key={i} style={[styles.block, { top: b.t as any, left: b.l as any, width: b.w, height: b.h }]} />
-          ))}
-          {["21%", "39%", "57%", "73%"].map((t, i) => (
-            <View key={`h${i}`} style={[styles.roadH, { top: t as any }]} />
-          ))}
-          {["19%", "39%", "61%", "79%"].map((l, i) => (
-            <View key={`v${i}`} style={[styles.roadV, { left: l as any }]} />
-          ))}
-          <View style={[styles.roadHMaj, { top: "39%" }]} />
-          <View style={[styles.roadVMaj, { left: "39%" }]} />
+      {Platform.OS === "web" ? (
+      <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
+        >
+          {/* @ts-ignore */}
+          <div
+            ref={webMapRef}
+            style={{
+              width: "100%",
+              height: "100%",
+            }}
+          />
         </View>
+    ) : (
+        <MapView
+          style={StyleSheet.absoluteFill}
+          initialRegion={{
+            latitude: userLocation?.lat || 40.743,
+            longitude: userLocation?.lng || -74.032,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }}
+          showsUserLocation
+          showsMyLocationButton
+        >
+          {filteredCafes.map((cafe) => {
+            if (!cafe.latitude || !cafe.longitude) return null;
 
-        <View style={styles.youAreHere}>
-          <View style={styles.youRing} />
-          <View style={styles.youDot} />
-        </View>
-
-        {filteredCafes.map((cafe, i) => (
-          <TouchableOpacity
-            key={cafe.id}
-            style={[
-              styles.pinWrap,
-              {
-                top: `${(cafe.pin?.y ?? Math.random() * 0.8) * 100}%`,
-                left: `${(cafe.pin?.x ?? Math.random() * 0.8) * 100}%`,
-              },
-            ]}
-            onPress={() => openDetail(cafe)}
-            activeOpacity={0.8}
-          >
-            <Animated.View
-              style={[
-                styles.pinRing,
-                {
-                  transform: [{ scale: pulseScales[i] }],
-                  opacity: pulseOpacity[i],
-                },
-              ]}
-            />
-            <View
-              style={[
-                styles.pin,
-                selectedCafe?.id === cafe.id && styles.pinSelected,
-              ]}
-            >
-              <Text style={styles.pinText}>
-                {cafe.name?.split(" ")[0] ?? "Cafe"}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </Animated.View>
+            return (
+              <Marker
+                key={cafe.id}
+                coordinate={{
+                  latitude: cafe.latitude,
+                  longitude: cafe.longitude,
+                }}
+                onPress={() => openDetail(cafe)}
+              >
+                <View
+                  style={{
+                    backgroundColor: "#D4A373",
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
+                    borderRadius: 20,
+                  }}
+                >
+                  <Text style={{ color: "#FFF", fontWeight: "700", fontSize: 11 }}>
+                    {cafe.name?.split(" ")[0] ?? "Cafe"}
+                  </Text>
+                </View>
+              </Marker>
+            );
+          })}
+        </MapView>
+      )}
 
       {/* ── BOTTOM SHEET (list) ─────────────────────────────── */}
       <View style={styles.sheet}>
@@ -684,7 +681,7 @@ export default function ExploreScreen() {
             <TouchableOpacity
               key={cafe.id}
               style={styles.cafeCard}
-              onPress={() => navigation.navigate("CafeProfile", { cafe })}
+              onPress={() => navigation.navigate("CafeProfile", { cafeId: cafe.id })}
               activeOpacity={0.9}
             >
               <Image
@@ -935,7 +932,7 @@ export default function ExploreScreen() {
                             <Text style={styles.contactText}>{selectedCafe.website_url || "—"}</Text>
                           </View>
                           <View style={[styles.contactRow, { borderBottomWidth: 0 }]}>
-                            <Instagram size={scale(15)} color="#D4A373" />
+                            <Globe size={scale(15)} color="#D4A373" />
                             <Text style={styles.contactText}>{selectedCafe.instagram_url || "—"}</Text>
                           </View>
                         </View>
