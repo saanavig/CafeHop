@@ -155,6 +155,11 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
               <Text style={styles.actionText}>{likesState}</Text>
             </TouchableOpacity>
 
+            <TouchableOpacity onPress={openComments} style={styles.actionButton}>
+              <MessageCircle size={scale(26)} color="#FFF" strokeWidth={2} />
+              <Text style={styles.actionText}>{commentsState.length}</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity onPress={() => setSaved(!saved)} style={styles.actionButton}>
               <Bookmark
                 size={scale(26)}
@@ -163,11 +168,6 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
                 strokeWidth={saved ? 0 : 2}
               />
               <Text style={styles.actionText}>{saved ? "Saved" : "Save"}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={openComments} style={styles.actionButton}>
-              <MessageCircle size={scale(26)} color="#FFF" strokeWidth={2} />
-              <Text style={styles.actionText}>{commentsState.length}</Text>
             </TouchableOpacity>
           </View>
         </View>
