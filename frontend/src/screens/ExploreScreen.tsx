@@ -424,13 +424,17 @@ export default function ExploreScreen() {
       if (!cafe.latitude || !cafe.longitude) return;
 
       const marker = new window.google.maps.Marker({
-        position: {
-          lat: cafe.latitude,
-          lng: cafe.longitude,
-        },
-        map,
-        title: cafe.name,
-      });
+      position: {
+        lat: cafe.latitude,
+        lng: cafe.longitude,
+      },
+      map,
+      title: cafe.name,
+      icon: {
+        url: "https://cdn-icons-png.flaticon.com/512/924/924514.png",
+        scaledSize: new window.google.maps.Size(36, 36),
+      },
+    });
 
       marker.addListener("click", () => {
         openDetail(cafe);
