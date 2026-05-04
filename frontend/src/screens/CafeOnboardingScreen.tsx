@@ -11,15 +11,15 @@ import {
   TextInput,
   View,
 } from "react-native";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { moderateScale, scale, verticalScale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
 import { Image } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch } from "../api/client";
 import { supabase } from "../api/supabaseClient";
 import { useRole } from "../context/RoleContext";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 const requestLocation = async (): Promise<{
   latitude: number;
@@ -328,7 +328,7 @@ export default function CafeOnboarding({ navigation }: any) {
               )}
 
               <View style={styles.infoNote}>
-                <Text style={styles.infoNoteText}>💡 You can edit all of this later from your Cafe Profile</Text>
+                <Text style={styles.infoNoteText}>💡 You can edit cafe details anytime in your Settings</Text>
               </View>
 
               <Button
