@@ -442,7 +442,7 @@ export default function ExploreScreen() {
           lng: cafe.longitude,
         });
 
-        navigation.navigate("CafeProfile", { cafe });
+        navigation.navigate("CafeProfile", { cafeId: cafe.id });
       });
 
       map.markers.push(marker);
@@ -681,7 +681,7 @@ export default function ExploreScreen() {
             <TouchableOpacity
               key={cafe.id}
               style={styles.cafeCard}
-              onPress={() => navigation.navigate("CafeProfile", { cafe })}
+              onPress={() => navigation.navigate("CafeProfile", { cafeId: cafe.id })}
               activeOpacity={0.9}
             >
               <Image
