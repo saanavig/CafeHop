@@ -369,170 +369,211 @@ export default function RewardsScreen({ navigation }) {
   };
 
   // ── Cafe owner view ─────────────────────────────────────────────────────────
-  if (role === "cafe") {
-    return (
-      <View style={styles.container}>
-        <Animated.ScrollView
-          contentContainerStyle={styles.scrollContent}
-          style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
-        >
-          <View style={[styles.content, { width: contentWidth }]}>
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.title}>Reward Programs</Text>
-              <Text style={styles.subtitle}>Manage your loyalty offerings</Text>
+// ── Cafe owner view ─────────────────────────────────────────────────────────
+if (role === "cafe") {
+  return (
+    <View style={styles.container}>
+      <Animated.ScrollView
+        contentContainerStyle={styles.scrollContent}
+        style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
+      >
+        <View style={[styles.content, { width: contentWidth }]}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Reward Programs</Text>
+            <Text style={styles.subtitle}>Manage your loyalty offerings</Text>
+          </View>
+
+          {/* QR Scanner Button */}
+          <Button
+            title="Scan Customer QR"
+            onPress={() => navigation.navigate("CafeQRScanner")}
+          />
+
+          {/* Stats row */}
+          <View style={[styles.cafeStatsRow, { marginTop: scale(16) }]}>
+            <View style={styles.cafeStat}>
+              <Text style={styles.cafeStatNumber}>23,750</Text>
+              <Text style={styles.cafeStatLabel}>Points Issued</Text>
+            </View>
+            <View style={styles.cafeStatDivider} />
+            <View style={styles.cafeStat}>
+              <Text style={styles.cafeStatNumber}>1,342</Text>
+              <Text style={styles.cafeStatLabel}>Redemptions</Text>
+            </View>
+            <View style={styles.cafeStatDivider} />
+            <View style={styles.cafeStat}>
+              <Text style={styles.cafeStatNumber}>89</Text>
+              <Text style={styles.cafeStatLabel}>Active Today</Text>
+            </View>
+          </View>
+
+          {/* Programs */}
+          <View style={styles.section}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              <Text style={styles.sectionTitle}>Active Programs</Text>
+
+              <TouchableOpacity
+                style={styles.addBtn}
+                onPress={() => setShowNewProgram(true)}
+              >
+                <Text style={styles.addBtnText}>+ New</Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Stats row */}
-            <View style={styles.cafeStatsRow}>
-              <View style={styles.cafeStat}>
-                <Text style={styles.cafeStatNumber}>23,750</Text>
-                <Text style={styles.cafeStatLabel}>Points Issued</Text>
-              </View>
-              <View style={styles.cafeStatDivider} />
-              <View style={styles.cafeStat}>
-                <Text style={styles.cafeStatNumber}>1,342</Text>
-                <Text style={styles.cafeStatLabel}>Redemptions</Text>
-              </View>
-              <View style={styles.cafeStatDivider} />
-              <View style={styles.cafeStat}>
-                <Text style={styles.cafeStatNumber}>89</Text>
-                <Text style={styles.cafeStatLabel}>Active Today</Text>
-              </View>
-            </View>
+            {programs.map((prog) => (
+              <View
+                key={prog.id}
+                style={[
+                  styles.programCard,
+                  !prog.active && styles.programCardInactive,
+                ]}
+              >
+                <View style={{ flex: 1 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 4,
+                    }}
+                  >
+                    <Text style={styles.programName}>{prog.name}</Text>
 
-            {/* Programs */}
-            <View style={styles.section}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        prog.active
+                          ? styles.statusBadgeActive
+                          : styles.statusBadgeOff,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.statusBadgeText,
+                          prog.active
+                            ? { color: "#2E7D32" }
+                            : { color: "#888" },
+                        ]}
+                      >
+                        {prog.active ? "Live" : "Paused"}
+                      </Text>
+                    </View>
+                  </View>
 
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Select Cafe</Text>
+                  <Text style={styles.programDesc}>{prog.description}</Text>
 
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {cafes.map((cafe) => {
-                      const isSelected = selectedCafe?.id === cafe.id;
-
-                      return (
-                        <TouchableOpacity
-                          key={cafe.id}
-                          onPress={() => setSelectedCafe(cafe)}
-                          style={[
-                            styles.cafeChip,
-                            isSelected && styles.cafeChipSelected,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.cafeChipText,
-                              isSelected && { color: "#FFF" },
-                            ]}
-                          >
-                            {cafe.name}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
+                  <View style={{ flexDirection: "row", gap: 16, marginTop: 8 }}>
+                    <Text style={styles.programStat}>
+                      ↑ {prog.totalIssued.toLocaleString()} pts issued
+                    </Text>
+                    <Text style={styles.programStat}>
+                      ✓ {prog.redemptions} redeemed
+                    </Text>
+                  </View>
                 </View>
 
-                <Text style={styles.sectionTitle}>Active Programs</Text>
-                <TouchableOpacity style={styles.addBtn} onPress={() => setShowNewProgram(true)}>
-                  <Text style={styles.addBtnText}>+ New</Text>
+                <TouchableOpacity
+                  onPress={() => toggleProgram(prog.id)}
+                  style={styles.toggleBtn}
+                >
+                  <Text style={styles.toggleBtnText}>
+                    {prog.active ? "Pause" : "Resume"}
+                  </Text>
                 </TouchableOpacity>
               </View>
-
-              {programs.map((prog) => (
-                <View key={prog.id} style={[styles.programCard, !prog.active && styles.programCardInactive]}>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                      <Text style={styles.programName}>{prog.name}</Text>
-                      <View style={[styles.statusBadge, prog.active ? styles.statusBadgeActive : styles.statusBadgeOff]}>
-                        <Text style={[styles.statusBadgeText, prog.active ? { color: "#2E7D32" } : { color: "#888" }]}>
-                          {prog.active ? "Live" : "Paused"}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={styles.programDesc}>{prog.description}</Text>
-                    <View style={{ flexDirection: "row", gap: 16, marginTop: 8 }}>
-                      <Text style={styles.programStat}>↑ {prog.totalIssued.toLocaleString()} pts issued</Text>
-                      <Text style={styles.programStat}>✓ {prog.redemptions} redeemed</Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity onPress={() => toggleProgram(prog.id)} style={styles.toggleBtn}>
-                    <Text style={styles.toggleBtnText}>{prog.active ? "Pause" : "Resume"}</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-
-            {/* Recent redemptions */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent Redemptions</Text>
-              {recentRedemptions.map((r, i) => (
-                <View key={i} style={styles.redemptionRow}>
-                  <View style={styles.redemptionAvatar}>
-                    <Text style={{ fontSize: 16 }}>☕</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.redemptionCustomer}>{r.customer}</Text>
-                    <Text style={styles.redemptionReward}>{r.reward}</Text>
-                  </View>
-                  <View style={{ alignItems: "flex-end" }}>
-                    <Text style={styles.redemptionPoints}>−{r.points} pts</Text>
-                    <Text style={styles.redemptionTime}>{r.time}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
+            ))}
           </View>
-        </Animated.ScrollView>
 
-        <BottomNav />
+          {/* Recent redemptions */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recent Redemptions</Text>
 
-        {/* New Program Modal */}
-        <Modal visible={showNewProgram} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>New Reward Program</Text>
+            {recentRedemptions.map((r, i) => (
+              <View key={i} style={styles.redemptionRow}>
+                <View style={styles.redemptionAvatar}>
+                  <Text style={{ fontSize: 16 }}>☕</Text>
+                </View>
 
-              <TextInput
-                placeholder="Program name (e.g. Coffee Stamp Card)"
-                value={newProgName}
-                onChangeText={setNewProgName}
-                style={styles.newProgInput}
-              />
-              <TextInput
-                placeholder="Description"
-                value={newProgDesc}
-                onChangeText={setNewProgDesc}
-                style={styles.newProgInput}
-                multiline
-              />
-              <TextInput
-                placeholder="Points per visit (e.g. 100)"
-                value={newProgPoints}
-                onChangeText={setNewProgPoints}
-                style={styles.newProgInput}
-                keyboardType="numeric"
-              />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.redemptionCustomer}>{r.customer}</Text>
+                  <Text style={styles.redemptionReward}>{r.reward}</Text>
+                </View>
 
-              <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-                <Pressable
-                  style={[styles.addBtn, { flex: 1, alignItems: "center", paddingVertical: 10 }]}
-                  onPress={handleAddProgram}
-                >
-                  <Text style={styles.addBtnText}>Create</Text>
-                </Pressable>
-                <Pressable style={[styles.closeBtn, { flex: 1, alignItems: "center" }]} onPress={() => setShowNewProgram(false)}>
-                  <Text style={{ color: "#999", fontWeight: "500" }}>Cancel</Text>
-                </Pressable>
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text style={styles.redemptionPoints}>−{r.points} pts</Text>
+                  <Text style={styles.redemptionTime}>{r.time}</Text>
+                </View>
               </View>
+            ))}
+          </View>
+        </View>
+      </Animated.ScrollView>
+
+      <BottomNav />
+
+      {/* New Program Modal */}
+      <Modal visible={showNewProgram} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>New Reward Program</Text>
+
+            <TextInput
+              placeholder="Program name"
+              value={newProgName}
+              onChangeText={setNewProgName}
+              style={styles.newProgInput}
+            />
+
+            <TextInput
+              placeholder="Description"
+              value={newProgDesc}
+              onChangeText={setNewProgDesc}
+              style={styles.newProgInput}
+              multiline
+            />
+
+            <TextInput
+              placeholder="Points per visit"
+              value={newProgPoints}
+              onChangeText={setNewProgPoints}
+              style={styles.newProgInput}
+              keyboardType="numeric"
+            />
+
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+              <Pressable
+                style={[
+                  styles.addBtn,
+                  { flex: 1, alignItems: "center", paddingVertical: 10 },
+                ]}
+                onPress={handleAddProgram}
+              >
+                <Text style={styles.addBtnText}>Create</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.closeBtn, { flex: 1, alignItems: "center" }]}
+                onPress={() => setShowNewProgram(false)}
+              >
+                <Text style={{ color: "#999", fontWeight: "500" }}>
+                  Cancel
+                </Text>
+              </Pressable>
             </View>
           </View>
-        </Modal>
-      </View>
-    );
-  }
+        </View>
+      </Modal>
+    </View>
+  );
+}
 
   // ── Customer view ───────────────────────────────────────────────────────────
   return (
