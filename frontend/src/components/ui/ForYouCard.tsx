@@ -80,7 +80,10 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
   const openComments = () => {
     if (!post.id || post.id.startsWith("cafe-")) return;
 
-    fetchComments();
+    if (commentsState.length === 0) {
+      fetchComments();
+    }
+
     setShowComments(true);
     onModalToggle?.(true);
   
@@ -144,7 +147,12 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
       const data = await res.json();
 
       setCommentsState((prev: any) => {
-        const updated = [data, ...prev];
+        const newItem = {
+          ...data,
+          username: "You",
+        };
+
+        const updated = [newItem, ...prev];
         setCommentsCount(updated.length);
         return updated;
       });
@@ -264,7 +272,7 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
               renderItem={({ item }) => (
                 <Text style={styles.commentText}>
                 <Text style={{ fontWeight: "bold" }}>
-                  {item.username || "User"}:
+                  {(item.username ?? "User") + ": "}
                 </Text>
                   {item.content}
                 </Text>

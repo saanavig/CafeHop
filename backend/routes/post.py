@@ -207,15 +207,25 @@ def unsave_post(post_id):
 @require_auth
 def get_comments(post_id):
     user_supabase = supabase_for_user(g.access_token)
+
     response = (
         user_supabase.table("comments")
-        .select("*")
+        .select("id, content, user_id, users(first_name)")
         .eq("post_id", post_id)
         .order("created_at", desc=True)
         .execute()
     )
 
-    return jsonify(response.data or []), 200
+    comments = [
+        {
+            "id": c["id"],
+            "content": c["content"],
+            "username": c.get("users", {}).get("first_name", "User")
+        }
+        for c in (response.data or [])
+    ]
+
+    return jsonify(comments), 200
 
 @posts_bp.route("/posts/<post_id>/comments", methods=["POST"])
 @require_auth
