@@ -15,6 +15,18 @@ DEFAULT_MAX_DISTANCE_MILES = 5.0
 TOP_K_FOR_AI_EXPLANATIONS = 5
 
 
+FALLBACK_CAFE_IMAGES = [
+    "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=900",
+    "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=900",
+    "https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=900",
+    "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=900",
+]
+
+def get_fallback_image(cafe_id):
+    index = abs(hash(str(cafe_id))) % len(FALLBACK_CAFE_IMAGES)
+    return FALLBACK_CAFE_IMAGES[index]
+
+
 def attach_posts_to_recommendations(recommendations):
     if not recommendations:
         return recommendations
@@ -28,13 +40,16 @@ def attach_posts_to_recommendations(recommendations):
     if not cafe_ids:
         return recommendations
 
-    # fetch posts for these cafes
     posts_res = (
         supabase.table("posts")
         .select("""
-            *,
-            post_likes(count),
-            comments(count)
+            id,
+            cafe_id,
+            caption,
+            created_at,
+            likes_count,
+            comments_count,
+            post_media(file_url, file_type)
         """)
         .in_("cafe_id", cafe_ids)
         .order("created_at", desc=True)
@@ -42,23 +57,48 @@ def attach_posts_to_recommendations(recommendations):
     )
 
     posts = posts_res.data or []
-
-    # map: cafe_id → ONE post (latest)
     cafe_post_map = {}
 
     for post in posts:
-        cafe_id = post["cafe_id"]
+        cafe_id = post.get("cafe_id")
+        if cafe_id and cafe_id not in cafe_post_map:
+            media = post.get("post_media") or []
+            first_media = next(
+                (m for m in media if m.get("file_url")),
+                None
+            )
 
-        if cafe_id not in cafe_post_map:
-            post["likes_count"] = post.get("post_likes", [{}])[0].get("count", 0)
-            post["comments_count"] = post.get("comments", [{}])[0].get("count", 0)
-
+            post["display_image_url"] = first_media.get("file_url") if first_media else None
             cafe_post_map[cafe_id] = post
 
-    # attach post to each recommendation
     for rec in recommendations:
-        cafe_id = rec["cafe"]["id"]
-        rec["post"] = cafe_post_map.get(cafe_id)
+        cafe = rec.get("cafe") or {}
+        cafe_id = cafe.get("id")
+        post = cafe_post_map.get(cafe_id)
+
+        rec["post"] = post
+
+        image_url = (
+            (post or {}).get("display_image_url")
+            or cafe.get("image_url")
+            or get_fallback_image(cafe_id)
+        )
+
+        rec["display"] = {
+            "cafe_id": cafe_id,
+            "cafe_name": cafe.get("name"),
+            "post_id": post.get("id") if post else None,
+            "image_url": image_url,
+            "caption": (
+                rec.get("gemini_explanation")
+                or (rec.get("reasons") or ["Recommended for you"])[0]
+            ),
+            "post_caption": post.get("caption") if post else None,
+            "likes_count": post.get("likes_count", 0) if post else 0,
+            "comments_count": post.get("comments_count", 0) if post else 0,
+            "can_like": post is not None,
+            "can_comment": post is not None,
+        }
 
     return recommendations
 
@@ -565,7 +605,6 @@ def generate_rule_based_explanations(recommendations):
 
     return explanations
 
-
 def get_recommendations_for_user(
     user_id,
     limit=10,
@@ -574,7 +613,6 @@ def get_recommendations_for_user(
     bad_review_threshold=2,
 ):
     user_profile = build_user_profile(user_id)
-    user_reviews = get_user_reviews(user_id)
 
     cafes = get_all_active_cafes()
     cafe_tag_rows = get_all_cafe_tags()
@@ -597,6 +635,9 @@ def get_recommendations_for_user(
     for cafe in cafes:
         cafe_id = cafe.get("id")
 
+        if not cafe_id:
+            continue
+
         if cafe_id in bad_cafe_ids:
             continue
 
@@ -610,7 +651,10 @@ def get_recommendations_for_user(
                 cafe.get("longitude"),
             )
 
-            max_distance = user_profile.get("max_distance_miles") or DEFAULT_MAX_DISTANCE_MILES
+            max_distance = (
+                user_profile.get("max_distance_miles")
+                or DEFAULT_MAX_DISTANCE_MILES
+            )
 
             if distance_miles is not None and distance_miles > max_distance:
                 continue
@@ -652,18 +696,34 @@ def get_recommendations_for_user(
             "gemini_explanation": None,
         })
 
+    # 1. Rank all cafes by personalization score first
     recommendations.sort(
         key=lambda x: (
-            x["score"],
-            -(x["distance_miles"] or 999999),
-            x["review_stats"]["avg_rating"] or 0,
-            x["review_stats"]["review_count"],
+            x.get("score", 0),
+            -(x.get("distance_miles") or 999999),
+            (x.get("review_stats") or {}).get("avg_rating") or 0,
+            (x.get("review_stats") or {}).get("review_count") or 0,
         ),
         reverse=True,
     )
 
-    recommendations = recommendations[:limit]
+    # 2. First 2 are strongest personalized recommendations
+    personalized = recommendations[:2]
 
+    # 3. Rest are discovery/nearby cafes, still decent but less repetitive
+    discovery = recommendations[2:]
+
+    discovery.sort(
+        key=lambda x: (
+            x.get("distance_miles") or 999999,
+            -((x.get("review_stats") or {}).get("avg_rating") or 0),
+            -x.get("score", 0),
+        )
+    )
+
+    recommendations = personalized + discovery[: max(0, limit - 2)]
+
+    # 4. Add review summaries only after final list is chosen
     top_to_enrich = recommendations[:TOP_K_FOR_AI_EXPLANATIONS]
     top_to_enrich = attach_review_summaries_to_recommendations(
         top_to_enrich,
@@ -671,14 +731,11 @@ def get_recommendations_for_user(
     )
     recommendations[:TOP_K_FOR_AI_EXPLANATIONS] = top_to_enrich
 
+    # 5. Attach optional post + guaranteed display image
     recommendations = attach_posts_to_recommendations(recommendations)
 
-    recommendations = [
-        rec for rec in recommendations
-        if rec.get("post") is not None
-    ]
-
     return recommendations
+
 
 
 # def attach_gemini_explanations(user_profile, recommendations):

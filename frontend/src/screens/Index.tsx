@@ -19,14 +19,37 @@ import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:3001";
-const fallbackImage = "https://picsum.photos/500/700";
+
+const fallbackImages = [
+  "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=900",
+  "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=900",
+  "https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=900",
+  "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=900",
+];
+
+const getFallbackImage = (key?: string) => {
+  const value = key || "cafe";
+  let hash = 0;
+
+  for (let i = 0; i < value.length; i++) {
+    hash = value.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  return fallbackImages[Math.abs(hash) % fallbackImages.length];
+};
 
 const FEED_CACHE_KEY = "cafehop_feed_cache";
 const FEED_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 type FeedPost = Post & {
+  itemType?: "post" | "recommendation" | "cafe";
   cafeId?: string;
   isRecommended?: boolean;
+  postId?: string;
+  canLike?: boolean;
+  canComment?: boolean;
+  canSavePost?: boolean;
+  canSaveCafe?: boolean;
 };
 
 type UserCoords = {
@@ -74,24 +97,20 @@ const Index = () => {
 
   const getCachedFeed = async () => {
     if (sessionFeedCache && sessionFeedCache.length > 0) {
-      console.log("USING SESSION CACHE:", sessionFeedCache.length);
       return sessionFeedCache;
     }
 
     const raw = await AsyncStorage.getItem(FEED_CACHE_KEY);
-
     if (!raw) return null;
 
     const parsed = JSON.parse(raw);
     const age = Date.now() - parsed.savedAt;
 
     if (age > FEED_CACHE_TTL_MS) {
-      console.log("FEED CACHE EXPIRED");
       await AsyncStorage.removeItem(FEED_CACHE_KEY);
       return null;
     }
 
-    console.log("USING DAILY CACHE:", parsed.posts.length);
     sessionFeedCache = parsed.posts;
     return parsed.posts;
   };
@@ -106,14 +125,6 @@ const Index = () => {
         posts: feed,
       })
     );
-
-    console.log("SAVED FEED CACHE:", feed.length);
-  };
-
-  const clearFeedCache = async () => {
-    sessionFeedCache = null;
-    await AsyncStorage.removeItem(FEED_CACHE_KEY);
-    console.log("CLEARED FEED CACHE");
   };
 
   const loadFeed = async () => {
@@ -124,20 +135,19 @@ const Index = () => {
 
       if (cached && cached.length > 0) {
         setPosts(cached);
-        setLoading(false);
         return;
       }
 
       await getUserLocationAndFetchFeed();
     } catch (err) {
       console.error("LOAD FEED ERROR:", err);
+    } finally {
       setLoading(false);
     }
   };
 
   const getToken = async () => {
     const { data, error } = await supabase.auth.getSession();
-
     if (error) throw error;
 
     const token = data.session?.access_token;
@@ -181,7 +191,6 @@ const Index = () => {
 
     for (const item of items) {
       const key = getKey(item);
-
       if (!key || seen.has(key)) continue;
 
       seen.add(key);
@@ -192,43 +201,35 @@ const Index = () => {
   };
 
   const getRecCafeId = (rec: any) => {
-    return String(rec?.cafe?.id || rec?.cafe_id || "");
+    return String(rec?.display?.cafe_id || rec?.cafe?.id || rec?.cafe_id || "");
   };
 
-  const cafeToPost = (
-    cafe: any,
-    explanation?: string,
-    recommended = false
-  ): FeedPost => {
+  const cafeToPost = (cafe: any): FeedPost => {
     const cafeId = cafe.id ? String(cafe.id) : undefined;
     const cafeName = cafe.name || "Cafe";
 
     return {
       id: `cafe-${cafeId || cafeName}`,
+      itemType: "cafe",
       cafeId,
-      isRecommended: recommended,
+      isRecommended: false,
       cafeName,
       image: {
-        uri:
-          cafe.image_url ||
-          `${fallbackImage}?random=${encodeURIComponent(cafeName)}`,
+        uri: cafe.image_url || getFallbackImage(cafeId || cafeName),
       },
       caption:
-        explanation ||
         cafe.description ||
         "A cafe you may enjoy based on your preferences.",
-      likes: recommended ? 400 : 100,
-      comments: recommended ? 40 : 8,
-      postedBy: recommended ? "CafeHop AI" : "CafeHop",
-      tags: recommended ? ["recommended", "for-you"] : ["cafe"],
+      likes: 0,
+      comments: 0,
+      postedBy: "CafeHop",
+      tags: ["cafe"],
       location: cafe.address || "Nearby",
-      commentList: [
-        {
-          user: "CafeHop",
-          text:
-            explanation || "Suggested based on your preferences and activity.",
-        },
-      ],
+      commentList: [],
+      canLike: false,
+      canComment: false,
+      canSavePost: false,
+      canSaveCafe: true,
     };
   };
 
@@ -317,41 +318,49 @@ const Index = () => {
         getRecCafeId(rec)
       );
 
-      const recommendedPosts: FeedPost[] = recommendations
-        .map((rec: any) => {
-          const cafe = rec.cafe || {};
-          const post = rec.post;
+      const recommendedPosts: FeedPost[] = recommendations.map((rec: any) => {
+        const display = rec.display || {};
+        const cafe = rec.cafe || {};
+        const post = rec.post || {};
 
-          if (!post || !post.id) return null;
+        const cafeId = String(display.cafe_id || cafe.id || "");
+        const postId = display.post_id || post.id;
 
-          return {
-            id: String(post.id),
-            cafeId: String(cafe.id),
-
-            cafeName: cafe.name || "Cafe",
-
-            image: {
-              uri:
-                post.file_url ||
-                post.media_url ||
-                post.image_url ||
-                cafe.image_url ||
-                `${fallbackImage}?random=${encodeURIComponent(cafe.name || "cafe")}`,
-            },
-
-            caption: post.caption || "Recommended for you",
-
-            likes: Number(post.likes_count ?? 0),
-            comments: Number(post.comments_count ?? 0),
-
-            postedBy: "CafeHop",
-            tags: ["recommended", "for-you"],
-            location: cafe.address || "Nearby",
-
-            commentList: [],
-          };
-        })
-        .filter((p): p is FeedPost => p !== null);
+        return {
+          id: postId ? String(postId) : `recommended-cafe-${cafeId}`,
+          itemType: postId ? "post" : "recommendation",
+          cafeId,
+          isRecommended: true,
+          cafeName: display.cafe_name || cafe.name || "Cafe",
+          image: {
+            uri:
+              display.image_url ||
+              cafe.image_url ||
+              getFallbackImage(cafeId || cafe.name || "cafe"),
+          },
+          caption:
+            explanationMap[cafeId] ||
+            display.caption ||
+            rec.reasons?.[0] ||
+            cafe.description ||
+            "Recommended for you.",
+          likes: postId
+            ? Number(display.likes_count ?? post.likes_count ?? 0)
+            : 0,
+          comments: postId
+            ? Number(display.comments_count ?? post.comments_count ?? 0)
+            : 0,
+          postedBy: postId ? "CafeHop" : "CafeHop AI",
+          tags: ["recommended", "for-you"],
+          location: cafe.address || "Nearby",
+          commentList: [],
+          postId: postId ? String(postId) : undefined,
+          canLike: Boolean(postId),
+          canComment: Boolean(postId),
+          canSavePost: Boolean(postId),
+          canSaveCafe: !postId,
+        };
+      });
 
       const recommendedIds = new Set(
         recommendations.map((rec: any) => getRecCafeId(rec)).filter(Boolean)
@@ -363,7 +372,7 @@ const Index = () => {
 
       const regularPosts: FeedPost[] = allCafes
         .filter((cafe: any) => !recommendedIds.has(String(cafe.id)))
-        .map((cafe: any) => cafeToPost(cafe, undefined, false));
+        .map((cafe: any) => cafeToPost(cafe));
 
       const finalFeed = uniqueByKey(
         [...recommendedPosts, ...regularPosts],
