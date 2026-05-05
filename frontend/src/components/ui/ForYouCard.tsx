@@ -224,7 +224,7 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
                   onChangeText={setNewComment}
                 />
                 <Button variant="caramel" size="sm" onPress={handlePostComment}>
-                  Post
+                  <Text>Post</Text>
                 </Button>
               </View>
             </KeyboardAvoidingView>
