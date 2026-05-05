@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, g
 from database.auth_middleware import require_auth
 from services.post_service import create_post_with_uploaded_media
-from database.supabase_client import supabase
+from database.supabase_client import supabase,  supabase_for_user
 
 posts_bp = Blueprint("posts", __name__)
 
@@ -105,3 +105,134 @@ def delete_post(post_id):
     except Exception as e:
         print("DELETE ERROR:", e)
         return jsonify({"error": str(e)}), 500
+
+@posts_bp.route("/posts/<post_id>/like", methods=["POST"])
+@require_auth
+def like_post(post_id):
+    print("LIKE ROUTE HIT:", post_id)
+    user_id = g.user["id"]
+    user_supabase = supabase_for_user(g.access_token)
+
+    existing = (
+        user_supabase.table("post_likes")
+        .select("id")
+        .eq("post_id", post_id)
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+    )
+
+    existing = (
+        user_supabase.table("post_likes")
+        .select("id")
+        .eq("post_id", post_id)
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+    )
+
+    if not existing or not existing.data:
+        # no existing like → insert
+        try:
+            insert_res = user_supabase.table("post_likes").insert({
+                "post_id": post_id,
+                "user_id": user_id
+            }).execute()
+
+            print("INSERT SUCCESS:", insert_res.data)
+
+            return jsonify({"message": "Liked"}), 201
+
+        except Exception as e:
+            print("INSERT ERROR:", e)
+            return jsonify({"error": str(e)}), 500
+
+        return jsonify({"message": "Liked"}), 201
+
+    return jsonify({"message": "Already liked"}), 200
+
+@posts_bp.route("/posts/<post_id>/like", methods=["DELETE"])
+@require_auth
+def unlike_post(post_id):
+    user_id = g.user["id"]
+    user_supabase = supabase_for_user(g.access_token)
+
+    user_supabase.table("post_likes") \
+        .delete() \
+        .eq("post_id", post_id) \
+        .eq("user_id", user_id) \
+        .execute()
+
+    return jsonify({"message": "Unliked"}), 200
+
+@posts_bp.route("/posts/<post_id>/save", methods=["POST"])
+@require_auth
+def save_post(post_id):
+    user_id = g.user["id"]
+    user_supabase = supabase_for_user(g.access_token)
+    existing = (
+        user_supabase.table("post_saves")
+        .select("id")
+        .eq("post_id", post_id)
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+    )
+
+    if existing.data:
+        return jsonify({"message": "Already saved"}), 200
+
+    user_supabase.table("post_saves").insert({
+        "post_id": post_id,
+        "user_id": user_id
+    }).execute()
+
+    return jsonify({"message": "Saved"}), 201
+
+@posts_bp.route("/posts/<post_id>/save", methods=["DELETE"])
+@require_auth
+def unsave_post(post_id):
+    user_id = g.user["id"]
+    user_supabase = supabase_for_user(g.access_token)
+
+    user_supabase.table("post_saves") \
+        .delete() \
+        .eq("post_id", post_id) \
+        .eq("user_id", user_id) \
+        .execute()
+
+    return jsonify({"message": "Unsaved"}), 200
+
+@posts_bp.route("/posts/<post_id>/comments", methods=["GET"])
+@require_auth
+def get_comments(post_id):
+    user_supabase = supabase_for_user(g.access_token)
+    response = (
+        user_supabase.table("comments")
+        .select("*")
+        .eq("post_id", post_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    return jsonify(response.data or []), 200
+
+@posts_bp.route("/posts/<post_id>/comments", methods=["POST"])
+@require_auth
+def add_comment(post_id):
+    user_id = g.user["id"]
+    data = request.get_json()
+    user_supabase = supabase_for_user(g.access_token)
+
+    content = data.get("content")
+
+    if not content:
+        return jsonify({"error": "Missing content"}), 400
+
+    response = user_supabase.table("comments").insert({
+        "post_id": post_id,
+        "user_id": user_id,
+        "content": content
+    }).execute()
+
+    return jsonify(response.data[0]), 201

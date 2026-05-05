@@ -204,6 +204,7 @@ const Index = () => {
     const cafeName = cafe.name || "Cafe";
 
     return {
+      id: `cafe-${cafeId || cafeName}`,
       cafeId,
       isRecommended: recommended,
       cafeName,
@@ -316,46 +317,41 @@ const Index = () => {
         getRecCafeId(rec)
       );
 
-      const recommendedPosts: FeedPost[] = recommendations.map((rec: any) => {
-        const cafe = rec.cafe || {};
-        const post = rec.post;
-        const cafeId = getRecCafeId(rec);
+      const recommendedPosts: FeedPost[] = recommendations
+        .map((rec: any) => {
+          const cafe = rec.cafe || {};
+          const post = rec.post;
 
-        if (!post) return null; // safety
+          if (!post || !post.id) return null;
 
-        const explanation =
-          explanationMap[cafeId] ||
-          rec.gemini_explanation ||
-          (rec.reasons?.length ? rec.reasons.join(". ") : null) ||
-          "Recommended for your taste.";
+          return {
+            id: String(post.id),
+            cafeId: String(cafe.id),
 
-        return {
-          id: post.id,
-          cafeId,
-          isRecommended: true,
-          cafeName: cafe.name || "Cafe",
+            cafeName: cafe.name || "Cafe",
 
-          image: {
-            uri:
-              post.file_url ||
-              post.media_url ||
-              post.image_url ||
-              cafe.image_url ||
-              `${fallbackImage}?random=${encodeURIComponent(cafe.name || "cafe")}`,
-          },
+            image: {
+              uri:
+                post.file_url ||
+                post.media_url ||
+                post.image_url ||
+                cafe.image_url ||
+                `${fallbackImage}?random=${encodeURIComponent(cafe.name || "cafe")}`,
+            },
 
-          caption: post.caption || explanation,
+            caption: post.caption || "Recommended for you",
 
-          likes: post.likes_count || 0,
-          comments: post.comments_count || 0,
+            likes: Number(post.likes_count ?? 0),
+            comments: Number(post.comments_count ?? 0),
 
-          postedBy: "CafeHop",
-          tags: ["recommended", "for-you"],
-          location: cafe.address || "Nearby",
+            postedBy: "CafeHop",
+            tags: ["recommended", "for-you"],
+            location: cafe.address || "Nearby",
 
-          commentList: [],
-        };
-      }).filter(Boolean);
+            commentList: [],
+          };
+        })
+        .filter((p): p is FeedPost => p !== null);
 
       const recommendedIds = new Set(
         recommendations.map((rec: any) => getRecCafeId(rec)).filter(Boolean)

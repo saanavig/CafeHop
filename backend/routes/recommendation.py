@@ -11,7 +11,6 @@ from services.gemini_services import generate_recommendation_explanations_with_g
 
 recommendations_bp = Blueprint("recommendations_bp", __name__)
 
-
 @recommendations_bp.route("/recommendations", methods=["GET"])
 @require_auth
 def get_recommendations():
@@ -48,7 +47,6 @@ def get_cached_explanations(user_id: str, cafe_ids: list[str]) -> dict:
         for row in rows
         if row.get("cafe_id") and row.get("explanation")
     }
-
 
 def save_explanations_to_cache(user_id: str, explanations: list[dict]):
     if not explanations:
