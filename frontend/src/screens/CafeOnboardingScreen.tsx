@@ -72,10 +72,10 @@ export default function CafeOnboarding({ navigation }: any) {
   const [cafeName, setCafeName] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
-  const [contact, setContact] = useState("");
+  const [contact, setContact] = useState(""); 
   const [hours, setHours] = useState<Record<string, DayHours>>(defaultHours);
   const [tagError, setTagError] = useState("");
-  const [image, setImage] = useState<string | null>(null);
+  const [images, setImages] = useState<string[]>([]);
   const debounceRef = useRef<any>(null);
   const [priceRange, setPriceRange] = useState<string | null>(null);
   const [priceError, setPriceError] = useState("");
@@ -83,6 +83,8 @@ export default function CafeOnboarding({ navigation }: any) {
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [imageError, setImageError] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Socials
   const [instagramUrl, setInstagramUrl] = useState("");
@@ -99,18 +101,22 @@ export default function CafeOnboarding({ navigation }: any) {
     });
   };
 
-  const pickImage = async () => {
+  const pickImages = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert("Permission required", "We need access to your photos");
       return;
     }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
       quality: 0.7,
     });
+
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      const uris = result.assets.map((asset) => asset.uri);
+      setImages((prev) => [...prev, ...uris]);
     }
   };
 
@@ -124,29 +130,33 @@ export default function CafeOnboarding({ navigation }: any) {
   const maxWidth = scale(480);
 
   const handleFinishSetup = async () => {
-    let imageUrl = null;
+    let imageUrls: string[] = [];
+
+    for (const img of images) {
+      const fileName = `cafe-${Date.now()}-${Math.random()}.jpg`;
+
+      const response = await fetch(img);
+      const blob = await response.blob();
+
+      const { error } = await supabase.storage
+        .from("images")
+        .upload(fileName, blob, { contentType: "image/jpeg" });
+
+      if (error) {
+        Alert.alert("Error", "Image upload failed");
+        return;
+      }
+
+      const { data } = supabase.storage
+        .from("images")
+        .getPublicUrl(fileName);
+
+      imageUrls.push(data.publicUrl);
+    }
 
     if (phone.length !== 10) {
       Alert.alert("Invalid Phone Number", "Phone number must be 10 digits");
       return;
-    }
-
-    if (image) {
-      const fileName = `cafe-${Date.now()}-${Math.random()}.jpg`;
-      const response = await fetch(image);
-      const blob = await response.blob();
-      const { data, error } = await supabase.storage
-        .from("images")
-        .upload(fileName, blob, { contentType: "image/jpeg" });
-      if (error) {
-        Alert.alert("Error", "Image upload failed");
-        return;
-      } else {
-        const { data: publicUrlData } = supabase.storage
-          .from("images")
-          .getPublicUrl(fileName);
-        imageUrl = publicUrlData.publicUrl;
-      }
     }
 
     try {
@@ -164,7 +174,7 @@ export default function CafeOnboarding({ navigation }: any) {
         longitude: coordinates.lng,
         hours,
         price_range: priceRange,
-        image_url: imageUrl,
+        image_urls: imageUrls,
         attributes: selectedTags,
         instagram_url: instagramUrl.trim() || null,
         facebook_url: facebookUrl.trim() || null,
@@ -302,40 +312,66 @@ export default function CafeOnboarding({ navigation }: any) {
               />
               {phoneError ? <Text style={{ color: "red", marginBottom: 10 }}>{phoneError}</Text> : null}
 
-              {/* Image upload with edit/remove */}
-              <Pressable onPress={pickImage} style={styles.imageUploadBox}>
-                {image ? (
-                  <Image source={{ uri: image }} style={styles.imagePreview} />
-                ) : (
-                  <Text style={styles.imageUploadText}>Upload Cafe Photo (optional)</Text>
-                )}
-              </Pressable>
-              {image && (
-                <View style={{ flexDirection: "row", gap: scale(8), marginBottom: verticalScale(12) }}>
-                  <Pressable
-                    onPress={pickImage}
-                    style={{ flex: 1, backgroundColor: "#FFF0E6", borderRadius: scale(8), padding: scale(10), alignItems: "center", borderWidth: 1, borderColor: "#D4A373" }}
-                  >
-                    <Text style={{ color: "#D4A373", fontWeight: "600", fontSize: moderateScale(13) }}>Change Photo</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => setImage(null)}
-                    style={{ flex: 1, backgroundColor: "#FFF", borderRadius: scale(8), padding: scale(10), alignItems: "center", borderWidth: 1, borderColor: "#EEE" }}
-                  >
-                    <Text style={{ color: "#888", fontWeight: "600", fontSize: moderateScale(13) }}>Remove Photo</Text>
-                  </Pressable>
+                <View style={{ marginBottom: verticalScale(16) }}>
+                  <Text style={{ fontWeight: "600", marginBottom: 6 }}>
+                    Cafe Photos
+                  </Text>
+
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <Pressable onPress={pickImages} style={styles.addImageBox}>
+                      <Text style={{ fontSize: 24, color: "#D4A373" }}>+</Text>
+                    </Pressable>
+
+                    {images.map((uri, index) => (
+                      <View key={index} style={{ marginRight: 10 }}>
+                        <Pressable onPress={() => setPreviewImage(uri)}>
+                          <Image source={{ uri }} style={styles.multiImage} />
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() =>
+                            setImages((prev) => prev.filter((_, i) => i !== index))
+                          }
+                          style={styles.removeImageBtn}
+                        >
+                          <Text style={{ color: "#fff", fontSize: 12 }}>✕</Text>
+                        </Pressable>
+                      </View>
+                    ))}
+                  </ScrollView>
+
+                  {imageError && (
+                    <Text style={{ color: "red", marginTop: 6 }}>
+                      Please upload at least one photo
+                    </Text>
+                  )}
                 </View>
-              )}
+              {/* </View>
+              )} */}
 
               <View style={styles.infoNote}>
-                <Text style={styles.infoNoteText}>💡 You can edit cafe details anytime in your Settings</Text>
+                <Text style={styles.infoNoteText}>
+                  💡 You can edit cafe details anytime in your Settings
+                </Text>
               </View>
 
               <Button
                 title="Continue"
                 variant="caramel"
-                onPress={next}
-                disabled={!cafeName.trim() || !address.trim() || phone.length !== 10}
+                onPress={() => {
+                  if (images.length === 0) {
+                    setImageError(true);
+                    return;
+                  }
+                  setImageError(false);
+                  next();
+                }}
+                disabled={
+                  !cafeName.trim() ||
+                  !address.trim() ||
+                  phone.length !== 10 ||
+                  images.length === 0
+                }
               />
             </View>
           )}
@@ -480,6 +516,31 @@ export default function CafeOnboarding({ navigation }: any) {
           )}
         </View>
       </ScrollView>
+      {previewImage && (
+        <Pressable
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.9)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          onPress={() => setPreviewImage(null)}
+        >
+          <Image
+            source={{ uri: previewImage }}
+            style={{
+              width: "90%",
+              height: "70%",
+              borderRadius: 12,
+            }}
+            resizeMode="contain"
+          />
+        </Pressable>
+      )}
     </SafeAreaView>
   );
 }
@@ -544,4 +605,32 @@ const styles = StyleSheet.create({
   },
   imageUploadText: { color: "#888", fontSize: moderateScale(14) },
   imagePreview: { width: "100%", height: "100%" },
+
+  addImageBox: {
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#D4A373",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+    backgroundColor: "#FFF0E6",
+  },
+
+  multiImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+  },
+
+  removeImageBtn: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
 });
