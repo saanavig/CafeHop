@@ -101,29 +101,27 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
   };
 
   const handleLike = async () => {
-
     if (!post.id || post.id.startsWith("cafe-")) return;
-
-    if (!post.id) {
-      console.log("❌ Missing post.id");
-      return;
-    }
-
     if (loadingLike) return;
+
+    const newLiked = !liked;
+
+    setLiked(newLiked);
+    setLikesState((prev) =>
+      newLiked ? prev + 1 : Math.max(0, prev - 1)
+    );
 
     setLoadingLike(true);
 
     try {
-      if (liked) {
-        await apiFetch(`/posts/${post.id}/like`, { method: "DELETE" });
-        setLikesState((prev) => Math.max(0, prev - 1));
-      } else {
-        await apiFetch(`/posts/${post.id}/like`, { method: "POST" });
-        setLikesState((prev) => prev + 1);
-      }
-
-      setLiked(!liked);
+      await apiFetch(`/posts/${post.id}/like`, {
+        method: newLiked ? "POST" : "DELETE",
+      });
     } catch (err) {
+      setLiked(!newLiked);
+      setLikesState((prev) =>
+        newLiked ? prev - 1 : prev + 1
+      );
       console.error("Like error:", err);
     } finally {
       setLoadingLike(false);
