@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { BookOpen, Grid3X3, Pencil, Star, Store } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
-import { useRoute } from "@react-navigation/native";
 import {
   deviceWidth,
   moderateScale,
@@ -22,6 +21,7 @@ import {
 import BottomNav from "../components/ui/BottomNav";
 import { TextInput } from "react-native";
 import { supabase } from "../api/supabaseClient";
+import { useRoute } from "@react-navigation/native";
 
 type Comment = { text: string };
 
@@ -89,7 +89,7 @@ export default function CafeProfileScreen() {
 
     const [reviews, setReviews] = useState<any[]>([]);
     const [myReview, setMyReview] = useState<any | null>(null);
-    const [reviewRating, setReviewRating] = useState(5);
+    const [reviewRating, setReviewRating] = useState<number | null>(null);
     const [reviewText, setReviewText] = useState("");
     const [reviewsLoading, setReviewsLoading] = useState(false);
     const [reviewError, setReviewError] = useState("");
@@ -504,7 +504,7 @@ export default function CafeProfileScreen() {
     await fetchReviews();
 
     setReviewText("");
-    setReviewRating(5);
+    setReviewRating(null);
     setReviewError("");
     };
 

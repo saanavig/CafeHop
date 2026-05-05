@@ -1,22 +1,22 @@
-import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   FlatList,
   StyleSheet,
   Text,
   TextInput,
-  View,
   TouchableOpacity,
+  View,
 } from "react-native";
 import { Bell, Search } from "lucide-react-native";
-import { useNavigation } from "@react-navigation/native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import ForYouCard, { Post } from "../components/ui/ForYouCard";
+import React, { useEffect, useRef, useState } from "react";
+import { deviceHeight, moderateScale, scale } from "../utils/responsive";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import BottomNav from "../components/ui/BottomNav";
-import { scale, moderateScale, deviceHeight } from "../utils/responsive";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../api/supabaseClient";
+import { useNavigation } from "@react-navigation/native";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:3001";
 const fallbackImage = "https://picsum.photos/500/700";
@@ -204,6 +204,7 @@ const Index = () => {
     const cafeName = cafe.name || "Cafe";
 
     return {
+      id: `cafe-${cafeId || cafeName}`,
       cafeId,
       isRecommended: recommended,
       cafeName,
@@ -316,18 +317,41 @@ const Index = () => {
         getRecCafeId(rec)
       );
 
-      const recommendedPosts: FeedPost[] = recommendations.map((rec: any) => {
-        const cafe = rec.cafe || {};
-        const cafeId = getRecCafeId(rec);
+      const recommendedPosts: FeedPost[] = recommendations
+        .map((rec: any) => {
+          const cafe = rec.cafe || {};
+          const post = rec.post;
 
-        const explanation =
-          explanationMap[cafeId] ||
-          rec.gemini_explanation ||
-          (rec.reasons?.length ? rec.reasons.join(". ") : null) ||
-          "Recommended for your taste.";
+          if (!post || !post.id) return null;
 
-        return cafeToPost(cafe, explanation, true);
-      });
+          return {
+            id: String(post.id),
+            cafeId: String(cafe.id),
+
+            cafeName: cafe.name || "Cafe",
+
+            image: {
+              uri:
+                post.file_url ||
+                post.media_url ||
+                post.image_url ||
+                cafe.image_url ||
+                `${fallbackImage}?random=${encodeURIComponent(cafe.name || "cafe")}`,
+            },
+
+            caption: post.caption || "Recommended for you",
+
+            likes: Number(post.likes_count ?? 0),
+            comments: Number(post.comments_count ?? 0),
+
+            postedBy: "CafeHop",
+            tags: ["recommended", "for-you"],
+            location: cafe.address || "Nearby",
+
+            commentList: [],
+          };
+        })
+        .filter((p): p is FeedPost => p !== null);
 
       const recommendedIds = new Set(
         recommendations.map((rec: any) => getRecCafeId(rec)).filter(Boolean)
@@ -412,9 +436,7 @@ const Index = () => {
         <FlatList
           ref={flatListRef}
           data={filteredPosts}
-          keyExtractor={(item) =>
-            item.cafeId || item.cafeName.trim().toLowerCase()
-          }
+          keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <TouchableOpacity
               activeOpacity={0.95}

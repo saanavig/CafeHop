@@ -37,6 +37,8 @@ export interface Post {
   tags: string[];
   location?: string;
   commentList?: Comment[];
+  liked_by_user?: boolean;
+  saved_by_user?: boolean;
 }
 
 interface ForYouCardProps {
@@ -49,9 +51,11 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
   // Fill the measured FlatList space; fall back to a reasonable estimate
   const wrapperH = listHeight ?? deviceHeight - 180;
   const cardH    = wrapperH * 0.97; // 1.5% gap top + bottom inside the page
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(post.liked_by_user ?? false);
+  const [saved, setSaved] = useState(post.saved_by_user ?? false);
   const [likesState, setLikesState] = useState(post.likes);
-  const [saved, setSaved] = useState(false);
+  const [commentsCount, setCommentsCount] = useState(post.comments);
+  const [loadingLike, setLoadingLike] = useState(false);
 
   const [showComments, setShowComments] = useState(false);
   const [commentsState, setCommentsState] = useState<any[]>([]);
@@ -67,15 +71,22 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
 
       console.log("COMMENTS:", data);
       setCommentsState(data);
+      setCommentsCount(data.length);
     } catch (err) {
       console.error("Fetch error:", err);
     }
   };
   
   const openComments = () => {
-    fetchComments();
+    if (!post.id || post.id.startsWith("cafe-")) return;
+
+    if (commentsState.length === 0) {
+      fetchComments();
+    }
+
     setShowComments(true);
     onModalToggle?.(true);
+  
     Animated.parallel([
       Animated.timing(slideAnim, { toValue: deviceHeight * 0.45, duration: 250, useNativeDriver: false }),
       Animated.timing(backdropAnim, { toValue: 1, duration: 250, useNativeDriver: false }),
@@ -92,12 +103,37 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
     });
   };
 
-  const handleLike = () => {
-    setLiked(!liked);
-    setLikesState(likesState + (liked ? -1 : 1));
+  const handleLike = async () => {
+    if (!post.id || post.id.startsWith("cafe-")) return;
+    if (loadingLike) return;
+
+    const newLiked = !liked;
+
+    setLiked(newLiked);
+    setLikesState((prev) =>
+      newLiked ? prev + 1 : Math.max(0, prev - 1)
+    );
+
+    setLoadingLike(true);
+
+    try {
+      await apiFetch(`/posts/${post.id}/like`, {
+        method: newLiked ? "POST" : "DELETE",
+      });
+    } catch (err) {
+      setLiked(!newLiked);
+      setLikesState((prev) =>
+        newLiked ? prev - 1 : prev + 1
+      );
+      console.error("Like error:", err);
+    } finally {
+      setLoadingLike(false);
+    }
   };
 
   const handlePostComment = async () => {
+    if (!post.id || post.id.startsWith("cafe-")) return;
+
     if (!newComment.trim()) return;
 
     try {
@@ -110,10 +146,39 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
 
       const data = await res.json();
 
-      setCommentsState((prev: any) => [data, ...prev]);
+      setCommentsState((prev: any) => {
+        const newItem = {
+          ...data,
+          username: "You",
+        };
+
+        const updated = [newItem, ...prev];
+        setCommentsCount(updated.length);
+        return updated;
+      });
+
       setNewComment("");
     } catch (err) {
       console.error("Post error:", err);
+    }
+  };
+
+  const handleSave = async () => {
+
+    if (!post.id || post.id.startsWith("cafe-")) return;
+
+    const newState = !saved;
+    setSaved(newState);
+
+    try {
+      if (newState) {
+        await apiFetch(`/posts/${post.id}/save`, { method: "POST" });
+      } else {
+        await apiFetch(`/posts/${post.id}/save`, { method: "DELETE" });
+      }
+    } catch (err) {
+      setSaved(!newState); // revert on failure
+      console.error("Save error:", err);
     }
   };
 
@@ -155,7 +220,12 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
               <Text style={styles.actionText}>{likesState}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setSaved(!saved)} style={styles.actionButton}>
+            <TouchableOpacity onPress={openComments} style={styles.actionButton}>
+              <MessageCircle size={scale(26)} color="#FFF" strokeWidth={2} />
+              <Text style={styles.actionText}>{commentsCount}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleSave} style={styles.actionButton}>
               <Bookmark
                 size={scale(26)}
                 color={saved ? "#D4A373" : "#FFF"}
@@ -163,11 +233,6 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
                 strokeWidth={saved ? 0 : 2}
               />
               <Text style={styles.actionText}>{saved ? "Saved" : "Save"}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={openComments} style={styles.actionButton}>
-              <MessageCircle size={scale(26)} color="#FFF" strokeWidth={2} />
-              <Text style={styles.actionText}>{commentsState.length}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -203,10 +268,12 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
 
             <FlatList
               data={commentsState}
-              keyExtractor={(_, i) => i.toString()}
+              keyExtractor={(item, index) => item.id || index.toString()}
               renderItem={({ item }) => (
                 <Text style={styles.commentText}>
-                  <Text style={{ fontWeight: "bold" }}>{item.user_id}: </Text>
+                <Text style={{ fontWeight: "bold" }}>
+                  {(item.username ?? "User") + ": "}
+                </Text>
                   {item.content}
                 </Text>
               )}
@@ -224,7 +291,7 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
                   onChangeText={setNewComment}
                 />
                 <Button variant="caramel" size="sm" onPress={handlePostComment}>
-                  Post
+                  <Text>Post</Text>
                 </Button>
               </View>
             </KeyboardAvoidingView>

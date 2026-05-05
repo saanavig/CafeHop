@@ -15,6 +15,53 @@ DEFAULT_MAX_DISTANCE_MILES = 5.0
 TOP_K_FOR_AI_EXPLANATIONS = 5
 
 
+def attach_posts_to_recommendations(recommendations):
+    if not recommendations:
+        return recommendations
+
+    cafe_ids = [
+        rec["cafe"]["id"]
+        for rec in recommendations
+        if rec.get("cafe") and rec["cafe"].get("id")
+    ]
+
+    if not cafe_ids:
+        return recommendations
+
+    # fetch posts for these cafes
+    posts_res = (
+        supabase.table("posts")
+        .select("""
+            *,
+            post_likes(count),
+            comments(count)
+        """)
+        .in_("cafe_id", cafe_ids)
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    posts = posts_res.data or []
+
+    # map: cafe_id → ONE post (latest)
+    cafe_post_map = {}
+
+    for post in posts:
+        cafe_id = post["cafe_id"]
+
+        if cafe_id not in cafe_post_map:
+            post["likes_count"] = post.get("post_likes", [{}])[0].get("count", 0)
+            post["comments_count"] = post.get("comments", [{}])[0].get("count", 0)
+
+            cafe_post_map[cafe_id] = post
+
+    # attach post to each recommendation
+    for rec in recommendations:
+        cafe_id = rec["cafe"]["id"]
+        rec["post"] = cafe_post_map.get(cafe_id)
+
+    return recommendations
+
 def haversine_miles(lat1, lon1, lat2, lon2):
     if None in (lat1, lon1, lat2, lon2):
         return None
@@ -624,9 +671,14 @@ def get_recommendations_for_user(
     )
     recommendations[:TOP_K_FOR_AI_EXPLANATIONS] = top_to_enrich
 
+    recommendations = attach_posts_to_recommendations(recommendations)
+
+    recommendations = [
+        rec for rec in recommendations
+        if rec.get("post") is not None
+    ]
+
     return recommendations
-
-
 
 
 # def attach_gemini_explanations(user_profile, recommendations):
