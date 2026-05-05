@@ -57,7 +57,7 @@ def register_cafe():
 
     try:
 
-        email = data.get("contact_email")
+        email = g.user.get("email")
 
         if email:
             existing = supabase.table("cafes") \
@@ -68,6 +68,13 @@ def register_cafe():
             if existing.data:
                 return jsonify({"error": "An account with this email already exists"}), 400
 
+        price_map = {
+            "$ (Budget-friendly)": 1,
+            "$$ (Moderate)": 2,
+            "$$$ (Premium)": 3,
+        }
+
+
         # cafe onboarding
         cafe_response = supabase.table("cafes").insert({
             "owner_id": owner_id,
@@ -76,8 +83,8 @@ def register_cafe():
             # "image_url": data.get("image_url"),
             "latitude": data.get("latitude"),
             "longitude": data.get("longitude"),
-            "price_range": data.get("price_range"),
-            "contact_email": data.get("contact_email"),
+            "price_level": price_map.get(data.get("price_range")),
+            "contact_email": email,
             "contact_phone": data.get("contact_phone"),
             "website_url": data.get("website_url"),
             "instagram_url": data.get("instagram_url"),
@@ -91,6 +98,10 @@ def register_cafe():
             return jsonify({"error": "Failed to create cafe"}), 500
 
         cafe = cafe_response.data[0]
+
+        supabase.table("profiles").update({
+            "full_name": cafe["name"]
+        }).eq("id", owner_id).execute()
         cafe_id = cafe["id"]
 
         # insert images into cafe_images table
@@ -99,7 +110,7 @@ def register_cafe():
         for index, url in enumerate(image_urls):
             image_rows.append({
                 "cafe_id": cafe_id,
-                # "image_path": url,
+                "image_path": url,
                 "image_url": url,
                 "is_cover": index == 0,
                 "order_index": index
