@@ -26,6 +26,11 @@ def register_cafe():
     if not data or "name" not in data:
         return jsonify({"error": "Cafe name is required"}), 400
 
+    image_urls = data.get("image_urls", [])
+
+    if not image_urls:
+        return jsonify({"error": "At least one image is required"}), 400
+
     owner_id = g.user["id"]
 
     # upgrade user to cafe_owner if not already
@@ -52,7 +57,7 @@ def register_cafe():
 
     try:
 
-        email = data.get("contact_email")
+        email = g.user.get("email")
 
         if email:
             existing = supabase.table("cafes") \
@@ -63,16 +68,23 @@ def register_cafe():
             if existing.data:
                 return jsonify({"error": "An account with this email already exists"}), 400
 
+        price_map = {
+            "$ (Budget-friendly)": 1,
+            "$$ (Moderate)": 2,
+            "$$$ (Premium)": 3,
+        }
+
+
         # cafe onboarding
         cafe_response = supabase.table("cafes").insert({
             "owner_id": owner_id,
             "name": data["name"],
             "address": data.get("address"),
-            "image_url": data.get("image_url"),
+            # "image_url": data.get("image_url"),
             "latitude": data.get("latitude"),
             "longitude": data.get("longitude"),
-            "price_level": int(data.get("price_level")) if data.get("price_level") else None,
-            "contact_email": data.get("contact_email"),
+            "price_level": price_map.get(data.get("price_range")),
+            "contact_email": email,
             "contact_phone": data.get("contact_phone"),
             "website_url": data.get("website_url"),
             "instagram_url": data.get("instagram_url"),
@@ -86,32 +98,62 @@ def register_cafe():
             return jsonify({"error": "Failed to create cafe"}), 500
 
         cafe = cafe_response.data[0]
+
+        supabase.table("profiles").update({
+            "full_name": cafe["name"]
+        }).eq("id", owner_id).execute()
         cafe_id = cafe["id"]
+
+        # insert images into cafe_images table
+        image_rows = []
+
+        for index, url in enumerate(image_urls):
+            image_rows.append({
+                "cafe_id": cafe_id,
+                "image_path": url,
+                "image_url": url,
+                "is_cover": index == 0,
+                "order_index": index
+            })
+
+        image_insert = supabase.table("cafe_images").insert(image_rows).execute()
+
+        if not image_insert.data:
+            return jsonify({"error": "Failed to save images"}), 500
+
+        if image_urls:
+            supabase.table("cafes").update({
+                "image_url": image_urls[0]
+            }).eq("id", cafe_id).execute()
 
         # cafe hours
         hours = data.get("hours", {})
 
         DAY_MAP = {
-            "Sunday": 0,
-            "Monday": 1,
-            "Tuesday": 2,
-            "Wednesday": 3,
-            "Thursday": 4,
-            "Friday": 5,
-            "Saturday": 6,
+            "Monday": 0,
+            "Tuesday": 1,
+            "Wednesday": 2,
+            "Thursday": 3,
+            "Friday": 4,
+            "Saturday": 5,
+            "Sunday": 6,
         }
 
+        hour_rows = []
+
         for day, val in hours.items():
-            # skip closed days
             if not val.get("open"):
                 continue
 
-            supabase.table("cafe_hours").insert({
+            hour_rows.append({
                 "cafe_id": cafe_id,
                 "day_of_week": DAY_MAP.get(day),
                 "open_time": val.get("start"),
                 "close_time": val.get("end"),
-            }).execute()
+            })
+
+        if hour_rows:
+            supabase.table("cafe_hours").insert(hour_rows).execute()
 
         # cafe reward system
         reward = data.get("reward")
@@ -193,6 +235,21 @@ def get_all_cafes():
         for cafe in cafes:
             cafe_id = cafe["id"]
 
+            image_response = (
+                supabase.table("cafe_images")
+                .select("image_url")
+                .eq("cafe_id", cafe_id)
+                .eq("is_cover", True)
+                .limit(1)
+                .execute()
+            )
+
+            cover_image = (
+                image_response.data[0]["image_url"]
+                if image_response.data and len(image_response.data) > 0
+                else None
+            )
+
             # get hours
             hours_response = supabase.table("cafe_hours") \
                 .select("day_of_week, open_time, close_time") \
@@ -204,6 +261,7 @@ def get_all_cafes():
             structured_response.append({
                 **cafe,
                 "hours": hours,
+                "image_url": cover_image,
                 "isOpen": is_cafe_open(hours)
             })
 
@@ -216,7 +274,7 @@ def get_all_cafes():
 def is_cafe_open(hours):
     now = datetime.now()
     day = now.weekday()  # 0 = Monday
-    current_time = now.strftime("%H:%M:%S")
+    current_time = now.strftime("%H:%M")
 
     for h in hours:
         if h["day_of_week"] == day:
@@ -452,10 +510,21 @@ def get_cafe_by_id(cafe_id):
 
         hours = hours_response.data or []
 
+        images_response = (
+            supabase.table("cafe_images")
+            .select("id, image_url, is_cover, order_index")
+            .eq("cafe_id", cafe_id)
+            .order("order_index")
+            .execute()
+        )
+
+        images = images_response.data or []
+
         return jsonify({
             "cafe": {
                 **cafe,
                 "hours": hours,
+                "images": images,
                 "isOpen": is_cafe_open(hours),
             }
         }), 200

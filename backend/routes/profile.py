@@ -19,7 +19,7 @@ def get_user_name():
 
     response = (
         supabase.table("profiles")
-        .select("first_name", "last_name")
+        .select("full_name")
         .eq("id", user_id)
         .limit(1)
         .execute()
@@ -28,11 +28,10 @@ def get_user_name():
     if not response or not getattr(response, "data", None):
         return jsonify({"name": ""}), 200
 
-    first = response.data[0].get("first_name") or ""
-    last = response.data[0].get("last_name") or ""
-    full = f"{first} {last}".strip()
-
+    full = response.data[0].get("full_name") or ""
     return jsonify({"name": full}), 200
+
+    # return jsonify({"name": full}), 200
 
 @profile_bp.route("/users/me", methods=["PUT"])
 @require_auth
@@ -57,6 +56,7 @@ def update_user_name():
             .upsert(
                 {
                     "id": user_id,
+                    "full_name": first_name,
                     "first_name": first_name,
                     "last_name": last_name,
                 }
