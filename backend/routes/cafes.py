@@ -142,7 +142,7 @@ def register_cafe():
         hour_rows = []
 
         for day, val in hours.items():
-            if not val.get("open"):
+            if not val.get("start") or not val.get("end"):
                 continue
 
             hour_rows.append({
