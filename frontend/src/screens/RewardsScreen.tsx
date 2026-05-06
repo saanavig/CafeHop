@@ -1067,6 +1067,10 @@ if (role === "cafe") {
               <Text style={{ color: "#777" }}>
                 Select a cafe to view rewards
               </Text>
+            ) : catalogRewards.length === 0 ? (
+              <Text style={{ color: "#777" }}>
+                No rewards available for this cafe.
+              </Text>
             ) : (
               catalogRewards.map((reward) => {
               const canAfford = points >= reward.points;
