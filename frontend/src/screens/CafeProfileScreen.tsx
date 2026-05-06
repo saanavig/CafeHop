@@ -4,6 +4,10 @@ import {
   ActivityIndicator,
   Animated,
   Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -20,7 +24,9 @@ import {
 
 import BottomNav from "../components/ui/BottomNav";
 import { TextInput } from "react-native";
+import { Video } from "expo-av";
 import { supabase } from "../api/supabaseClient";
+import { useNavigation } from "@react-navigation/native";
 import { useRoute } from "@react-navigation/native";
 
 type Comment = { text: string };
@@ -28,12 +34,17 @@ type Comment = { text: string };
 type Post = {
   id: string | number;
   images: string[];
+  media?: { file_url: string; file_type: "image" | "video" }[];
+  hasVideo?: boolean;
+
   likes: number;
   liked: boolean;
   comments: Comment[];
+
   caption?: string;
   location?: string;
   saved?: boolean;
+  tags?: string[];
 };
 
 type Cafe = {
@@ -48,7 +59,11 @@ type Cafe = {
   visits?: number;
   isOpen?: boolean;
 };
-
+  const TAG_OPTIONS = [
+    "Cozy", "Quiet", "Lively", "Outdoor Seating", "Pet Friendly", "WiFi", "Power Outlets",
+    "Specialty Drinks", "Great Pastries", "Vegan Options", "Study-friendly", "Good for Meetings",
+    "Instagrammable", "Late-night", "Early morning"
+  ];
 export default function CafeProfileScreen() {
     const route = useRoute<any>();
     const { cafeId } = route.params || {};
@@ -60,6 +75,7 @@ export default function CafeProfileScreen() {
     const [cafeLoading, setCafeLoading] = useState(true);
 
     const [newName, setNewName] = useState("");
+    const navigation = useNavigation<any>();
     const [newPrice, setNewPrice] = useState("");
     const [newCategory, setNewCategory] = useState("");
     const [isEditing, setIsEditing] = useState(false);
@@ -77,6 +93,12 @@ export default function CafeProfileScreen() {
     const [newImage, setNewImage] = useState<string | null>(null);
     const [editImage, setEditImage] = useState<string | null>(null);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [showAddPostModal, setShowAddPostModal] = useState(false);
+    const [postCaption, setPostCaption] = useState("");
+    const [selectedMedia, setSelectedMedia] = useState<
+      { uri: string; type: "image" | "video" }[]
+    >([]);
+    const [posting, setPosting] = useState(false);
 
     const [userId, setUserId] = useState<string | null>(null);
     const [ownerId, setOwnerId] = useState<string | null>(null);
@@ -94,12 +116,44 @@ export default function CafeProfileScreen() {
     const [reviewsLoading, setReviewsLoading] = useState(false);
     const [reviewError, setReviewError] = useState("");
     const [authLoading, setAuthLoading] = useState(true);
+    const [hours, setHours] = useState<any[]>([]);
+    const [showHoursModal, setShowHoursModal] = useState(false);
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+    const toggleTag = (tag: string) => {
+      setSelectedTags((prev) =>
+        prev.includes(tag)
+          ? prev.filter((t) => t !== tag)
+          : [...prev, tag]
+      );
+    };
 
   const isOwner = !!userId && !!ownerId && userId === ownerId;
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(scale(18))).current;
   const tabFadeAnim = useRef(new Animated.Value(1)).current;
+
+  const pickMedia = async () => {
+    if (selectedMedia.length >= 5) {
+      alert("Max 5 images");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      const newItems: { uri: string; type: "image" | "video" }[] = result.assets.map((a) => ({
+      uri: a.uri,
+      type: a.type === "video" ? "video" : "image",
+    }));
+  
+        setSelectedMedia((prev) => [...prev, ...newItems].slice(0, 5));
+    }
+  };
 
   useEffect(() => {
     const getUser = async () => {
@@ -153,6 +207,220 @@ export default function CafeProfileScreen() {
     fetchCafe();
   }, [cafeId, userId, authLoading]);
 
+    const getTodayIndex = () => {
+      const jsDay = new Date().getDay(); // 0 = Sunday
+      return (jsDay + 6) % 7; // converts to 0 = Monday
+    };
+
+  const getCafeStatus = () => {
+    if (!hours || hours.length === 0) {
+      return { label: "Hours unavailable", color: "#999" };
+    }
+
+    const now = new Date();
+    const today = getTodayIndex();
+
+    const todayHours = hours.find(
+      h => Number(h.day_of_week) === today
+    );
+
+    if (!todayHours || !todayHours.open_time || !todayHours.close_time) {
+      return { label: "Closed", color: "#999" };
+    }
+
+    const [openH, openM] = todayHours.open_time.split(":").map(Number);
+    const [closeH, closeM] = todayHours.close_time.split(":").map(Number);
+
+    const openDate = new Date();
+    openDate.setHours(openH, openM, 0);
+
+    const closeDate = new Date();
+    closeDate.setHours(closeH, closeM, 0);
+
+    if (now >= openDate && now <= closeDate) {
+      return {
+        label: `Open • Closes at ${todayHours.close_time.slice(0, 5)}`,
+        color: "#D4A373",
+      };
+    }
+
+    return { label: "Closed", color: "#999" };
+  };
+
+  const status = getCafeStatus();
+
+  const handleCreatePost = async () => {
+    if (selectedMedia.length === 0 || !cafe?.id || !userId) return;
+
+    setPosting(true);
+
+    try {
+      const uploadResults = await Promise.all(
+        selectedMedia.map(async (m) => {
+          const response = await fetch(m.uri);
+          const blob = await response.blob();
+
+          const extension = m.type === "video" ? "mp4" : "jpg";
+          const contentType = m.type === "video" ? "video/mp4" : "image/jpeg";
+
+          const fileName = `${cafe.id}/${Date.now()}-${Math.random()}.${extension}`;
+
+          const { error } = await supabase.storage
+            .from("posts")
+            .upload(fileName, blob, {
+              contentType,
+              upsert: true,
+            });
+
+          if (error) {
+            console.error(error);
+            return null;
+          }
+
+          const { data } = supabase.storage
+            .from("posts")
+            .getPublicUrl(fileName);
+
+          return {
+            url: data.publicUrl,
+            path: fileName,
+            type: m.type,
+          };
+        })
+      );
+
+      const validUploads = uploadResults.filter(
+        (item): item is { url: string; path: string; type: "image" | "video" } =>
+          item !== null
+      );
+
+      if (validUploads.length === 0) return;
+
+      const { data: postData, error: postError } = await supabase
+        .from("posts")
+        .insert([
+          {
+            cafe_id: cafe.id,
+            user_id: userId,
+            caption: postCaption,
+            tags: selectedTags,
+            post_type: isOwner ? "owner" : "user",
+          },
+        ])
+        .select()
+        .single();
+
+      if (postError || !postData) {
+        console.error(postError);
+        return;
+      }
+
+      const { error: mediaError } = await supabase
+        .from("post_media")
+        .insert(
+          validUploads.map((item) => ({
+            post_id: postData.id,
+            file_url: item.url,
+            file_path: item.path,
+            file_type: item.type,
+          }))
+        );
+
+      if (mediaError) {
+        console.error("POST MEDIA ERROR:", mediaError);
+      }
+
+      const imageUrls = validUploads
+        .filter((item) => item.type === "image")
+        .map((item) => item.url);
+
+        const newPost: Post = {
+          id: postData.id,
+
+          images: imageUrls,
+
+          media: validUploads.map((item) => ({
+            file_url: item.url,
+            file_type: item.type,
+          })),
+
+          hasVideo: validUploads.some((item) => item.type === "video"),
+
+          likes: 0,
+          liked: false,
+          comments: [],
+          caption: postCaption,
+          tags: selectedTags,
+        };
+
+      setPosts((prev) => [newPost, ...prev]);
+
+      // reset
+      setPostCaption("");
+      setSelectedMedia([]);
+      setSelectedTags([]);
+      setShowAddPostModal(false);
+
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const formatTime = (time: string) => {
+    if (!time) return "";
+    const [h, m] = time.split(":");
+    const hour = Number(h);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const formatted = hour % 12 || 12;
+    return `${formatted}:${m} ${ampm}`;
+  };
+
+  useEffect(() => {
+    if (!cafe?.id) return;
+
+    const fetchHours = async () => {
+      const { data, error } = await supabase
+        .from("cafe_hours")
+        .select("*")
+        .eq("cafe_id", cafe.id);
+
+      if (error) {
+        console.error("Fetch hours error:", error);
+        return;
+      }
+      console.log("HOURS DATA:", data);
+
+      const sorted = (data || []).sort((a, b) => a.day_of_week - b.day_of_week);
+      setHours(sorted);
+    };
+
+    fetchHours();
+  }, [cafe?.id]);
+
+  const isCafeOpenNow = () => {
+    if (!hours || hours.length === 0) return false;
+
+    const now = new Date();
+    const today = getTodayIndex();
+
+    const todayHours = hours.find(h => Number(h.day_of_week) === today);
+
+    if (!todayHours || !todayHours.open_time || !todayHours.close_time) {
+      return false;
+    }
+
+    const [openH, openM] = todayHours.open_time.split(":").map(Number);
+    const [closeH, closeM] = todayHours.close_time.split(":").map(Number);
+
+    const openDate = new Date();
+    openDate.setHours(openH, openM, 0);
+
+    const closeDate = new Date();
+    closeDate.setHours(closeH, closeM, 0);
+
+    return now >= openDate && now <= closeDate;
+  };
+
   useEffect(() => {
     if (!cafe?.id) return;
 
@@ -183,27 +451,36 @@ export default function CafeProfileScreen() {
       try {
         const { data, error } = await supabase
           .from("posts")
-          .select("id, caption, created_at, post_media(id, file_url, file_type)")
-          .eq("cafe_id", cafeId)
+          .select("id, caption, tags, created_at, post_media(id, file_url, file_type)")
+          .eq("cafe_id", cafe.id)
           .order("created_at", { ascending: false });
 
         if (error) {
           console.error("Fetch posts error:", error);
+          return;
         }
 
         if (data) {
-          const mapped = data
-            .map((p: any) => ({
+          const mapped = data.map((p: any) => {
+            const media = p.post_media ?? [];
+
+            return {
               id: p.id,
-              images: (p.post_media ?? [])
+
+              // only images for grid thumbnails
+              images: media
                 .filter((m: any) => m.file_type === "image" && m.file_url)
                 .map((m: any) => m.file_url as string),
+              media: media,
+              hasVideo: media.some((m: any) => m.file_type === "video"),
+
               likes: 0,
               liked: false,
               comments: [],
               caption: p.caption ?? "",
-            }))
-            .filter((p: any) => p.images.length > 0);
+              tags: p.tags ?? [],
+            };
+          });
 
           setPosts(mapped);
         }
@@ -213,7 +490,7 @@ export default function CafeProfileScreen() {
     };
 
     fetchPosts();
-  }, [cafeId]);
+  }, [cafe?.id]);
 
   useEffect(() => {
     Animated.parallel([
@@ -527,10 +804,6 @@ export default function CafeProfileScreen() {
     );
   }
 
-
-
-
-
   return (
     <View style={styles.container}>
       <Animated.ScrollView
@@ -563,7 +836,12 @@ export default function CafeProfileScreen() {
 
             <Text style={styles.bio}>
               {cafe.description || "No description yet"} •{" "}
-              {cafe.isOpen ? "Open" : "Closed"}
+              <Text
+                style={[styles.statusLink, { color: status.color }]}
+                onPress={() => setShowHoursModal(true)}
+              >
+                {status.label}
+              </Text>
             </Text>
 
             <View style={styles.statsRow}>
@@ -591,6 +869,24 @@ export default function CafeProfileScreen() {
             </View>
           </View>
 
+        {isOwner && (
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              onPress={() =>navigation.navigate("CafeEdit")}
+              style={styles.editButton}
+            >
+              <Text style={styles.editButtonText}>Edit Profile</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setShowAddPostModal(true)}
+              style={styles.addPostButton}
+            >
+              <Text style={styles.primaryButtonText}>+ Add Post</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
           <View style={styles.tabs}>
             <TouchableOpacity onPress={() => switchTab("posts")}>
               <Grid3X3
@@ -617,6 +913,7 @@ export default function CafeProfileScreen() {
           <Animated.View style={{ opacity: tabFadeAnim }}>
             {activeTab === "posts" && (
               <>
+
                 {postsLoading ? (
                   <View style={styles.emptyState}>
                     <ActivityIndicator size="small" color="#D4A373" />
@@ -631,24 +928,70 @@ export default function CafeProfileScreen() {
                     </Text>
                   </View>
                 ) : (
-                  <View style={styles.grid}>
-                    {posts.map((post) => (
-                      <TouchableOpacity
-                        key={post.id}
-                        onPress={() => setSelectedPost(post)}
-                      >
-                        <Image
-                          source={{ uri: post.images[0] }}
-                          style={{
-                            width: photoSize,
-                            height: photoSize,
-                            margin: 1,
-                            borderRadius: scale(4),
-                          }}
-                        />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                <View style={styles.grid}>
+                  {posts.map((post) => {
+                    const firstMedia = post.media?.[0];
+                    if (!firstMedia) return null;
+                    const isVideo = firstMedia.file_type === "video";
+
+                    return (
+                    <TouchableOpacity
+                      key={post.id}
+                      onPress={() => setSelectedPost(post)}
+                    >
+                      <View>
+                        {(() => {
+                          const firstMedia = post.media?.[0];
+                          if (!firstMedia) return null;
+
+                          const isVideo = firstMedia.file_type === "video";
+
+                          return isVideo ? (
+                            <Video
+                              source={{ uri: firstMedia.file_url }}
+                              style={{
+                                width: photoSize,
+                                height: photoSize,
+                                margin: 1,
+                                borderRadius: scale(4),
+                              }}
+                              resizeMode="cover"
+                              shouldPlay={false} // grid = no autoplay
+                              isLooping
+                            />
+                          ) : (
+                            <Image
+                              source={{ uri: firstMedia.file_url }}
+                              style={{
+                                width: photoSize,
+                                height: photoSize,
+                                margin: 1,
+                                borderRadius: scale(4),
+                              }}
+                            />
+                          );
+                        })()}
+
+                        {post.hasVideo && (
+                          <View
+                            style={{
+                              position: "absolute",
+                              top: 6,
+                              right: 6,
+                              backgroundColor: "rgba(0,0,0,0.6)",
+                              borderRadius: 6,
+                              paddingHorizontal: 6,
+                              paddingVertical: 2,
+                            }}
+                          >
+                            <Text style={{ color: "#FFF", fontSize: 10 }}>▶</Text>
+                          </View>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                  })}
+                </View>
                 )}
               </>
             )}
@@ -1279,6 +1622,228 @@ export default function CafeProfileScreen() {
         </TouchableOpacity>
       )}
 
+      {showHoursModal && (
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowHoursModal(false)}
+        >
+          <View style={styles.hoursModal}>
+            <Text style={styles.hoursTitle}>Opening Hours</Text>
+
+            {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day, index) => {
+              const now = new Date();
+              const today = getTodayIndex();
+              const isToday = index === today;
+              const dbDay = index;
+
+              const dayData = hours.find(
+                  h => Number(h.day_of_week) === dbDay
+                );
+
+              return (
+                <View
+                  key={day}
+                  style={[
+                    styles.hoursRow,
+                    isToday && { backgroundColor: "#F3EDE7", borderRadius: 8, padding: 6 },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.hoursDay,
+                      isToday && { fontWeight: "700", color: "#D4A373" },
+                    ]}
+                  >
+                    {day}
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.hoursTime,
+                      isToday && { fontWeight: "700", color: "#D4A373" },
+                    ]}
+                  >
+                    {dayData && dayData.open_time && dayData.close_time
+                      ? `${formatTime(dayData.open_time)} - ${formatTime(dayData.close_time)}`
+                      : "Closed"}
+                  </Text>
+                </View>
+              );
+            })}
+
+            <TouchableOpacity onPress={() => setShowHoursModal(false)}>
+              <Text style={styles.closeText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {showAddPostModal && (
+      <Modal visible animationType="slide" presentationStyle="pageSheet">
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <View style={styles.postModalContainer}>
+
+            {/* Header */}
+            <View style={styles.addPostHeader}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowAddPostModal(false);
+                  setSelectedMedia([]);
+                  setPostCaption("");
+                }}
+              >
+                <Text style={{ fontSize: 18 }}>✕</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.addPostTitle}>New Post</Text>
+
+              <TouchableOpacity
+                onPress={handleCreatePost}
+                disabled={posting || selectedMedia.length === 0}
+              >
+                <View
+                  style={[
+                    styles.shareButton,
+                    (selectedMedia.length === 0 || posting) && styles.shareButtonDisabled,
+                  ]}
+                >
+                  <Text style={styles.shareButtonText}>
+                    {posting ? "Posting…" : "Share"}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              contentContainerStyle={{ padding: scale(16) }}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* MEDIA */}
+              <View style={{ marginBottom: scale(20) }}>
+                {/* Add button ALWAYS visible */}
+                <TouchableOpacity
+                  onPress={pickMedia}
+                  style={[
+                    styles.mediaEmptyBox,
+                    { height: scale(100), marginBottom: scale(12) },
+                  ]}
+                >
+                  <Text style={styles.mediaEmptyTitle}>
+                    {selectedMedia.length === 0 ? "Add Photos" : "Add More"}
+                  </Text>
+                  <Text style={styles.mediaEmptySubtitle}>
+                    {selectedMedia.length}/5 selected
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Preview */}
+                {selectedMedia.length > 0 && (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {selectedMedia.map((item, index) => (
+                      <View key={index} style={{ marginRight: scale(10) }}>
+                        <Image source={{ uri: item.uri }} style={styles.mediaPreview} />
+
+                        <TouchableOpacity
+                          onPress={() =>
+                            setSelectedMedia((prev) =>
+                              prev.filter((_, i) => i !== index)
+                            )
+                          }
+                          style={styles.removeMediaBtn}
+                        >
+                          <Text style={{ color: "#FFF" }}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+
+              {/* CAPTION */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Caption</Text>
+                <TextInput
+                  placeholder="Write something..."
+                  placeholderTextColor="#BBB"
+                  value={postCaption}
+                  onChangeText={setPostCaption}
+                  multiline
+                  style={styles.captionInput}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Tags</Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: scale(8) }}>
+                    {TAG_OPTIONS.map((tag) => {
+                      const selected = selectedTags.includes(tag);
+                      return (
+                      <TouchableOpacity
+                        key={tag}
+                        onPress={() => toggleTag(tag)}
+                        style={[styles.tagChip, selected && styles.tagChipSelected]}
+                      >
+                    <Text style={[styles.tagChipText, selected && styles.tagChipTextSelected]}>{tag}</Text>
+                    </TouchableOpacity>
+                    );
+                  })}
+              </View>
+            </View>
+
+              {/* OPTIONAL: show cafe context */}
+              <Text style={styles.cafeContext}>
+                Posting as {cafe?.name}
+              </Text>
+            </ScrollView>
+  
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    )}
+
+    {selectedPost && (
+      <Modal visible transparent animationType="fade">
+        <TouchableOpacity
+          style={styles.previewOverlay}
+          activeOpacity={1}
+          onPress={() => setSelectedPost(null)}
+        >
+          <View style={styles.postPreviewContainer}>
+            <ScrollView horizontal pagingEnabled>
+              {selectedPost.media?.map((m, i) =>
+                m.file_type === "video" ? (
+                  <Video
+                    key={i}
+                    source={{ uri: m.file_url }}
+                    style={styles.postPreviewMedia}
+                    resizeMode="contain"
+                    useNativeControls
+                  />
+                ) : (
+                  <Image
+                    key={i}
+                    source={{ uri: m.file_url }}
+                    style={styles.postPreviewMedia}
+                    resizeMode="contain"
+                  />
+                )
+              )}
+            </ScrollView>
+
+            {selectedPost.caption ? (
+              <Text style={styles.postPreviewCaption}>
+                {selectedPost.caption}
+              </Text>
+            ) : null}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    )}
+
       <BottomNav />
     </View>
   );
@@ -1332,6 +1897,7 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(13),
     color: "#777",
     textAlign: "center",
+    marginBottom: verticalScale(12), 
     marginTop: scale(4),
     lineHeight: moderateScale(18),
   },
@@ -1407,16 +1973,22 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: moderateScale(14),
   },
-
-  editButton: {
-    position: "absolute",
-    right: scale(8),
-    top: verticalScale(20),
-    padding: scale(8),
-    backgroundColor: "#fff",
-    borderRadius: scale(20),
-    elevation: 3,
-    zIndex: 10,
+  // editButton: {
+  //   position: "absolute",
+  //   right: scale(8),
+  //   top: verticalScale(20),
+  //   padding: scale(8),
+  //   backgroundColor: "#fff",
+  //   borderRadius: scale(20),
+  //   elevation: 3,
+  //   zIndex: 10,
+  // },
+  addPostButton: {
+    flex: 1,
+    backgroundColor: "#D4A373",
+    paddingVertical: scale(12),
+    borderRadius: scale(12),
+    alignItems: "center",
   },
   doneText: {
     color: "#D4A373",
@@ -1566,6 +2138,16 @@ const styles = StyleSheet.create({
     marginLeft: scale(10),
     fontSize: moderateScale(13),
   },
+  actionRow: {
+    flexDirection: "row",
+    gap: scale(12),
+    marginTop: scale(16),
+  },
+  editButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: moderateScale(14),
+  },
   rowActions: {
     flexDirection: "row",
     marginLeft: scale(10),
@@ -1644,5 +2226,212 @@ const styles = StyleSheet.create({
     width: "90%",
     height: "60%",
     borderRadius: scale(12),
+  },
+  statusLink: {
+    textDecorationLine: "underline",
+    fontWeight: "600",
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 200,
+  },
+  hoursModal: {
+    width: Math.min(deviceWidth * 0.85, 360), 
+    backgroundColor: "#FFF",
+    padding: scale(18),
+    borderRadius: scale(16),
+  },
+  hoursTitle: {
+    fontSize: moderateScale(16),
+    fontWeight: "700",
+    marginBottom: scale(12),
+    textAlign: "center",
+  },
+  hoursRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: scale(8),
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  hoursDay: {
+    fontSize: moderateScale(13),
+    color: "#333",
+  },
+  hoursTime: {
+    fontSize: moderateScale(13),
+    color: "#777",
+  },
+  closeText: {
+    marginTop: scale(12),
+    textAlign: "center",
+    color: "#D4A373",
+    fontWeight: "600",
+  },
+  editButton: {
+    flex: 1,
+    backgroundColor: "#D4A373",
+    paddingVertical: scale(12),
+    borderRadius: scale(12),
+    alignItems: "center",
+  },
+  postModal: {
+    width: Math.min(deviceWidth * 0.85, 400),
+    backgroundColor: "#FFF",
+    padding: scale(16),
+    borderRadius: scale(16),
+  },
+  postModalContainer: {
+  flex: 1,
+  backgroundColor: "#FFF",
+},
+
+addPostHeader: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  paddingHorizontal: scale(16),
+  paddingVertical: scale(14),
+  borderBottomWidth: 1,
+  borderBottomColor: "#EEE",
+},
+
+addPostTitle: {
+  fontSize: moderateScale(16),
+  fontWeight: "700",
+  color: "#1A1A1A",
+},
+
+shareButton: {
+  backgroundColor: "#D4A373",
+  borderRadius: scale(20),
+  paddingHorizontal: scale(16),
+  paddingVertical: scale(7),
+},
+
+shareButtonDisabled: {
+  backgroundColor: "#E8D5C0",
+  opacity: 0.6,
+},
+
+shareButtonText: {
+  color: "#FFF",
+  fontWeight: "700",
+  fontSize: moderateScale(14),
+},
+
+  mediaEmptyBox: {
+    height: scale(200),
+    borderRadius: scale(16),
+    borderWidth: 1.5,
+    borderColor: "#E0D8D0",
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: scale(8),
+    backgroundColor: "rgba(212,163,115,0.04)",
+    marginBottom: scale(20),
+  },
+
+  mediaEmptyTitle: {
+    fontSize: moderateScale(15),
+    fontWeight: "700",
+    color: "#2C1810",
+  },
+
+  mediaEmptySubtitle: {
+    fontSize: moderateScale(12),
+    color: "#AAA",
+  },
+  mediaPreview: {
+    width: scale(110),
+    height: scale(110),
+    borderRadius: scale(12),
+  },
+  removeMediaBtn: {
+    position: "absolute",
+    top: scale(8),
+    right: scale(8),
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: scale(14),
+    width: scale(28),
+    height: scale(28),
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  inputGroup: {
+    marginBottom: scale(20),
+  },
+
+  inputLabel: {
+    fontSize: moderateScale(13),
+    fontWeight: "700",
+    color: "#2C1810",
+    marginBottom: scale(8),
+  },
+
+  captionInput: {
+    fontSize: moderateScale(14),
+    color: "#1A1A1A",
+    lineHeight: moderateScale(22),
+    minHeight: scale(90),
+    textAlignVertical: "top",
+    borderWidth: 1,
+    borderColor: "#E8DFD5",
+    borderRadius: scale(12),
+    padding: scale(12),
+    backgroundColor: "#F7F3F0",
+  },
+  cafeContext: {
+    fontSize: moderateScale(12),
+    color: "#AAA",
+    textAlign: "center",
+  },
+  tagChip: {
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(6),
+    borderRadius: scale(20),
+    borderWidth: 1,
+    borderColor: "#E0D8D0",
+    backgroundColor: "#FFF",
+  },
+  tagChipSelected: {
+    backgroundColor: "#D4A373",
+    borderColor: "#D4A373",
+  },
+  tagChipText: {
+    fontSize: moderateScale(12),
+    color: "#555",
+  },
+  tagChipTextSelected: {
+    color: "#FFF",
+    fontWeight: "600",
+  },
+  postPreviewContainer: {
+    width: "100%",
+    height: "80%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  postPreviewMedia: {
+    width: deviceWidth,
+    height: "100%",
+  },
+  postPreviewCaption: {
+    position: "absolute",
+    bottom: scale(20),
+    left: scale(16),
+    right: scale(16),
+    color: "#FFF",
+    fontSize: moderateScale(14),
+    textAlign: "center",
   },
 });

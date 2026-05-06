@@ -22,10 +22,10 @@ import {
 } from "lucide-react-native";
 import React, { useEffect, useRef } from "react";
 import { moderateScale, scale } from "../utils/responsive";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
@@ -35,6 +35,7 @@ type MenuItem = {
   label: string;
   desc: string;
   route: string;
+  // params?: any;
 };
 
 const SettingsScreen = () => {
