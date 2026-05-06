@@ -363,9 +363,20 @@ export default function ExploreScreen() {
   }));
 
   const filteredCafes: Cafe[] = mergedCafes.filter((c) => {
-    const matchesSearch = c.name
-      ?.toLowerCase()
-      .includes(search.toLowerCase());
+    const query = search.toLowerCase();
+
+    const matchesSearch =
+      c.name?.toLowerCase().includes(query) ||
+
+      (c.vibes ?? []).some(v =>
+        v.toLowerCase().includes(query)
+      ) ||
+
+      (c.attributes ?? []).some(a =>
+        a.toLowerCase().includes(query)
+      ) ||
+
+      (c.category ?? "").toLowerCase().includes(query);
 
     // open filter
     if (selectedFilter === "Open Now" && !c.isOpen) {
