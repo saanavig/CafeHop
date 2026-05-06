@@ -202,7 +202,8 @@ export default function AnalyticsScreen() {
               <View style={[styles.statIcon, { backgroundColor: "#E8F5E9" }]}>
                 <DollarSign size={20} color="#4CAF50" />
               </View>
-              <Text style={styles.statValue}> ${analytics?.revenue?.toFixed(2) ?? "0.00"} </Text>
+              <Text style={styles.statValue}>${(analytics?.revenue ?? 0).toFixed(2)}
+                ${(analytics?.aov ?? 0).toFixed(2)}</Text>
               <Text style={styles.statLabel}>Revenue</Text>
             </View>
             <View style={styles.statCard}>

@@ -88,10 +88,24 @@ def get_analytics():
         # fallback if no hours found
         open_hour, close_hour = 8, 20
 
-    if close_hour < open_hour:
-        hours_range = list(range(open_hour, 24)) + list(range(0, close_hour + 1))
+    active_hours = [h for h, count in hour_counts.items() if count > 0]
+
+    if active_hours:
+        min_hour = min(active_hours)
+        max_hour = max(active_hours)
+
+        # add breathing room around activity
+        start_hour = max(min_hour - 2, 0)
+        end_hour = min(max_hour + 2, 23)
+
+        hours_range = range(start_hour, end_hour + 1)
+
     else:
-        hours_range = range(open_hour, close_hour + 1)
+        # fallback to cafe hours if no purchases
+        if close_hour < open_hour:
+            hours_range = list(range(open_hour, 24)) + list(range(0, close_hour + 1))
+        else:
+            hours_range = range(open_hour, close_hour + 1)
 
     peak_hours = [
         {"hour": h, "count": hour_counts.get(h, 0)}
