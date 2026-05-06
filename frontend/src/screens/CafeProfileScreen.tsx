@@ -638,7 +638,7 @@ export default function CafeProfileScreen() {
       .from("menu_items")
       .update({ category: newCategoryName })
       .eq("category", oldCategory)
-      .eq("cafe_id", cafeId);
+      .eq("cafe_id", cafe?.id);
 
     if (error) {
       console.error(error);
@@ -689,7 +689,7 @@ export default function CafeProfileScreen() {
     const { data, error } = await supabase
         .from("reviews")
         .select("*")
-        .eq("cafe_id", cafeId)
+        .eq("cafe_id", cafe.id)
         .order("created_at", { ascending: false });
 
     if (error) {
@@ -706,6 +706,10 @@ export default function CafeProfileScreen() {
         : null;
 
         setMyReview(mine || null);
+        if (mine) {
+          setReviewRating(mine.rating);
+          setReviewText(mine.review_text || "");
+        }
     }
     setReviewsLoading(false);
     };
@@ -713,10 +717,10 @@ export default function CafeProfileScreen() {
     useEffect(() => {
     if (!cafe?.id) return;
     fetchReviews();
-    }, [cafeId, userId]);
+    }, [cafe?.id, userId]);
 
     const submitReview = async () => {
-    if (!userId || !cafeId) {
+    if (!userId || !cafe?.id) {
       setReviewError("You need to be logged in to leave a review.");
       return;
     }
@@ -751,7 +755,7 @@ export default function CafeProfileScreen() {
     } else {
         const { error } = await supabase.from("reviews").insert({
         user_id: userId,
-        cafe_id: cafeId,
+        cafe_id: cafe.id,
         rating: reviewRating,
         review_text: reviewText.trim() || null,
         });
@@ -766,7 +770,7 @@ export default function CafeProfileScreen() {
     const { data: ratingRows, error: ratingError } = await supabase
         .from("reviews")
         .select("rating")
-        .eq("cafe_id", cafeId);
+        .eq("cafe_id", cafe.id);
 
     if (ratingError) {
         console.error("Rating fetch error:", ratingError);
@@ -786,7 +790,7 @@ export default function CafeProfileScreen() {
         .update({
             rating: averageRating,
         })
-        .eq("id", cafeId);
+        .eq("id", cafe.id);
 
         if (cafeRatingError) {
         console.error("Cafe rating update error:", cafeRatingError);
