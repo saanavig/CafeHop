@@ -270,6 +270,7 @@ export default function RewardsScreen({ navigation }) {
         fetchOwnerCafe();
       } else {
         fetchCafes();
+        fetchUserRedemptions();
       }
     }, [role])
   );
@@ -565,6 +566,34 @@ export default function RewardsScreen({ navigation }) {
     } catch (err) {
       console.error(err);
       showToast("Something went wrong");
+    }
+  };
+
+  const fetchUserRedemptions = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      const res = await fetch(
+        `${API_URL}/api/users/me/redemptions`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error(data);
+        return;
+      }
+
+      setRecentRedemptions(data.redemptions || []);
+
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -1025,40 +1054,6 @@ if (role === "cafe") {
             </Text>
           </TouchableOpacity>
 
-
-          {/* Transaction History */}
-          {/* {transactions.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Points History</Text>
-              {transactions.map((tx) => {
-                const timeAgo = (d: string) => {
-                  const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
-                  if (mins < 60) return `${mins}m ago`;
-                  const hrs = Math.floor(mins / 60);
-                  if (hrs < 24) return `${hrs}h ago`;
-                  return `${Math.floor(hrs / 24)}d ago`;
-                };
-                const positive = tx.points_change >= 0;
-                return (
-                  <View key={tx.id} style={styles.txRow}>
-                    <View style={[styles.txDot, { backgroundColor: positive ? "#E8F5E9" : "#FCE4EC" }]}>
-                      <Text style={{ fontSize: moderateScale(14) }}>{positive ? "+" : "−"}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.txReason} numberOfLines={1}>
-                        {tx.reason || (positive ? "Points earned" : "Points spent")}
-                      </Text>
-                      <Text style={styles.txTime}>{timeAgo(tx.created_at)}</Text>
-                    </View>
-                    <Text style={[styles.txPoints, { color: positive ? "#2E7D32" : "#C62828" }]}>
-                      {positive ? "+" : ""}{tx.points_change} pts
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          )} */}
-
           {/* Rewards List */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Available Rewards</Text>
@@ -1096,6 +1091,52 @@ if (role === "cafe") {
                 </View>
               );
             })
+            )}
+          </View>
+
+          {/* Recent Redemptions */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recent Redemptions</Text>
+
+            {recentRedemptions.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>
+                  No rewards redeemed yet
+                </Text>
+              </View>
+            ) : (
+              recentRedemptions.map((item, index) => (
+                <View
+                  key={item.id || index}
+                  style={styles.redemptionCard}
+                >
+                  <View style={styles.redemptionLeft}>
+                    <Image
+                      source={require("../assets/latte-art.jpg")}
+                      style={styles.redemptionImage}
+                    />
+
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rewardName}>
+                        {item.reward_name || item.reward || "Reward"}
+                      </Text>
+
+                      <Text style={styles.cafeName}>
+                        {item.cafe_name || item.cafe || "Cafe"}
+                      </Text>
+
+                      <Text style={styles.redemptionDate}>
+                        Redeemed on{" "}
+                        {item.redeemed_at || item.created_at || ""}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.pointsUsed}>
+                    -{item.points_used || item.points_spent || 0} pts
+                  </Text>
+                </View>
+              ))
             )}
           </View>
         </View>
@@ -1686,5 +1727,55 @@ const styles = StyleSheet.create({
   },
   resumeBtnText: {
     color: "#FFF",
+  },
+  redemptionCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: moderateScale(20),
+    padding: moderateScale(14),
+    marginBottom: moderateScale(12),
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  redemptionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  redemptionImage: {
+    width: moderateScale(56),
+    height: moderateScale(56),
+    borderRadius: moderateScale(14),
+    marginRight: moderateScale(12),
+  },
+  rewardName: {
+    fontSize: moderateScale(16),
+    fontWeight: "700",
+    color: "#1E1E1E",
+  },
+  cafeName: {
+    fontSize: moderateScale(14),
+    color: "#666",
+    marginTop: moderateScale(2),
+  },
+  redemptionDate: {
+    fontSize: moderateScale(12),
+    color: "#999",
+    marginTop: moderateScale(4),
+  },
+  pointsUsed: {
+    fontSize: moderateScale(16),
+    fontWeight: "700",
+    color: "#C68B59",
+  },
+  emptyCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: moderateScale(20),
+    padding: moderateScale(20),
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: moderateScale(14),
+    color: "#888",
   },
 });

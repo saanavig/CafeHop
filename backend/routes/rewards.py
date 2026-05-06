@@ -442,3 +442,68 @@ def delete_reward(reward_id):
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+@rewards_bp.route("/users/me/redemptions", methods=["GET"])
+@require_auth
+def user_redemptions():
+    try:
+        user_id = g.user["id"]
+
+        response = supabase.table("reward_redemptions") \
+            .select("""
+                id,
+                cafe_id,
+                reward_id,
+                points_spent,
+                created_at
+            """) \
+            .eq("user_id", user_id) \
+            .order("created_at", desc=True) \
+            .limit(20) \
+            .execute()
+
+        formatted = []
+
+        for r in response.data or []:
+
+            # fetch reward title
+            reward_res = supabase.table("rewards") \
+                .select("title") \
+                .eq("id", r["reward_id"]) \
+                .single() \
+                .execute()
+
+            # fetch cafe name
+            cafe_res = supabase.table("cafes") \
+                .select("name") \
+                .eq("id", r["cafe_id"]) \
+                .single() \
+                .execute()
+
+            formatted.append({
+                "id": r.get("id"),
+
+                "reward_name": (
+                    reward_res.data.get("title")
+                    if reward_res.data else "Reward"
+                ),
+
+                "cafe_name": (
+                    cafe_res.data.get("name")
+                    if cafe_res.data else "Cafe"
+                ),
+
+                "points_used": r.get("points_spent", 0),
+
+                "redeemed_at": datetime.fromisoformat(
+                    r.get("created_at").replace("Z", "+00:00")
+                ).strftime("%b %d, %Y")
+            })
+
+        return jsonify({
+            "redemptions": formatted
+        }), 200
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
