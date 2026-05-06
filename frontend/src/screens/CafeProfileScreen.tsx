@@ -100,6 +100,8 @@ export default function CafeProfileScreen() {
     >([]);
     const [posting, setPosting] = useState(false);
     const [userRole, setUserRole] = useState<string | null>(null);
+    const [averageRating, setAverageRating] = useState<number | null>(null);
+    const [visitCount, setVisitCount] = useState<number>(0);
 
     const [userId, setUserId] = useState<string | null>(null);
     const [ownerId, setOwnerId] = useState<string | null>(null);
@@ -730,7 +732,7 @@ export default function CafeProfileScreen() {
       return;
     }
 
-    if (reviewRating < 1 || reviewRating > 5) {
+    if (!reviewRating || reviewRating < 1 || reviewRating > 5) {
         setReviewError("Rating must be between 1 and 5.");
         return;
     }
@@ -766,46 +768,6 @@ export default function CafeProfileScreen() {
         return;
         }
     }
-
-    const { data: ratingRows, error: ratingError } = await supabase
-        .from("reviews")
-        .select("rating")
-        .eq("cafe_id", cafe.id);
-
-    if (ratingError) {
-        console.error("Rating fetch error:", ratingError);
-    }
-
-    if (ratingRows && ratingRows.length > 0) {
-        const avg =
-        ratingRows.reduce(
-            (sum, row) => sum + Number(row.rating || 0),
-            0
-        ) / ratingRows.length;
-
-        const averageRating = Number(avg.toFixed(1));
-
-        const { error: cafeRatingError } = await supabase
-        .from("cafes")
-        .update({
-            rating: averageRating,
-        })
-        .eq("id", cafe.id);
-
-        if (cafeRatingError) {
-        console.error("Cafe rating update error:", cafeRatingError);
-        } else {
-        setCafe((prev) =>
-            prev
-            ? {
-                ...prev,
-                rating: averageRating,
-                }
-            : prev
-        );
-        }
-    }
-
     await fetchReviews();
 
     setReviewText("");
@@ -813,9 +775,49 @@ export default function CafeProfileScreen() {
     setReviewError("");
     };
 
+  useEffect(() => {
+    if (!cafe?.id) return;
 
+    const fetchCafeStats = async () => {
+      // FETCH REVIEWS
+      const { data: reviewData, error: reviewError } = await supabase
+        .from("reviews")
+        .select("rating")
+        .eq("cafe_id", cafe.id);
 
-  if (cafeLoading) {
+      if (reviewError) {
+        console.error("Rating fetch error:", reviewError);
+      }
+
+      if (reviewData && reviewData.length > 0) {
+        const avg =
+          reviewData.reduce(
+            (sum, row) => sum + Number(row.rating || 0),
+            0
+          ) / reviewData.length;
+
+        setAverageRating(Number(avg.toFixed(1)));
+      } else {
+        setAverageRating(null);
+      }
+
+      // FETCH VISITS
+      const { count, error: visitError } = await supabase
+        .from("visits") // your visits/checkins table
+        .select("*", { count: "exact", head: true })
+        .eq("cafe_id", cafe.id);
+
+      if (visitError) {
+        console.error("Visit count fetch error:", visitError);
+      }
+
+      setVisitCount(count || 0);
+    };
+
+    fetchCafeStats();
+  }, [cafe?.id, reviews]);
+
+    if (cafeLoading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="small" color="#D4A373" />
@@ -849,7 +851,7 @@ export default function CafeProfileScreen() {
           <View style={styles.heroOverlay}>
             <Text style={styles.heroTitle}>{cafe.name || "Cafe"}</Text>
             <Text style={styles.heroSubtitle}>
-              ⭐ {cafe.rating || "New"} • {cafe.address || "No address"}
+              ⭐ {averageRating ?? "New"} • {cafe.address || "No address"}
             </Text>
           </View>
         </View>
@@ -879,12 +881,14 @@ export default function CafeProfileScreen() {
               </View>
 
               <View style={styles.stat}>
-                <Text style={styles.statNumber}>{cafe.visits || 0}</Text>
+                <Text style={styles.statNumber}>{visitCount}</Text>
                 <Text style={styles.statLabel}>Visits</Text>
               </View>
 
               <View style={styles.stat}>
-                <Text style={styles.statNumber}>{cafe.rating || "New"}</Text>
+                <Text style={styles.statNumber}>
+                  {averageRating ?? "New"}
+                </Text>
                 <Text style={styles.statLabel}>Rating</Text>
               </View>
 
