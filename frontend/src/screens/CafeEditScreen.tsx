@@ -496,7 +496,7 @@ export default function CafeEditScreen() {
 
                   <Pressable
                     onPress={async () => {
-                      const path = url.split("/images/")[1];
+                      const path = url.split("/storage/v1/object/public/images/")[1];
 
                       await supabase.storage.from("images").remove([path]);
 
@@ -505,7 +505,7 @@ export default function CafeEditScreen() {
 
                       await supabase
                         .from("cafes")
-                        .update({ image_urls: updatedImages })
+                        .update({ image_url: updatedImages[0] || null })
                         .eq("id", cafeId);
                     }}
                     style={{
