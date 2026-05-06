@@ -281,7 +281,12 @@ def recent_redemptions(cafe_id):
             return jsonify({"error": "Forbidden"}), 403
 
         response = supabase.table("reward_redemptions") \
-            .select("*") \
+            .select("""
+                points_spent,
+                created_at,
+                rewards(title),
+                profiles(full_name)
+            """) \
             .eq("cafe_id", cafe_id) \
             .order("created_at", desc=True) \
             .limit(10) \
