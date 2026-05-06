@@ -58,6 +58,21 @@ def get_analytics():
 
     rows = res.data or []
 
+    user_ids = list(set(
+    r["user_id"] for r in rows if r.get("user_id")
+))
+
+    users_map = {}
+
+    if user_ids:
+        users_res = supabase.table("profiles") \
+            .select("id, first_name, full_name") \
+            .in_("id", user_ids) \
+            .execute()
+
+        for u in users_res.data or []:
+            users_map[u["id"]] = u
+
     visits = len(rows)
     revenue = sum(r.get("amount", 0) for r in rows)
     aov = revenue / visits if visits > 0 else 0
@@ -141,15 +156,25 @@ def get_analytics():
             return f"{hours}h ago"
         return "Yesterday"
 
-    recent_visitors = [
-        {
-            "name": "User",
-            "time": time_ago(datetime.fromisoformat(r["receipt_timestamp"].replace("Z", "+00:00"))),
+    recent_visitors = []
+
+    for r in rows_sorted:
+        user = users_map.get(r["user_id"], {})
+
+        recent_visitors.append({
+            "name": (
+                user.get("first_name")
+                or user.get("full_name")
+                or "Guest"
+            ),
+            "time": time_ago(
+                datetime.fromisoformat(
+                    r["receipt_timestamp"].replace("Z", "+00:00")
+                )
+            ),
             "pts": r.get("points_earned", 0)
-        }
-        for r in rows_sorted
-    ]
-    
+        })
+
     redeem_res = supabase.table("reward_redemptions") \
         .select("id", count="exact") \
         .eq("cafe_id", cafe_id) \
