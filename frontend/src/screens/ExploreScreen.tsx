@@ -35,6 +35,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { moderateScale, scale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
+import CafeCard from "../components/ui/CafeCard";
 import { Platform } from "react-native";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
@@ -88,6 +89,10 @@ export default function ExploreScreen() {
   const [saved, setSaved]                 = useState<string[]>([]);
   const [selectedFilter, setSelectedFilter] = useState("All");
   const webMapRef = useRef<HTMLDivElement | null>(null);
+  const [selectedPrices, setSelectedPrices] = useState<number[]>([]);
+  const [maxDistance, setMaxDistance] = useState<number>(15);
+  const [showPriceDropdown, setShowPriceDropdown] = useState(false);
+  const [showDistanceDropdown, setShowDistanceDropdown] = useState(false);
 
   type Cafe = {
     id: string;
@@ -134,6 +139,12 @@ export default function ExploreScreen() {
   const [cafeAiProfile, setCafeAiProfile] = useState<{ vibe_summary?: string; best_for?: string[] } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const mapRef = useRef<any>(null);
+  const sheetRef = useRef<any>(null);
+
+  const priceRef = useRef<any>(null);
+  const distanceRef = useRef<any>(null);
+
+  const [dropdownPos, setDropdownPos] = useState({ x: 0, y: 0 });
 
   const tabFade     = useRef(new Animated.Value(1)).current;
   const detailSlide = useRef(new Animated.Value(height)).current;
@@ -204,18 +215,41 @@ export default function ExploreScreen() {
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
 
-      const cleaned = data.map((c: any) => ({
-        ...c,
-        attributes: Array.isArray(c.attributes)
-          ? c.attributes.map((a: string) => a.toLowerCase())
-          : typeof c.attributes === "string"
-          ? c.attributes.toLowerCase().split(",").map((a: string) => a.trim())
-          : [],
-        price_level: c.price_level ? Number(c.price_level) : null,
-        latitude: c.latitude ? Number(c.latitude) : null,
-        longitude: c.longitude ? Number(c.longitude) : null,
-        isOpen: c.isOpen ?? false,
-      }));
+      const cleaned = data.map((c: any) => {
+        let attrs: string[] = [];
+        let vibes: string[] = [];
+
+        if (!c.attributes) {
+          attrs = [];
+        } 
+        else if (Array.isArray(c.attributes)) {
+          attrs = c.attributes.map((a: string) => a.toLowerCase());
+        } 
+        else if (typeof c.attributes === "object") {
+          if (Array.isArray(c.attributes.vibe)) {
+            vibes = c.attributes.vibe.map((v: string) => v.toLowerCase());
+            attrs.push(...vibes);
+          }
+
+          if (c.attributes.wifi) attrs.push("wifi");
+          if (c.attributes.outlet) attrs.push("outlets");
+        } 
+        else if (typeof c.attributes === "string") {
+          attrs = c.attributes
+            .split(",")
+            .map((a: string) => a.trim().toLowerCase());
+        }
+
+        return {
+          ...c,
+          attributes: attrs,
+          vibes: vibes.length > 0 ? vibes : attrs, 
+          price_level: c.price_level ? Number(c.price_level) : null,
+          latitude: c.latitude ? Number(c.latitude) : null,
+          longitude: c.longitude ? Number(c.longitude) : null,
+          isOpen: c.isOpen ?? false,
+        };
+      });
 
       setCafes(cleaned);
     } catch (err) {
@@ -329,17 +363,50 @@ export default function ExploreScreen() {
   }));
 
   const filteredCafes: Cafe[] = mergedCafes.filter((c) => {
-    const matchesSearch = c.name
-      ?.toLowerCase()
-      .includes(search.toLowerCase());
+    const query = search.toLowerCase();
 
-    if (selectedFilter === "All") {
-      return matchesSearch;
+    const matchesSearch =
+      c.name?.toLowerCase().includes(query) ||
+
+      (c.vibes ?? []).some(v =>
+        v.toLowerCase().includes(query)
+      ) ||
+
+      (c.attributes ?? []).some(a =>
+        a.toLowerCase().includes(query)
+      ) ||
+
+      (c.category ?? "").toLowerCase().includes(query);
+
+    // open filter
+    if (selectedFilter === "Open Now" && !c.isOpen) {
+      return false;
     }
 
-    if (selectedFilter === "Open Now") {
-      return matchesSearch && c.isOpen === true;
+    // distance filter
+    if (userLocation && c.latitude && c.longitude) {
+      const km = getDistance(
+        userLocation.lat,
+        userLocation.lng,
+        c.latitude,
+        c.longitude
+      );
+      const miles = km * 0.621371;
+
+      if (miles > maxDistance) {
+        return false;
+      }
     }
+
+    // price filter
+    if (
+      selectedPrices.length > 0 &&
+      c.price_level &&
+      !selectedPrices.includes(c.price_level)
+    ) {
+      return false;
+    }
+
     return matchesSearch;
   });
 
@@ -542,38 +609,31 @@ export default function ExploreScreen() {
           showsUserLocation
           showsMyLocationButton
         >
-          {filteredCafes.map((cafe) => {
-            if (!cafe.latitude || !cafe.longitude) return null;
-
-            return (
-              <Marker
-                key={cafe.id}
-                coordinate={{
-                  latitude: cafe.latitude,
-                  longitude: cafe.longitude,
-                }}
-                onPress={() => openDetail(cafe)}
-              >
-                <View
-                  style={{
-                    backgroundColor: "#D4A373",
-                    paddingHorizontal: 10,
-                    paddingVertical: 5,
-                    borderRadius: 20,
-                  }}
-                >
-                  <Text style={{ color: "#FFF", fontWeight: "700", fontSize: 11 }}>
-                    {cafe.name?.split(" ")[0] ?? "Cafe"}
-                  </Text>
-                </View>
-              </Marker>
-            );
-          })}
+          {filteredCafes.map((cafe) => (
+            <CafeCard
+              key={cafe.id}
+              name={cafe.name}
+              image={
+                cafe.image_url
+                  ? { uri: cafe.image_url }
+                  : require("../assets/cafe-1.jpg")
+              }
+              rating={cafe.rating ?? 0}
+              distance={formattedDistance(cafe) ?? ""}
+              vibes={cafe.vibes ?? []}
+              amenities={cafe.amenities ?? []}
+              attributes={cafe.attributes ?? []}
+              isOpen={cafe.isOpen}
+              onPress={() =>
+                navigation.navigate("CafeProfile", { cafeId: cafe.id })
+              }
+            />
+          ))}
         </MapView>
       )}
 
       {/* ── BOTTOM SHEET (list) ─────────────────────────────── */}
-      <View style={styles.sheet}>
+      <View style={styles.sheet} ref={sheetRef}>
         <View style={styles.handle} />
 
         <View style={styles.searchContainer}>
@@ -598,7 +658,10 @@ export default function ExploreScreen() {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{
+            paddingHorizontal: scale(16),
+            paddingBottom: 100
+          }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -627,7 +690,9 @@ export default function ExploreScreen() {
               return (
                 <TouchableOpacity
                   key={filter}
-                  onPress={() => setSelectedFilter(filter)}
+                  onPress={() =>
+                    setSelectedFilter((prev) => (prev === filter ? "All" : filter))
+                  }
                   activeOpacity={0.7}
                 >
                   <View
@@ -648,6 +713,107 @@ export default function ExploreScreen() {
                 </TouchableOpacity>
               );
             })}
+
+            {/* PRICE FILTER */}
+          <View ref={priceRef} style={{ position: "relative" }}>
+            <TouchableOpacity
+              onPress={() => {
+              (priceRef.current as any)?.measure(
+                (
+                  fx: number,
+                  fy: number,
+                  w: number,
+                  h: number,
+                  px: number,
+                  py: number
+                ) => {
+                  (sheetRef.current as any)?.measure(
+                    (
+                      sfx: number,
+                      sfy: number,
+                      sw: number,
+                      sh: number,
+                      spx: number,
+                      spy: number
+                    ) => {
+                      setDropdownPos({
+                        x: px - spx,
+                        y: py - spy + h,
+                      });
+                    }
+                  );
+
+                  setShowPriceDropdown((prev) => !prev);
+                  setShowDistanceDropdown(false);
+                }
+              );
+              }}
+            >
+              <View style={[
+                styles.filterChip,
+                selectedPrices.length > 0 && styles.filterChipActive
+              ]}>
+                <Text style={[
+                  styles.filterChipText,
+                  selectedPrices.length > 0 && { color: "#FFF" }
+                ]}>
+                  Price
+                </Text>
+                <ChevronDown size={12} color={selectedPrices.length ? "#FFF" : "#666"} />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* DISTANCE FILTER */}
+          <View ref={distanceRef} style={{ position: "relative" }}>
+            <TouchableOpacity
+            onPress={() => {
+              (distanceRef.current as any)?.measure(
+                (
+                  fx: number,
+                  fy: number,
+                  w: number,
+                  h: number,
+                  px: number,
+                  py: number
+                ) => {
+                  (sheetRef.current as any)?.measure(
+                    (
+                      sfx: number,
+                      sfy: number,
+                      sw: number,
+                      sh: number,
+                      spx: number,
+                      spy: number
+                    ) => {
+                      setDropdownPos({
+                        x: px - spx,
+                        y: py - spy + h,
+                      });
+                    }
+                  );
+
+                  setShowDistanceDropdown((prev) => !prev);
+                  setShowPriceDropdown(false);
+                }
+              );
+            }}
+            >
+              <View style={[
+                styles.filterChip,
+                styles.filterChip,
+                maxDistance !== 5 && styles.filterChipActive
+              ]}>
+                <Text style={[
+                  styles.filterChipText,
+                  maxDistance !== 5 && { color: "#FFF" }
+                ]}>
+                  Distance
+                </Text>
+                <ChevronDown size={12} color={maxDistance !== 5 ? "#FFF" : "#666"} />
+              </View>
+            </TouchableOpacity>
+          </View>
           </ScrollView>
 
           {/* Error state */}
@@ -712,7 +878,75 @@ export default function ExploreScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        {showPriceDropdown && (
+        <View
+          style={[
+          styles.dropdown,
+          {
+            position: "absolute",
+            left: dropdownPos.x,
+            top: dropdownPos.y,
+          },
+          ]}
+          >
+          {[1, 2, 3].map((p) => {
+          const active = selectedPrices.includes(p);
+            return (
+              <TouchableOpacity
+                key={p}
+                style={[styles.dropdownItem, active && styles.dropdownItemActive]}
+                onPress={() => {
+                  setSelectedPrices((prev) =>
+                    active ? prev.filter((x) => x !== p) : [...prev, p]
+                  );
+                }}
+              >
+              <Text style={[
+                styles.dropdownText,
+                  active && { color: "#D4A373", fontWeight: "700" }
+                ]}>
+                {"$".repeat(p)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
+      )}
+
+      {showDistanceDropdown && (
+      <View
+        style={[
+          styles.dropdown,
+          {
+            position: "absolute",
+            left: dropdownPos.x,
+            top: dropdownPos.y,
+          },
+        ]}
+        >
+        {[1, 3, 5, 10].map((d) => {
+        const active = maxDistance === d;
+          return (
+          <TouchableOpacity
+            key={d}
+            style={[styles.dropdownItem, active && styles.dropdownItemActive]}
+            onPress={() =>
+              setMaxDistance((prev) => (prev === d ? 15 : d))
+            }
+          >
+          <Text style={[
+            styles.dropdownText,
+            active && { color: "#D4A373", fontWeight: "700" }
+          ]}>
+          {d} mi
+          </Text>
+          </TouchableOpacity>
+          );
+        })}
+      </View>
+    )}
+  </View>
 
       <View style={styles.navWrapper}>
         <BottomNav />
@@ -824,7 +1058,7 @@ export default function ExploreScreen() {
                     style={{ marginBottom: scale(20) }}
                     contentContainerStyle={{ gap: scale(8) }}
                   >
-                    {(selectedCafe.amenities ?? []).map((a: string) => (
+                    {[...(selectedCafe.amenities ?? []), ...(selectedCafe.attributes ?? [])].map((a: string) => (
                       <View key={a} style={styles.amenityChip}>
                         <Text style={styles.amenityChipText}>{a}</Text>
                       </View>
@@ -1121,7 +1355,7 @@ const styles = StyleSheet.create({
     height: SHEET_HEIGHT, backgroundColor: "#FFF",
     borderTopLeftRadius: scale(28), borderTopRightRadius: scale(28),
     shadowColor: "#000", shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12, shadowRadius: 20, elevation: 20, overflow: "hidden",
+    shadowOpacity: 0.12, shadowRadius: 20, elevation: 20, overflow: "visible",
   },
   handle: {
     width: scale(40), height: scale(4), backgroundColor: "#DADADA",
@@ -1162,10 +1396,12 @@ const styles = StyleSheet.create({
   filterChipText: { fontSize: moderateScale(12), fontWeight: "600", color: "#666" },
 
   cafeCard: {
-    marginHorizontal: scale(16), marginBottom: scale(14),
-    borderRadius: scale(20), overflow: "hidden", height: scale(160),
-    shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.14, shadowRadius: 10, elevation: 5,
+    width: "100%",
+    marginBottom: scale(14),
+    borderRadius: scale(20),
+    overflow: "hidden",
+    height: scale(160),
+    alignSelf: "center",
   },
   cafeCardImage: { width: "100%", height: "100%" },
   openPip: {
@@ -1411,4 +1647,34 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: "rgba(212,163,115,0.25)",
   },
   aiTagText: { fontSize: moderateScale(11), color: "#D4A373", fontWeight: "600" },
+
+  dropdown: {
+    position: "absolute",
+    top: scale(36),
+    left: 0,
+    backgroundColor: "#FFF",
+    borderRadius: scale(12),
+    paddingVertical: scale(6),
+    minWidth: scale(90),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
+    zIndex: 999,
+  },
+
+  dropdownItem: {
+    paddingVertical: scale(8),
+    paddingHorizontal: scale(12),
+  },
+
+  dropdownItemActive: {
+    backgroundColor: "rgba(212,163,115,0.1)",
+  },
+
+  dropdownText: {
+    fontSize: moderateScale(13),
+    color: "#444",
+  },
 });
