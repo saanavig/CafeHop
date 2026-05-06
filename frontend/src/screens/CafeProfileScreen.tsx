@@ -99,6 +99,7 @@ export default function CafeProfileScreen() {
       { uri: string; type: "image" | "video" }[]
     >([]);
     const [posting, setPosting] = useState(false);
+    const [userRole, setUserRole] = useState<string | null>(null);
 
     const [userId, setUserId] = useState<string | null>(null);
     const [ownerId, setOwnerId] = useState<string | null>(null);
@@ -129,6 +130,7 @@ export default function CafeProfileScreen() {
     };
 
   const isOwner = !!userId && !!ownerId && userId === ownerId;
+  const canReview = userRole === "user";
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(scale(18))).current;
@@ -158,7 +160,24 @@ export default function CafeProfileScreen() {
   useEffect(() => {
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
-      setUserId(data.user?.id || null);
+      const uid = data.user?.id || null;
+
+      setUserId(uid);
+
+      if (uid) {
+        const { data: profile, error } = await supabase
+          .from("profiles") // change if your table name is different
+          .select("role")
+          .eq("id", uid)
+          .single();
+
+        if (!error) {
+          setUserRole(profile?.role || null);
+        } else {
+          console.error("Role fetch error:", error);
+        }
+      }
+
       setAuthLoading(false);
     };
 
@@ -698,8 +717,13 @@ export default function CafeProfileScreen() {
 
     const submitReview = async () => {
     if (!userId || !cafeId) {
-        setReviewError("You need to be logged in to leave a review.");
-        return;
+      setReviewError("You need to be logged in to leave a review.");
+      return;
+    }
+
+    if (!canReview) {
+      setReviewError("Cafe owners cannot leave reviews.");
+      return;
     }
 
     if (reviewRating < 1 || reviewRating > 5) {
@@ -1527,7 +1551,7 @@ export default function CafeProfileScreen() {
 
             {activeTab === "reviews" && (
             <View style={styles.section}>
-                {!isOwner && (
+                {canReview && (
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>
                     {myReview ? "Update your review" : "Leave a review"}
@@ -1580,6 +1604,7 @@ export default function CafeProfileScreen() {
                     <Text style={styles.cardTitle}>No reviews yet</Text>
                     <Text style={styles.cardSubtitle}>
                     Be the first to leave a review.
+                    Please note that cafe owners cannot review any cafes.
                     </Text>
                 </View>
                 ) : (
