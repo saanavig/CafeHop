@@ -786,9 +786,17 @@ if (role === "cafe") {
                 <View style={{ gap: 8 }}>
                   <TouchableOpacity
                     onPress={() => toggleProgram(prog.id, prog.active)}
-                    style={styles.toggleBtn}
+                    style={[
+                      styles.toggleBtn,
+                      !prog.active && styles.resumeBtn,
+                    ]}
                   >
-                    <Text style={styles.toggleBtnText}>
+                    <Text
+                      style={[
+                        styles.toggleBtnText,
+                        !prog.active && styles.resumeBtnText,
+                      ]}
+                    >
                       {prog.active ? "Pause" : "Resume"}
                     </Text>
                   </TouchableOpacity>
@@ -1397,7 +1405,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: scale(12),
   },
-  programCardInactive: { opacity: 0.6 },
+  programCardInactive: {
+    backgroundColor: "#FAF7F4",
+  },
   programName: { fontSize: moderateScale(15), fontWeight: "600", color: "#1A1A1A" },
   programDesc: { fontSize: moderateScale(12), color: "#777", marginTop: scale(2) },
   programStat: { fontSize: moderateScale(11), color: "#D4A373", fontWeight: "500" },
@@ -1665,5 +1675,12 @@ const styles = StyleSheet.create({
   confirmDeleteText: {
     color: "#FFF",
     fontWeight: "700",
+  },
+  resumeBtn: {
+    backgroundColor: "#D4A373",
+    borderColor: "#D4A373",
+  },
+  resumeBtnText: {
+    color: "#FFF",
   },
 });
