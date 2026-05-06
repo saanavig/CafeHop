@@ -88,6 +88,8 @@ export default function ExploreScreen() {
   const [saved, setSaved]                 = useState<string[]>([]);
   const [selectedFilter, setSelectedFilter] = useState("All");
   const webMapRef = useRef<HTMLDivElement | null>(null);
+  const [selectedPrices, setSelectedPrices] = useState<number[]>([]);
+  const [maxDistance, setMaxDistance] = useState<number>(5);
 
   type Cafe = {
     id: string;
@@ -333,13 +335,35 @@ export default function ExploreScreen() {
       ?.toLowerCase()
       .includes(search.toLowerCase());
 
-    if (selectedFilter === "All") {
-      return matchesSearch;
+    // open filter
+    if (selectedFilter === "Open Now" && !c.isOpen) {
+      return false;
     }
 
-    if (selectedFilter === "Open Now") {
-      return matchesSearch && c.isOpen === true;
+    // distance filter
+    if (userLocation && c.latitude && c.longitude) {
+      const km = getDistance(
+        userLocation.lat,
+        userLocation.lng,
+        c.latitude,
+        c.longitude
+      );
+      const miles = km * 0.621371;
+
+      if (miles > maxDistance) {
+        return false;
+      }
     }
+
+    // price filter
+    if (
+      selectedPrices.length > 0 &&
+      c.price_level &&
+      !selectedPrices.includes(c.price_level)
+    ) {
+      return false;
+    }
+
     return matchesSearch;
   });
 
@@ -648,6 +672,51 @@ export default function ExploreScreen() {
                 </TouchableOpacity>
               );
             })}
+
+            {/* PRICE BUTTON */}
+            <TouchableOpacity
+              onPress={() => {
+                // cycle through $, $$, $$$ for now
+                const next =
+                  selectedPrices.length === 0
+                    ? [1]
+                    : selectedPrices[0] === 1
+                    ? [2]
+                    : selectedPrices[0] === 2
+                    ? [3]
+                    : [];
+                setSelectedPrices(next);
+              }}
+            >
+              <View style={styles.filterChip}>
+                <Text style={styles.filterChipText}>
+                  Price {selectedPrices.length ? "$".repeat(selectedPrices[0]) : ""}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* DISTANCE BUTTON */}
+            <TouchableOpacity
+              onPress={() => {
+                // cycle 1 → 3 → 5 → 10 → reset
+                const next =
+                  maxDistance === 1
+                    ? 3
+                    : maxDistance === 3
+                    ? 5
+                    : maxDistance === 5
+                    ? 10
+                    : 1;
+
+                setMaxDistance(next);
+              }}
+            >
+              <View style={styles.filterChip}>
+                <Text style={styles.filterChipText}>
+                  {maxDistance} mi
+                </Text>
+              </View>
+            </TouchableOpacity>
           </ScrollView>
 
           {/* Error state */}
