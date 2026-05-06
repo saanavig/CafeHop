@@ -90,6 +90,8 @@ export default function ExploreScreen() {
   const webMapRef = useRef<HTMLDivElement | null>(null);
   const [selectedPrices, setSelectedPrices] = useState<number[]>([]);
   const [maxDistance, setMaxDistance] = useState<number>(5);
+  const [showPriceDropdown, setShowPriceDropdown] = useState(false);
+  const [showDistanceDropdown, setShowDistanceDropdown] = useState(false);
 
   type Cafe = {
     id: string;
@@ -136,6 +138,12 @@ export default function ExploreScreen() {
   const [cafeAiProfile, setCafeAiProfile] = useState<{ vibe_summary?: string; best_for?: string[] } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const mapRef = useRef<any>(null);
+  const sheetRef = useRef<any>(null);
+
+  const priceRef = useRef<any>(null);
+  const distanceRef = useRef<any>(null);
+
+  const [dropdownPos, setDropdownPos] = useState({ x: 0, y: 0 });
 
   const tabFade     = useRef(new Animated.Value(1)).current;
   const detailSlide = useRef(new Animated.Value(height)).current;
@@ -597,7 +605,7 @@ export default function ExploreScreen() {
       )}
 
       {/* ── BOTTOM SHEET (list) ─────────────────────────────── */}
-      <View style={styles.sheet}>
+      <View style={styles.sheet} ref={sheetRef}>
         <View style={styles.handle} />
 
         <View style={styles.searchContainer}>
@@ -673,50 +681,106 @@ export default function ExploreScreen() {
               );
             })}
 
-            {/* PRICE BUTTON */}
+            {/* PRICE FILTER */}
+          <View ref={priceRef} style={{ position: "relative" }}>
             <TouchableOpacity
               onPress={() => {
-                // cycle through $, $$, $$$ for now
-                const next =
-                  selectedPrices.length === 0
-                    ? [1]
-                    : selectedPrices[0] === 1
-                    ? [2]
-                    : selectedPrices[0] === 2
-                    ? [3]
-                    : [];
-                setSelectedPrices(next);
+              (priceRef.current as any)?.measure(
+                (
+                  fx: number,
+                  fy: number,
+                  w: number,
+                  h: number,
+                  px: number,
+                  py: number
+                ) => {
+                  (sheetRef.current as any)?.measure(
+                    (
+                      sfx: number,
+                      sfy: number,
+                      sw: number,
+                      sh: number,
+                      spx: number,
+                      spy: number
+                    ) => {
+                      setDropdownPos({
+                        x: px - spx,
+                        y: py - spy + h,
+                      });
+                    }
+                  );
+
+                  setShowPriceDropdown((prev) => !prev);
+                  setShowDistanceDropdown(false);
+                }
+              );
               }}
             >
-              <View style={styles.filterChip}>
-                <Text style={styles.filterChipText}>
-                  Price {selectedPrices.length ? "$".repeat(selectedPrices[0]) : ""}
+              <View style={[
+                styles.filterChip,
+                selectedPrices.length > 0 && styles.filterChipActive
+              ]}>
+                <Text style={[
+                  styles.filterChipText,
+                  selectedPrices.length > 0 && { color: "#FFF" }
+                ]}>
+                  Price
                 </Text>
+                <ChevronDown size={12} color={selectedPrices.length ? "#FFF" : "#666"} />
               </View>
             </TouchableOpacity>
+          </View>
 
-            {/* DISTANCE BUTTON */}
+          {/* DISTANCE FILTER */}
+          <View ref={distanceRef} style={{ position: "relative" }}>
             <TouchableOpacity
-              onPress={() => {
-                // cycle 1 → 3 → 5 → 10 → reset
-                const next =
-                  maxDistance === 1
-                    ? 3
-                    : maxDistance === 3
-                    ? 5
-                    : maxDistance === 5
-                    ? 10
-                    : 1;
+            onPress={() => {
+              (distanceRef.current as any)?.measure(
+                (
+                  fx: number,
+                  fy: number,
+                  w: number,
+                  h: number,
+                  px: number,
+                  py: number
+                ) => {
+                  (sheetRef.current as any)?.measure(
+                    (
+                      sfx: number,
+                      sfy: number,
+                      sw: number,
+                      sh: number,
+                      spx: number,
+                      spy: number
+                    ) => {
+                      setDropdownPos({
+                        x: px - spx,
+                        y: py - spy + h,
+                      });
+                    }
+                  );
 
-                setMaxDistance(next);
-              }}
+                  setShowDistanceDropdown((prev) => !prev);
+                  setShowPriceDropdown(false);
+                }
+              );
+            }}
             >
-              <View style={styles.filterChip}>
-                <Text style={styles.filterChipText}>
-                  {maxDistance} mi
+              <View style={[
+                styles.filterChip,
+                styles.filterChip,
+                maxDistance !== 5 && styles.filterChipActive
+              ]}>
+                <Text style={[
+                  styles.filterChipText,
+                  maxDistance !== 5 && { color: "#FFF" }
+                ]}>
+                  Distance
                 </Text>
+                <ChevronDown size={12} color={maxDistance !== 5 ? "#FFF" : "#666"} />
               </View>
             </TouchableOpacity>
+          </View>
           </ScrollView>
 
           {/* Error state */}
@@ -781,7 +845,73 @@ export default function ExploreScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        {showPriceDropdown && (
+        <View
+          style={[
+          styles.dropdown,
+          {
+            position: "absolute",
+            left: dropdownPos.x,
+            top: dropdownPos.y,
+          },
+          ]}
+          >
+          {[1, 2, 3].map((p) => {
+          const active = selectedPrices.includes(p);
+            return (
+              <TouchableOpacity
+                key={p}
+                style={[styles.dropdownItem, active && styles.dropdownItemActive]}
+                onPress={() => {
+                  setSelectedPrices((prev) =>
+                    active ? prev.filter((x) => x !== p) : [...prev, p]
+                  );
+                }}
+              >
+              <Text style={[
+                styles.dropdownText,
+                  active && { color: "#D4A373", fontWeight: "700" }
+                ]}>
+                {"$".repeat(p)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
+      )}
+
+      {showDistanceDropdown && (
+      <View
+        style={[
+          styles.dropdown,
+          {
+            position: "absolute",
+            left: dropdownPos.x,
+            top: dropdownPos.y,
+          },
+        ]}
+        >
+        {[1, 3, 5, 10].map((d) => {
+        const active = maxDistance === d;
+          return (
+          <TouchableOpacity
+            key={d}
+            style={[styles.dropdownItem, active && styles.dropdownItemActive]}
+            onPress={() => setMaxDistance(d)}
+          >
+          <Text style={[
+            styles.dropdownText,
+            active && { color: "#D4A373", fontWeight: "700" }
+          ]}>
+          {d} mi
+          </Text>
+          </TouchableOpacity>
+          );
+        })}
+      </View>
+    )}
+  </View>
 
       <View style={styles.navWrapper}>
         <BottomNav />
@@ -1190,7 +1320,7 @@ const styles = StyleSheet.create({
     height: SHEET_HEIGHT, backgroundColor: "#FFF",
     borderTopLeftRadius: scale(28), borderTopRightRadius: scale(28),
     shadowColor: "#000", shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12, shadowRadius: 20, elevation: 20, overflow: "hidden",
+    shadowOpacity: 0.12, shadowRadius: 20, elevation: 20, overflow: "visible",
   },
   handle: {
     width: scale(40), height: scale(4), backgroundColor: "#DADADA",
@@ -1480,4 +1610,34 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: "rgba(212,163,115,0.25)",
   },
   aiTagText: { fontSize: moderateScale(11), color: "#D4A373", fontWeight: "600" },
+
+  dropdown: {
+    position: "absolute",
+    top: scale(36),
+    left: 0,
+    backgroundColor: "#FFF",
+    borderRadius: scale(12),
+    paddingVertical: scale(6),
+    minWidth: scale(90),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
+    zIndex: 999,
+  },
+
+  dropdownItem: {
+    paddingVertical: scale(8),
+    paddingHorizontal: scale(12),
+  },
+
+  dropdownItemActive: {
+    backgroundColor: "rgba(212,163,115,0.1)",
+  },
+
+  dropdownText: {
+    fontSize: moderateScale(13),
+    color: "#444",
+  },
 });
