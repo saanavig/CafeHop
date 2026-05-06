@@ -3,6 +3,8 @@ from routes.auth import require_auth, require_role
 from services.purchase_repo import get_user_points, get_user_points_history
 from database.supabase_client import supabase_admin as supabase
 import time
+from datetime import datetime, timedelta, timezone
+import traceback
 
 rewards_bp = Blueprint("rewards_bp", __name__)
 
@@ -162,6 +164,7 @@ def redeem_reward():
         # Deduct points
         supabase.table("point_transactions").insert({
             "user_id": user_id,
+            "cafe_id": cafe_id,
             "points_change": -points_needed,
             "reason": f"Redeemed: {reward_data.get('title', 'Reward')}",
             "submission_token": submission_token
@@ -172,9 +175,8 @@ def redeem_reward():
             "reward_id": reward_id,
             "cafe_id": cafe_id,
             "points_spent": points_needed,
-            "status": "completed",  # optional but good
-            "created_at": int(time.time() * 1000)
-        })
+            "status": "completed",
+        }).execute()
 
         remaining_points = get_user_points(user_id)
 
@@ -208,3 +210,233 @@ def get_points_activity(user_id: str):
         }
         for t in res.data
     ]
+
+@rewards_bp.route("/cafes/<cafe_id>/analytics", methods=["GET"])
+@require_auth
+@require_role("cafe_owner")
+def cafe_analytics(cafe_id):
+    try:
+        # Verify ownership
+        cafe = supabase.table("cafes") \
+            .select("owner_id") \
+            .eq("id", cafe_id) \
+            .execute()
+
+        if not cafe.data or cafe.data[0]["owner_id"] != g.user["id"]:
+            return jsonify({"error": "Forbidden"}), 403
+
+        issued = supabase.table("point_transactions") \
+            .select("points_change") \
+            .gt("points_change", 0) \
+            .eq("cafe_id", cafe_id) \
+            .execute()
+
+        total_issued = sum(
+            t["points_change"] for t in (issued.data or [])
+        )
+
+        redemptions = supabase.table("reward_redemptions") \
+            .select("id", count="exact") \
+            .eq("cafe_id", cafe_id) \
+            .execute()
+
+        total_redemptions = redemptions.count or 0
+
+        # Active users today
+        today_start = (
+            datetime.now(timezone.utc) - timedelta(days=1)
+        ).isoformat()
+
+        active_today = supabase.table("point_transactions") \
+            .select("user_id") \
+            .eq("cafe_id", cafe_id) \
+            .gte("created_at", today_start) \
+            .execute()
+
+        unique_users = len(set(
+            t["user_id"] for t in (active_today.data or [])
+        ))
+
+        return jsonify({
+            "points_issued": total_issued,
+            "redemptions": total_redemptions,
+            "active_today": unique_users
+        }), 200
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@rewards_bp.route("/cafes/<cafe_id>/recent-redemptions", methods=["GET"])
+@require_auth
+@require_role("cafe_owner")
+def recent_redemptions(cafe_id):
+    try:
+        cafe = supabase.table("cafes") \
+            .select("owner_id") \
+            .eq("id", cafe_id) \
+            .execute()
+
+        if not cafe.data or cafe.data[0]["owner_id"] != g.user["id"]:
+            return jsonify({"error": "Forbidden"}), 403
+
+        response = supabase.table("reward_redemptions") \
+            .select("""
+                points_spent,
+                created_at,
+                rewards(title),
+                profiles(full_name)
+            """) \
+            .eq("cafe_id", cafe_id) \
+            .order("created_at", desc=True) \
+            .limit(10) \
+            .execute()
+
+        formatted = []
+
+        for r in response.data or []:
+            formatted.append({
+                "customer": r.get("profiles", {}).get("full_name", "Customer"),
+                "reward": r.get("rewards", {}).get("title", "Reward"),
+                "points": r.get("points_spent", 0),
+                "time": r.get("created_at")
+            })
+
+        return jsonify({
+            "redemptions": formatted
+        }), 200
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@rewards_bp.route("/cafes/<cafe_id>/owner/rewards", methods=["GET"])
+@require_auth
+@require_role("cafe_owner")
+def owner_rewards(cafe_id):
+    try:
+        cafe = supabase.table("cafes") \
+            .select("owner_id") \
+            .eq("id", cafe_id) \
+            .execute()
+
+        if not cafe.data or cafe.data[0]["owner_id"] != g.user["id"]:
+            return jsonify({"error": "Forbidden"}), 403
+
+        rewards = supabase.table("rewards") \
+            .select("*") \
+            .eq("cafe_id", cafe_id) \
+            .order("created_at", desc=True) \
+            .execute()
+
+        return jsonify({
+            "rewards": rewards.data or []
+        }), 200
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@rewards_bp.route("/rewards/<reward_id>", methods=["PATCH"])
+@require_auth
+@require_role("cafe_owner")
+def update_reward(reward_id):
+    try:
+        data = request.get_json() or {}
+
+        update_payload = {}
+
+        if "active" in data:
+            if not isinstance(data["active"], bool):
+                return jsonify({"error": "Invalid active value"}), 400
+
+            update_payload["active"] = data["active"]
+
+        if "title" in data:
+            if not isinstance(data["title"], str) or not data["title"].strip():
+                return jsonify({"error": "Invalid title"}), 400
+
+            update_payload["title"] = data["title"].strip()
+
+        if "description" in data:
+            update_payload["description"] = data["description"]
+
+        if "points_required" in data:
+            if (
+                not isinstance(data["points_required"], int)
+                or data["points_required"] <= 0
+            ):
+                return jsonify({"error": "Invalid points"}), 400
+
+            update_payload["points_required"] = data["points_required"]
+
+        if not update_payload:
+            return jsonify({"error": "No valid fields"}), 400
+
+        reward = supabase.table("rewards") \
+            .select("id, cafe_id") \
+            .eq("id", reward_id) \
+            .execute()
+
+        if not reward.data:
+            return jsonify({"error": "Reward not found"}), 404
+
+        cafe_id = reward.data[0]["cafe_id"]
+
+        cafe = supabase.table("cafes") \
+            .select("owner_id") \
+            .eq("id", cafe_id) \
+            .execute()
+
+        if not cafe.data or cafe.data[0]["owner_id"] != g.user["id"]:
+            return jsonify({"error": "Forbidden"}), 403
+
+        updated = supabase.table("rewards") \
+            .update(update_payload) \
+            .eq("id", reward_id) \
+            .execute()
+
+        return jsonify({
+            "message": "Reward updated",
+            "reward": updated.data[0] if updated.data else None
+        }), 200
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+    
+@rewards_bp.route("/rewards/<reward_id>", methods=["DELETE"])
+@require_auth
+@require_role("cafe_owner")
+def delete_reward(reward_id):
+    try:
+        reward = supabase.table("rewards") \
+            .select("id, cafe_id") \
+            .eq("id", reward_id) \
+            .execute()
+
+        if not reward.data:
+            return jsonify({"error": "Reward not found"}), 404
+
+        cafe_id = reward.data[0]["cafe_id"]
+
+        cafe = supabase.table("cafes") \
+            .select("owner_id") \
+            .eq("id", cafe_id) \
+            .execute()
+
+        if not cafe.data or cafe.data[0]["owner_id"] != g.user["id"]:
+            return jsonify({"error": "Forbidden"}), 403
+
+        supabase.table("rewards") \
+            .delete() \
+            .eq("id", reward_id) \
+            .execute()
+
+        return jsonify({
+            "message": "Reward deleted"
+        }), 200
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500

@@ -54,35 +54,34 @@ const getTierData = (points: number) => {
 };
 
 // ─── Cafe-owner mock data ────────────────────────────────────────────────────
-interface CafeProgram {
-  id: number;
-  name: string;
-  description: string;
-  pointsPerVisit: number;
-  totalIssued: number;
-  redemptions: number;
-  active: boolean;
-}
+// interface CafeProgram {
+//   id: number;
+//   name: string;
+//   description: string;
+//   pointsPerVisit: number;
+//   totalIssued: number;
+//   redemptions: number;
+//   active: boolean;
+// }
 
-const cafePrograms: CafeProgram[] = [
-  { id: 1, name: "Coffee Stamp Card", description: "1 stamp per purchase, free drink at 10", pointsPerVisit: 100, totalIssued: 8420, redemptions: 312, active: true },
-  { id: 2, name: "Loyalty Points", description: "Earn points on every £1 spent", pointsPerVisit: 50, totalIssued: 15230, redemptions: 890, active: true },
-  { id: 3, name: "Weekend Bonus", description: "2× points every Saturday & Sunday", pointsPerVisit: 200, totalIssued: 3100, redemptions: 140, active: false },
-];
-const API_URL = "http://127.0.0.1:3001";
+// const cafePrograms: CafeProgram[] = [
+//   { id: 1, name: "Coffee Stamp Card", description: "1 stamp per purchase, free drink at 10", pointsPerVisit: 100, totalIssued: 8420, redemptions: 312, active: true },
+//   { id: 2, name: "Loyalty Points", description: "Earn points on every £1 spent", pointsPerVisit: 50, totalIssued: 15230, redemptions: 890, active: true },
+//   { id: 3, name: "Weekend Bonus", description: "2× points every Saturday & Sunday", pointsPerVisit: 200, totalIssued: 3100, redemptions: 140, active: false },
+// ];
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+// interface RecentRedemption {
+//   customer: string;
+//   reward: string;
+//   points: number;
+//   time: string;
+// }
 
-interface RecentRedemption {
-  customer: string;
-  reward: string;
-  points: number;
-  time: string;
-}
-
-const recentRedemptions: RecentRedemption[] = [
-  { customer: "Emma W.", reward: "Free Latte", points: 500, time: "2 min ago" },
-  { customer: "James K.", reward: "20% Off", points: 300, time: "14 min ago" },
-  { customer: "Aisha M.", reward: "Free Latte", points: 500, time: "1 hr ago" },
-];
+// const recentRedemptions: RecentRedemption[] = [
+//   { customer: "Emma W.", reward: "Free Latte", points: 500, time: "2 min ago" },
+//   { customer: "James K.", reward: "20% Off", points: 300, time: "14 min ago" },
+//   { customer: "Aisha M.", reward: "Free Latte", points: 500, time: "1 hr ago" },
+// ];
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function RewardsScreen({ navigation }) {
@@ -111,6 +110,20 @@ export default function RewardsScreen({ navigation }) {
     if (points >= 1000) return "silver";
     return "bronze";
   };
+  const [showNewProgram, setShowNewProgram] = useState(false);
+  const [newProgName, setNewProgName] = useState("");
+  const [newProgDesc, setNewProgDesc] = useState("");
+  const [newProgPoints, setNewProgPoints] = useState("");  
+  const [programs, setPrograms] = useState<any[]>([]);
+
+  const [recentRedemptions, setRecentRedemptions] = useState<any[]>([]);
+  const [editingRewardId, setEditingRewardId] = useState<string | null>(null);
+
+  const [analytics, setAnalytics] = useState({
+    points_issued: 0,
+    redemptions: 0,
+    active_today: 0,
+  });
 
   // const tierData = getTierData(points);
 
@@ -133,6 +146,7 @@ export default function RewardsScreen({ navigation }) {
   const slideAnim = useRef(new Animated.Value(18)).current;
   const [points, setPoints] = useState(0);
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
+  const [ownerCafeId, setOwnerCafeId] = useState<string | null>(null);
 
   const fetchTierAndCatalog = async () => {
     try {
@@ -249,9 +263,23 @@ export default function RewardsScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       fetchPoints();
-      fetchCafes();
-    }, [])
+
+      if (role === "cafe") {
+        fetchOwnerCafe();
+      } else {
+        fetchCafes();
+      }
+    }, [role])
   );
+
+  useEffect(() => {
+    if (!ownerCafeId) return;
+
+    fetchAnalytics(ownerCafeId);
+    fetchOwnerRewards(ownerCafeId);
+    fetchRecentRedemptions(ownerCafeId);
+
+  }, [ownerCafeId]);
 
   useEffect(() => {
     if (selectedCafe) {
@@ -311,28 +339,231 @@ export default function RewardsScreen({ navigation }) {
   // const [availableRewards] = useState<Reward[]>(initialRewards);
 
   // Cafe state
-  const [programs, setPrograms] = useState<CafeProgram[]>(cafePrograms);
-  const [showNewProgram, setShowNewProgram] = useState(false);
-  const [newProgName, setNewProgName] = useState("");
-  const [newProgDesc, setNewProgDesc] = useState("");
-  const [newProgPoints, setNewProgPoints] = useState("");
+  // const [programs, setPrograms] = useState<CafeProgram[]>(cafePrograms);
 
-  const handleAddProgram = () => {
-    if (!newProgName.trim()) return;
-    const newProg: CafeProgram = {
-      id: programs.length + 1,
-      name: newProgName.trim(),
-      description: newProgDesc.trim() || "Custom loyalty program",
-      pointsPerVisit: parseInt(newProgPoints) || 100,
-      totalIssued: 0,
-      redemptions: 0,
-      active: true,
-    };
-    setPrograms((prev) => [...prev, newProg]);
-    setNewProgName("");
-    setNewProgDesc("");
-    setNewProgPoints("");
-    setShowNewProgram(false);
+  const fetchOwnerCafe = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user.id;
+
+      if (!userId) return;
+
+      const { data, error } = await supabase
+        .from("cafes")
+        .select("id, name")
+        .eq("owner_id", userId)
+        .single();
+
+      if (error) {
+        console.error("Fetch owner cafe error:", error);
+        return;
+      }
+
+      setOwnerCafeId(data.id);
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchAnalytics = async (cafeId: string) => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      const res = await fetch(
+        `${API_URL}/api/cafes/${cafeId}/analytics`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error(data);
+        return;
+      }
+
+      setAnalytics(data);
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchOwnerRewards = async (cafeId: string) => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      const res = await fetch(
+        `${API_URL}/api/cafes/${cafeId}/owner/rewards`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error(data);
+        return;
+      }
+
+      setPrograms(data.rewards || []);
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchRecentRedemptions = async (cafeId: string) => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      const res = await fetch(
+        `${API_URL}/api/cafes/${cafeId}/recent-redemptions`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error(data);
+        return;
+      }
+
+      setRecentRedemptions(data.redemptions || []);
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // const handleAddProgram = () => {
+  //   if (!newProgName.trim()) return;
+  //   // const newProg: CafeProgram = {
+  //   //   id: programs.length + 1,
+  //   //   name: newProgName.trim(),
+  //   //   description: newProgDesc.trim() || "Custom loyalty program",
+  //   //   pointsPerVisit: parseInt(newProgPoints) || 100,
+  //   //   totalIssued: 0,
+  //   //   redemptions: 0,
+  //   //   active: true,
+  //   // };
+  //   setPrograms((prev) => [...prev, newProg]);
+  //   setNewProgName("");
+  //   setNewProgDesc("");
+  //   setNewProgPoints("");
+  //   setShowNewProgram(false);
+  // };
+  
+  const handleAddProgram = async () => {
+    try {
+      if (!ownerCafeId) {
+        showToast("Cafe not found");
+        return;
+      }
+
+      if (!newProgName.trim()) {
+        showToast("Program name required");
+        return;
+      }
+
+      if (!newProgPoints.trim()) {
+        showToast("Points required");
+        return;
+      }
+
+      const pointsRequired = parseInt(newProgPoints);
+
+      if (isNaN(pointsRequired) || pointsRequired <= 0) {
+        showToast("Invalid points value");
+        return;
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      // ─── EDIT MODE ───
+      if (editingRewardId) {
+        const res = await fetch(
+          `${API_URL}/api/rewards/${editingRewardId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              title: newProgName.trim(),
+              description: newProgDesc.trim(),
+              points_required: pointsRequired,
+            }),
+          }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.error || "Failed to update reward");
+          return;
+        }
+
+        showToast("Reward updated!", "success");
+      }
+
+      // ─── CREATE MODE ───
+      else {
+        const res = await fetch(
+          `${API_URL}/api/cafes/${ownerCafeId}/rewards`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              title: newProgName.trim(),
+              description: newProgDesc.trim(),
+              points_required: pointsRequired,
+            }),
+          }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.error || "Failed to create reward");
+          return;
+        }
+
+        showToast("Reward created!", "success");
+      }
+
+      // reset modal state
+      setEditingRewardId(null);
+      setNewProgName("");
+      setNewProgDesc("");
+      setNewProgPoints("");
+      setShowNewProgram(false);
+
+      fetchOwnerRewards(ownerCafeId);
+
+    } catch (err) {
+      console.error(err);
+      showToast("Something went wrong");
+    }
   };
 
   const handleRedeem = () => {
@@ -362,13 +593,77 @@ export default function RewardsScreen({ navigation }) {
     });
   };
 
-  const toggleProgram = (id: number) => {
-    setPrograms((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, active: !p.active } : p))
-    );
+  const toggleProgram = async (rewardId: string, currentActive: boolean) => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      console.log("API_URL =", API_URL);
+      console.log("Reward ID =", rewardId);
+      console.log("PATCH URL =", `${API_URL}/api/rewards/${rewardId}`);
+
+      const res = await fetch(
+        `${API_URL}/api/rewards/${rewardId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            active: !currentActive,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        console.error(await res.json());
+        return;
+      }
+
+      if (ownerCafeId) {
+        fetchOwnerRewards(ownerCafeId);
+      }
+
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  // ── Cafe owner view ─────────────────────────────────────────────────────────
+  const deleteReward = async (rewardId: string) => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      const res = await fetch(
+        `${API_URL}/api/rewards/${rewardId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showToast(data.error || "Failed to delete");
+        return;
+      }
+
+      showToast("Reward deleted", "success");
+
+      if (ownerCafeId) {
+        fetchOwnerRewards(ownerCafeId);
+      }
+
+    } catch (err) {
+      console.error(err);
+      showToast("Something went wrong");
+    }
+  };
+
 // ── Cafe owner view ─────────────────────────────────────────────────────────
 if (role === "cafe") {
   return (
@@ -380,8 +675,8 @@ if (role === "cafe") {
         <View style={[styles.content, { width: contentWidth }]}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Reward Programs</Text>
-            <Text style={styles.subtitle}>Manage your loyalty offerings</Text>
+            <Text style={styles.title}>Reward Manager</Text>
+            <Text style={styles.subtitle}>Create and manage cafe rewards</Text>
           </View>
 
           {/* QR Scanner Button */}
@@ -393,17 +688,23 @@ if (role === "cafe") {
           {/* Stats row */}
           <View style={[styles.cafeStatsRow, { marginTop: scale(16) }]}>
             <View style={styles.cafeStat}>
-              <Text style={styles.cafeStatNumber}>23,750</Text>
+              <Text style={styles.cafeStatNumber}>
+                {analytics.points_issued.toLocaleString()}
+              </Text>
               <Text style={styles.cafeStatLabel}>Points Issued</Text>
             </View>
             <View style={styles.cafeStatDivider} />
             <View style={styles.cafeStat}>
-              <Text style={styles.cafeStatNumber}>1,342</Text>
+              <Text style={styles.cafeStatNumber}>
+                {analytics.redemptions.toLocaleString()}
+              </Text>
               <Text style={styles.cafeStatLabel}>Redemptions</Text>
             </View>
             <View style={styles.cafeStatDivider} />
             <View style={styles.cafeStat}>
-              <Text style={styles.cafeStatNumber}>89</Text>
+              <Text style={styles.cafeStatNumber}>
+                {analytics.active_today}
+              </Text>
               <Text style={styles.cafeStatLabel}>Active Today</Text>
             </View>
           </View>
@@ -418,7 +719,7 @@ if (role === "cafe") {
                 marginBottom: 16,
               }}
             >
-              <Text style={styles.sectionTitle}>Active Programs</Text>
+              <Text style={styles.sectionTitle}>Reward Catalog</Text>
 
               <TouchableOpacity
                 style={styles.addBtn}
@@ -445,7 +746,7 @@ if (role === "cafe") {
                       marginBottom: 4,
                     }}
                   >
-                    <Text style={styles.programName}>{prog.name}</Text>
+                    <Text style={styles.programName}>{prog.title}</Text>
 
                     <View
                       style={[
@@ -468,26 +769,48 @@ if (role === "cafe") {
                     </View>
                   </View>
 
-                  <Text style={styles.programDesc}>{prog.description}</Text>
+                  <Text style={styles.programDesc}>{prog.description || "Cafe Reward"}</Text>
 
                   <View style={{ flexDirection: "row", gap: 16, marginTop: 8 }}>
                     <Text style={styles.programStat}>
-                      ↑ {prog.totalIssued.toLocaleString()} pts issued
+                      {prog.points_required} pts required
                     </Text>
                     <Text style={styles.programStat}>
-                      ✓ {prog.redemptions} redeemed
+                      {prog.active ? "Active reward" : "Paused reward"}
                     </Text>
                   </View>
                 </View>
 
-                <TouchableOpacity
-                  onPress={() => toggleProgram(prog.id)}
-                  style={styles.toggleBtn}
-                >
-                  <Text style={styles.toggleBtnText}>
-                    {prog.active ? "Pause" : "Resume"}
-                  </Text>
-                </TouchableOpacity>
+                <View style={{ gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => toggleProgram(prog.id, prog.active)}
+                    style={styles.toggleBtn}
+                  >
+                    <Text style={styles.toggleBtnText}>
+                      {prog.active ? "Pause" : "Resume"}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      setEditingRewardId(prog.id);
+                      setNewProgName(prog.title);
+                      setNewProgDesc(prog.description || "");
+                      setNewProgPoints(String(prog.points_required));
+                      setShowNewProgram(true);
+                    }}
+                    style={styles.editBtn}
+                  >
+                    <Text style={styles.editBtnText}>Edit</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => deleteReward(prog.id)}
+                    style={styles.deleteBtn}
+                  >
+                    <Text style={styles.deleteBtnText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))}
           </View>
@@ -523,8 +846,10 @@ if (role === "cafe") {
       <Modal visible={showNewProgram} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>New Reward Program</Text>
-
+            <Text style={styles.modalTitle}>
+              {editingRewardId ? "Edit Reward" : "New Reward Program"}
+            </Text>
+  
             <TextInput
               placeholder="Program name"
               value={newProgName}
@@ -541,7 +866,7 @@ if (role === "cafe") {
             />
 
             <TextInput
-              placeholder="Points per visit"
+              placeholder="Points Required"
               value={newProgPoints}
               onChangeText={setNewProgPoints}
               style={styles.newProgInput}
@@ -556,7 +881,9 @@ if (role === "cafe") {
                 ]}
                 onPress={handleAddProgram}
               >
-                <Text style={styles.addBtnText}>Create</Text>
+                <Text style={styles.addBtnText}>
+                  {editingRewardId ? "Save" : "Create"}
+                </Text>
               </Pressable>
 
               <Pressable
@@ -1207,5 +1534,31 @@ const styles = StyleSheet.create({
     marginBottom: scale(12),
     fontSize: moderateScale(14),
     backgroundColor: "#F7F3F0",
+  },
+  editBtn: {
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(6),
+    borderRadius: scale(20),
+    borderWidth: 1,
+    borderColor: "#5C6BC0",
+    alignItems: "center",
+  },
+  editBtnText: {
+    fontSize: moderateScale(12),
+    color: "#5C6BC0",
+    fontWeight: "600",
+  },
+  deleteBtn: {
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(6),
+    borderRadius: scale(20),
+    borderWidth: 1,
+    borderColor: "#C62828",
+    alignItems: "center",
+  },
+  deleteBtnText: {
+    fontSize: moderateScale(12),
+    color: "#C62828",
+    fontWeight: "600",
   },
 });
