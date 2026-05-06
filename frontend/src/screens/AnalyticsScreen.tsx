@@ -20,31 +20,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { deviceWidth, moderateScale, scale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
+import { supabase } from "../api/supabaseClient";
 
 const contentWidth = deviceWidth - 40;
-
-// const PEAK_HOURS = [
-//   { label: "8am", value: 30 },
-//   { label: "9am", value: 65 },
-//   { label: "10am", value: 50 },
-//   { label: "11am", value: 40 },
-//   { label: "12pm", value: 90 },
-//   { label: "1pm", value: 75 },
-//   { label: "2pm", value: 55 },
-//   { label: "3pm", value: 70 },
-//   { label: "4pm", value: 85 },
-//   { label: "5pm", value: 60 },
-//   { label: "6pm", value: 45 },
-//   { label: "7pm", value: 25 },
-// ];
-
-// const recentVisitors = [
-//   { name: "Sarah M.", time: "2h ago", spent: "$8.50", pts: 85 },
-//   { name: "Alex K.", time: "3h ago", spent: "$12.00", pts: 120 },
-//   { name: "Jamie L.", time: "5h ago", spent: "$6.75", pts: 68 },
-//   { name: "Riley P.", time: "Yesterday", spent: "$15.00", pts: 150 },
-//   { name: "Morgan T.", time: "Yesterday", spent: "$9.25", pts: 93 },
-// ];
 
 type Period = "Today" | "This Week" | "This Month";
 
@@ -62,8 +40,10 @@ type Visitor = {
 type AnalyticsData = {
   visits: number;
   revenue: number;
+  aov: number;
   redeemed: number;
   new_customers: number;
+  repeat_rate: number; 
   peak_hours: PeakHour[];
   recent_visitors: Visitor[];
 };
@@ -94,18 +74,39 @@ export default function AnalyticsScreen() {
   const fetchAnalytics = async (selectedPeriod: string, silent = false) => {
     setFetchError(false);
     if (!silent) setLoading(true);
+
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const token = session?.access_token;
+      if (!token) throw new Error("No auth token");
+
       const res = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/overview?cafe_id=1&period=${selectedPeriod}`
+        `${process.env.EXPO_PUBLIC_API_URL}/api/overview?period=${selectedPeriod}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
-      if (!res.ok) throw new Error("Failed to fetch");
-      const data = await res.json();
+
+      const text = await res.text();
+      console.log("analytics raw:", text);
+
+      if (!res.ok) throw new Error(text);
+
+      const data = JSON.parse(text);
       setAnalytics(data);
+
     } catch (err) {
-      console.error(err);
+      console.error("Analytics error:", err);
       setFetchError(true);
+      setAnalytics(null);
+
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -151,7 +152,7 @@ export default function AnalyticsScreen() {
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Analytics</Text>
-            <Text style={styles.subtitle}>Your café at a glance</Text>
+            <Text style={styles.subtitle}>Your cafe at a glance</Text>
           </View>
 
           {/* Period Toggle */}
@@ -182,6 +183,15 @@ export default function AnalyticsScreen() {
           {/* Stats Grid */}
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: "#FFF8E1" }]}>
+                <DollarSign size={20} color="#FFA000" />
+              </View>
+              <Text style={styles.statValue}>
+                ${analytics?.aov?.toFixed(2) ?? "0.00"}
+              </Text>
+              <Text style={styles.statLabel}>Avg Order</Text>
+            </View>
+            <View style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: "#FFF0E6" }]}>
                 <Users size={20} color="#D4A373" />
               </View>
@@ -192,7 +202,7 @@ export default function AnalyticsScreen() {
               <View style={[styles.statIcon, { backgroundColor: "#E8F5E9" }]}>
                 <DollarSign size={20} color="#4CAF50" />
               </View>
-  <Text style={styles.statValue}> ${analytics?.revenue ?? 0} </Text>
+              <Text style={styles.statValue}> ${analytics?.revenue?.toFixed(2) ?? "0.00"} </Text>
               <Text style={styles.statLabel}>Revenue</Text>
             </View>
             <View style={styles.statCard}>
@@ -207,7 +217,18 @@ export default function AnalyticsScreen() {
                 <TrendingUp size={20} color="#2196F3" />
               </View>
               <Text style={styles.statValue}>{analytics?.new_customers ?? 0}</Text>
-              <Text style={styles.statLabel}>New Customers</Text>
+              <Text style={styles.statLabel}>Unique Customers</Text>
+            </View>
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: "#E8F5E9" }]}>
+                <Users size={20} color="#4CAF50" />
+              </View>
+              <Text style={styles.statValue}>
+                {analytics?.repeat_rate != null
+                ? `${(analytics.repeat_rate * 100).toFixed(0)}%`
+                : "0%"}
+              </Text>
+              <Text style={styles.statLabel}>Returning</Text>
             </View>
           </View>
 
