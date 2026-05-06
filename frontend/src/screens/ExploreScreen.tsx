@@ -89,7 +89,7 @@ export default function ExploreScreen() {
   const [selectedFilter, setSelectedFilter] = useState("All");
   const webMapRef = useRef<HTMLDivElement | null>(null);
   const [selectedPrices, setSelectedPrices] = useState<number[]>([]);
-  const [maxDistance, setMaxDistance] = useState<number>(5);
+  const [maxDistance, setMaxDistance] = useState<number>(15);
   const [showPriceDropdown, setShowPriceDropdown] = useState(false);
   const [showDistanceDropdown, setShowDistanceDropdown] = useState(false);
 
@@ -659,7 +659,9 @@ export default function ExploreScreen() {
               return (
                 <TouchableOpacity
                   key={filter}
-                  onPress={() => setSelectedFilter(filter)}
+                  onPress={() =>
+                    setSelectedFilter((prev) => (prev === filter ? "All" : filter))
+                  }
                   activeOpacity={0.7}
                 >
                   <View
@@ -898,7 +900,9 @@ export default function ExploreScreen() {
           <TouchableOpacity
             key={d}
             style={[styles.dropdownItem, active && styles.dropdownItemActive]}
-            onPress={() => setMaxDistance(d)}
+            onPress={() =>
+              setMaxDistance((prev) => (prev === d ? 15 : d))
+            }
           >
           <Text style={[
             styles.dropdownText,
