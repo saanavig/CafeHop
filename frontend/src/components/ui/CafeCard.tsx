@@ -1,7 +1,8 @@
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { MapPin, Star } from "lucide-react-native";
+import { deviceWidth, moderateScale, scale, verticalScale } from "../../utils/responsive";
+
 import React from "react";
-import { View, Text, Image, StyleSheet, Pressable } from "react-native";
-import { Star, MapPin } from "lucide-react-native";
-import { scale, moderateScale, verticalScale, deviceWidth } from "../../utils/responsive";
 
 interface CafeCardProps {
   name: string;
@@ -10,13 +11,16 @@ interface CafeCardProps {
   distance: string;
   vibes: string[];
   amenities: string[];
+  attributes?: string[];
   isOpen?: boolean;
   onPress?: () => void;
 }
 
 const cardWidth = Math.min(deviceWidth * 0.9, 440);
 
-const CafeCard = ({ name, image, rating, distance, vibes, amenities, isOpen = true, onPress }: CafeCardProps) => {
+const CafeCard = ({ name, image, rating, distance, vibes, amenities,attributes, isOpen = true, onPress }: CafeCardProps) => {
+  
+  const safeAttributes = Array.isArray(attributes) ? attributes : [];
   return (
     <Pressable
       style={({ pressed }) => [styles.card, { width: cardWidth, opacity: pressed ? 0.93 : 1 }]}
@@ -41,6 +45,16 @@ const CafeCard = ({ name, image, rating, distance, vibes, amenities, isOpen = tr
       {/* Info */}
       <View style={styles.info}>
         <Text style={styles.name}>{name}</Text>
+        {safeAttributes.length > 0 && (
+          <View style={styles.attributesRow}>
+            {safeAttributes.slice(0, 3).map((attr, index) => (
+              <View key={`${attr}-${index}`} style={styles.attributeChip}>
+                <Text style={styles.attributeText}>{attr}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         <View style={styles.metaRow}>
           <MapPin size={scale(12)} color="#AAA" />
           <Text style={styles.meta}>{distance}  ·  {vibes.join(", ")}</Text>
@@ -106,4 +120,23 @@ const styles = StyleSheet.create({
     borderRadius: scale(12), backgroundColor: "#F5F1EC",
   },
   amenityText: { fontSize: moderateScale(11), color: "#666", fontWeight: "500" },
+
+  attributesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: scale(6),
+    marginBottom: verticalScale(6),
+  },
+
+  attributeText: {
+    fontSize: moderateScale(11),
+    color: "#D4A373", // warm accent
+    fontWeight: "600",
+  },
+  attributeChip: {
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(3),
+    borderRadius: scale(8),
+    backgroundColor: "#FAF7F2",
+  },
 });
