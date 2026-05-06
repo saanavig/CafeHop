@@ -115,6 +115,8 @@ export default function RewardsScreen({ navigation }) {
   const [newProgDesc, setNewProgDesc] = useState("");
   const [newProgPoints, setNewProgPoints] = useState("");  
   const [programs, setPrograms] = useState<any[]>([]);
+  const [deleteRewardId, setDeleteRewardId] = useState<string | null>(null);
+  const [deleteRewardName, setDeleteRewardName] = useState("");
 
   const [recentRedemptions, setRecentRedemptions] = useState<any[]>([]);
   const [editingRewardId, setEditingRewardId] = useState<string | null>(null);
@@ -805,7 +807,10 @@ if (role === "cafe") {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    onPress={() => deleteReward(prog.id)}
+                    onPress={() => {
+                      setDeleteRewardId(prog.id);
+                      setDeleteRewardName(prog.title);
+                    }}
                     style={styles.deleteBtn}
                   >
                     <Text style={styles.deleteBtnText}>Delete</Text>
@@ -892,6 +897,62 @@ if (role === "cafe") {
               >
                 <Text style={{ color: "#999", fontWeight: "500" }}>
                   Cancel
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={!!deleteRewardId}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmModalCard}>
+            <Text style={styles.modalTitle}>
+              Delete Reward?
+            </Text>
+
+            <Text style={styles.confirmText}>
+              Are you sure you want to delete{" "}
+              <Text style={{ fontWeight: "700" }}>
+                {deleteRewardName}
+              </Text>
+              ?
+            </Text>
+
+            <Text style={styles.confirmSubtext}>
+              This action cannot be undone.
+            </Text>
+
+            <View style={styles.confirmBtnRow}>
+              <Pressable
+                style={styles.cancelDeleteBtn}
+                onPress={() => {
+                  setDeleteRewardId(null);
+                  setDeleteRewardName("");
+                }}
+              >
+                <Text style={styles.cancelDeleteText}>
+                  Cancel
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.confirmDeleteBtn}
+                onPress={async () => {
+                  if (!deleteRewardId) return;
+
+                  await deleteReward(deleteRewardId);
+
+                  setDeleteRewardId(null);
+                  setDeleteRewardName("");
+                }}
+              >
+                <Text style={styles.confirmDeleteText}>
+                  Delete
                 </Text>
               </Pressable>
             </View>
@@ -1560,5 +1621,49 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(12),
     color: "#C62828",
     fontWeight: "600",
+  },
+  confirmModalCard: {
+    backgroundColor: "#FFF",
+    borderRadius: scale(18),
+    padding: scale(22),
+    width: "100%",
+    maxWidth: 420,
+    alignSelf: "center",
+  },
+  confirmText: {
+    fontSize: moderateScale(14),
+    color: "#333",
+    lineHeight: scale(22),
+  },
+  confirmSubtext: {
+    fontSize: moderateScale(12),
+    color: "#999",
+    marginTop: scale(10),
+  },
+  confirmBtnRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: scale(10),
+    marginTop: scale(24),
+  },
+  cancelDeleteBtn: {
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(10),
+    borderRadius: scale(12),
+    backgroundColor: "#F3F3F3",
+  },
+  cancelDeleteText: {
+    color: "#555",
+    fontWeight: "600",
+  },
+  confirmDeleteBtn: {
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(10),
+    borderRadius: scale(12),
+    backgroundColor: "#C62828",
+  },
+  confirmDeleteText: {
+    color: "#FFF",
+    fontWeight: "700",
   },
 });
