@@ -106,10 +106,10 @@ def delete_post(post_id):
         print("DELETE ERROR:", e)
         return jsonify({"error": str(e)}), 500
 
+
 @posts_bp.route("/posts/<post_id>/like", methods=["POST"])
 @require_auth
 def like_post(post_id):
-    print("LIKE ROUTE HIT:", post_id)
     user_id = g.user["id"]
     user_supabase = supabase_for_user(g.access_token)
 
@@ -122,34 +122,32 @@ def like_post(post_id):
         .execute()
     )
 
-    existing = (
-        user_supabase.table("post_likes")
-        .select("id")
-        .eq("post_id", post_id)
-        .eq("user_id", user_id)
+    if existing and existing.data:
+        return jsonify({"message": "Already liked"}), 200
+
+    user_supabase.table("post_likes").insert({
+        "post_id": post_id,
+        "user_id": user_id,
+    }).execute()
+
+    post = (
+        user_supabase.table("posts")
+        .select("likes_count")
+        .eq("id", post_id)
         .maybe_single()
         .execute()
     )
 
-    if not existing or not existing.data:
-        # no existing like → insert
-        try:
-            insert_res = user_supabase.table("post_likes").insert({
-                "post_id": post_id,
-                "user_id": user_id
-            }).execute()
+    current = (post.data or {}).get("likes_count") or 0
 
-            print("INSERT SUCCESS:", insert_res.data)
+    user_supabase.table("posts").update({
+        "likes_count": current + 1
+    }).eq("id", post_id).execute()
 
-            return jsonify({"message": "Liked"}), 201
-
-        except Exception as e:
-            print("INSERT ERROR:", e)
-            return jsonify({"error": str(e)}), 500
-
-        return jsonify({"message": "Liked"}), 201
-
-    return jsonify({"message": "Already liked"}), 200
+    return jsonify({
+        "message": "Liked",
+        "likes_count": current + 1,
+    }), 201
 
 @posts_bp.route("/posts/<post_id>/like", methods=["DELETE"])
 @require_auth
@@ -157,13 +155,36 @@ def unlike_post(post_id):
     user_id = g.user["id"]
     user_supabase = supabase_for_user(g.access_token)
 
-    user_supabase.table("post_likes") \
-        .delete() \
-        .eq("post_id", post_id) \
-        .eq("user_id", user_id) \
+    deleted = (
+        user_supabase.table("post_likes")
+        .delete()
+        .eq("post_id", post_id)
+        .eq("user_id", user_id)
         .execute()
+    )
 
-    return jsonify({"message": "Unliked"}), 200
+    if deleted.data:
+        post = (
+            user_supabase.table("posts")
+            .select("likes_count")
+            .eq("id", post_id)
+            .maybe_single()
+            .execute()
+        )
+
+        current = (post.data or {}).get("likes_count") or 0
+        new_count = max(0, current - 1)
+
+        user_supabase.table("posts").update({
+            "likes_count": new_count
+        }).eq("id", post_id).execute()
+
+        return jsonify({
+            "message": "Unliked",
+            "likes_count": new_count,
+        }), 200
+
+    return jsonify({"message": "Like not found"}), 200
 
 @posts_bp.route("/posts/<post_id>/save", methods=["POST"])
 @require_auth
@@ -205,12 +226,12 @@ def unsave_post(post_id):
 
 @posts_bp.route("/posts/<post_id>/comments", methods=["GET"])
 @require_auth
-def get_comments(post_id):
+def get_post_comments(post_id):
     user_supabase = supabase_for_user(g.access_token)
 
     response = (
         user_supabase.table("comments")
-        .select("id, content, user_id, users(first_name)")
+        .select("id, content, user_id, created_at, profiles(first_name)")
         .eq("post_id", post_id)
         .order("created_at", desc=True)
         .execute()
@@ -220,7 +241,9 @@ def get_comments(post_id):
         {
             "id": c["id"],
             "content": c["content"],
-            "username": c.get("users", {}).get("first_name", "User")
+            "user_id": c["user_id"],
+            "username": (c.get("profiles") or {}).get("first_name") or "User",
+            "created_at": c.get("created_at"),
         }
         for c in (response.data or [])
     ]
@@ -229,12 +252,12 @@ def get_comments(post_id):
 
 @posts_bp.route("/posts/<post_id>/comments", methods=["POST"])
 @require_auth
-def add_comment(post_id):
+def add_post_comment(post_id):
     user_id = g.user["id"]
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     user_supabase = supabase_for_user(g.access_token)
 
-    content = data.get("content")
+    content = (data.get("content") or "").strip()
 
     if not content:
         return jsonify({"error": "Missing content"}), 400
@@ -242,7 +265,72 @@ def add_comment(post_id):
     response = user_supabase.table("comments").insert({
         "post_id": post_id,
         "user_id": user_id,
-        "content": content
+        "content": content,
     }).execute()
 
-    return jsonify(response.data[0]), 201
+    post = (
+        user_supabase.table("posts")
+        .select("comments_count")
+        .eq("id", post_id)
+        .maybe_single()
+        .execute()
+    )
+
+    current = (post.data or {}).get("comments_count") or 0
+
+    user_supabase.table("posts").update({
+        "comments_count": current + 1
+    }).eq("id", post_id).execute()
+
+    return jsonify({
+        "comment": response.data[0],
+        "comments_count": current + 1,
+    }), 201
+
+@posts_bp.route("/posts/feed", methods=["GET"])
+@require_auth
+def get_posts_feed_route():
+    try:
+        user_supabase = supabase_for_user(g.access_token)
+
+        response = (
+            user_supabase.table("posts")
+            .select("""
+                id,
+                user_id,
+                cafe_id,
+                caption,
+                post_type,
+                likes_count,
+                comments_count,
+                created_at,
+                cafes(
+                    id,
+                    name,
+                    address,
+                    latitude,
+                    longitude
+                ),
+                post_media(
+                    id,
+                    file_url,
+                    file_type,
+                    bucket_name,
+                    file_path
+                )
+            """)
+            .order("created_at", desc=True)
+            .execute()
+        )
+
+        posts = response.data or []
+
+        return jsonify({
+            "posts": posts
+        }), 200
+
+    except Exception as e:
+        print({"error": "Failed to fetch posts"}, e)
+        return jsonify({
+            "error": "Failed to fetch posts"
+        }), 500
