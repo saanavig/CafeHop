@@ -130,19 +130,19 @@ def register_cafe():
         hours = data.get("hours", {})
 
         DAY_MAP = {
-            "Monday": 0,
-            "Tuesday": 1,
-            "Wednesday": 2,
-            "Thursday": 3,
-            "Friday": 4,
-            "Saturday": 5,
-            "Sunday": 6,
+            "Sunday": 0,
+            "Monday": 1,
+            "Tuesday": 2,
+            "Wednesday": 3,
+            "Thursday": 4,
+            "Friday": 5,
+            "Saturday": 6,
         }
 
         hour_rows = []
 
         for day, val in hours.items():
-            if not val.get("open"):
+            if not val.get("start") or not val.get("end"):
                 continue
 
             hour_rows.append({
@@ -273,13 +273,26 @@ def get_all_cafes():
 
 def is_cafe_open(hours):
     now = datetime.now()
-    day = now.weekday()  # 0 = Monday
+    day = (now.weekday() + 1) % 7
     current_time = now.strftime("%H:%M")
 
     for h in hours:
-        if h["day_of_week"] == day:
-            if h["open_time"] <= current_time <= h["close_time"]:
-                return True
+        try:
+            if h["day_of_week"] == day:
+                open_time = h.get("open_time")
+                close_time = h.get("close_time")
+
+                if not open_time or not close_time:
+                    continue
+
+                open_time = str(open_time)
+                close_time = str(close_time)
+
+                if open_time <= current_time <= close_time:
+                    return True
+        except Exception as e:
+            print("is_cafe_open error:", e)
+
     return False
 
 # comments 
