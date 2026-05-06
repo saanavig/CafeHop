@@ -43,11 +43,16 @@ type AnalyticsData = {
   aov: number;
   redeemed: number;
   new_customers: number;
-  repeat_rate: number; 
+  repeat_rate: number;
   peak_hours: PeakHour[];
   recent_visitors: Visitor[];
-};
 
+  loyalty: {
+    total_points_given: number;
+    rewards_redeemed: number;
+    return_rate: number;
+  };
+};
 const statsByPeriod: Record<Period, { visits: number; revenue: string; redeemed: number; newCustomers: number }> = {
   Today: { visits: 47, revenue: "$423", redeemed: 8, newCustomers: 5 },
   "This Week": { visits: 312, revenue: "$2,840", redeemed: 54, newCustomers: 28 },
@@ -202,9 +207,9 @@ export default function AnalyticsScreen() {
               <View style={[styles.statIcon, { backgroundColor: "#E8F5E9" }]}>
                 <DollarSign size={20} color="#4CAF50" />
               </View>
-              <Text style={styles.statValue}>${(analytics?.revenue ?? 0).toFixed(2)}
-                ${(analytics?.aov ?? 0).toFixed(2)}</Text>
-              <Text style={styles.statLabel}>Revenue</Text>
+              <Text style={styles.statValue}>
+                ${(analytics?.revenue ?? 0).toFixed(2)}
+              </Text>
             </View>
             <View style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: "#FCE4EC" }]}>
@@ -322,19 +327,30 @@ export default function AnalyticsScreen() {
           {/* Loyalty Summary */}
           <View style={styles.loyaltyCard}>
             <Text style={styles.loyaltyTitle}>Loyalty Program</Text>
+
             <View style={styles.loyaltyRow}>
               <View style={styles.loyaltyStat}>
-                <Text style={styles.loyaltyValue}>1,248</Text>
+                <Text style={styles.loyaltyValue}>
+                  {(analytics?.loyalty?.total_points_given ?? 0).toLocaleString()}
+                </Text>
                 <Text style={styles.loyaltyLabel}>Total Pts Given</Text>
               </View>
+
               <View style={styles.loyaltyDivider} />
+
               <View style={styles.loyaltyStat}>
-                <Text style={styles.loyaltyValue}>203</Text>
+                <Text style={styles.loyaltyValue}>
+                  {(analytics?.loyalty?.rewards_redeemed ?? 0).toLocaleString()}
+                </Text>
                 <Text style={styles.loyaltyLabel}>Rewards Redeemed</Text>
               </View>
+
               <View style={styles.loyaltyDivider} />
+
               <View style={styles.loyaltyStat}>
-                <Text style={styles.loyaltyValue}>84%</Text>
+                <Text style={styles.loyaltyValue}>
+                  {Math.round((analytics?.loyalty?.return_rate ?? 0) * 100)}%
+                </Text>
                 <Text style={styles.loyaltyLabel}>Return Rate</Text>
               </View>
             </View>

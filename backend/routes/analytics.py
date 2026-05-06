@@ -183,13 +183,58 @@ def get_analytics():
 
     redeemed = redeem_res.count or 0
 
+    # lifetime metrics
+    lifetime_purchases = supabase.table("purchases") \
+        .select("points_earned, user_id") \
+        .eq("cafe_id", cafe_id) \
+        .execute()
+
+    lifetime_rows = lifetime_purchases.data or []
+
+    total_points_given = sum(
+        r.get("points_earned", 0) or 0
+        for r in lifetime_rows
+    )
+
+    lifetime_user_counts = defaultdict(int)
+
+    for r in lifetime_rows:
+        if r.get("user_id"):
+            lifetime_user_counts[r["user_id"]] += 1
+
+    lifetime_total_users = len(lifetime_user_counts)
+
+    lifetime_repeat_users = sum(
+        1 for count in lifetime_user_counts.values()
+        if count > 1
+    )
+
+    lifetime_return_rate = (
+        lifetime_repeat_users / lifetime_total_users
+        if lifetime_total_users > 0 else 0
+    )
+
+    lifetime_redeemed_res = supabase.table("reward_redemptions") \
+        .select("id", count="exact") \
+        .eq("cafe_id", cafe_id) \
+        .execute()
+
+    total_redeemed = lifetime_redeemed_res.count or 0
+
     return jsonify({
         "visits": visits,
         "revenue": round(revenue, 2),
         "aov": round(aov, 2),
+
+        "loyalty": {
+            "total_points_given": total_points_given,
+            "rewards_redeemed": total_redeemed,
+            "return_rate": round(lifetime_return_rate, 2)
+        },
+
         "redeemed": redeemed,
         "new_customers": new_customers,
-        "repeat_rate": round(repeat_rate, 2), 
+        "repeat_rate": round(repeat_rate, 2),
         "peak_hours": peak_hours,
         "recent_visitors": recent_visitors
     })
