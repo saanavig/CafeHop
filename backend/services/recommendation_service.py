@@ -11,7 +11,7 @@ from services.review_service import (
     attach_review_summaries_to_recommendations,
 )
 
-DEFAULT_MAX_DISTANCE_MILES = 5.0
+DEFAULT_MAX_DISTANCE_MILES = 50.0
 TOP_K_FOR_AI_EXPLANATIONS = 5
 
 
@@ -44,12 +44,14 @@ def attach_posts_to_recommendations(recommendations):
         supabase.table("posts")
         .select("""
             id,
+            user_id,
             cafe_id,
             caption,
-            created_at,
+            post_type,
             likes_count,
             comments_count,
-            post_media(file_url, file_type)
+            created_at,
+            post_media(id, file_url, file_type, bucket_name, file_path)
         """)
         .in_("cafe_id", cafe_ids)
         .order("created_at", desc=True)
@@ -57,47 +59,40 @@ def attach_posts_to_recommendations(recommendations):
     )
 
     posts = posts_res.data or []
-    cafe_post_map = {}
+    posts_by_cafe = defaultdict(list)
 
     for post in posts:
         cafe_id = post.get("cafe_id")
-        if cafe_id and cafe_id not in cafe_post_map:
-            media = post.get("post_media") or []
-            first_media = next(
-                (m for m in media if m.get("file_url")),
-                None
-            )
-
-            post["display_image_url"] = first_media.get("file_url") if first_media else None
-            cafe_post_map[cafe_id] = post
+        if cafe_id:
+            posts_by_cafe[cafe_id].append(post)
 
     for rec in recommendations:
         cafe = rec.get("cafe") or {}
         cafe_id = cafe.get("id")
-        post = cafe_post_map.get(cafe_id)
+        cafe_posts = posts_by_cafe.get(cafe_id, [])
 
-        rec["post"] = post
+        rec["posts"] = cafe_posts
+        rec["has_posts"] = len(cafe_posts) > 0
 
-        image_url = (
-            (post or {}).get("display_image_url")
-            or cafe.get("image_url")
-            or get_fallback_image(cafe_id)
-        )
+        first_post = cafe_posts[0] if cafe_posts else None
+        media = first_post.get("post_media", []) if first_post else []
+        first_media = next((m for m in media if m.get("file_url")), None)
 
         rec["display"] = {
             "cafe_id": cafe_id,
             "cafe_name": cafe.get("name"),
-            "post_id": post.get("id") if post else None,
-            "image_url": image_url,
+            "post_id": first_post.get("id") if first_post else None,
+            "image_url": first_media.get("file_url") if first_media else None,
             "caption": (
                 rec.get("gemini_explanation")
                 or (rec.get("reasons") or ["Recommended for you"])[0]
             ),
-            "post_caption": post.get("caption") if post else None,
-            "likes_count": post.get("likes_count", 0) if post else 0,
-            "comments_count": post.get("comments_count", 0) if post else 0,
-            "can_like": post is not None,
-            "can_comment": post is not None,
+            "post_caption": first_post.get("caption") if first_post else None,
+            "likes_count": first_post.get("likes_count", 0) if first_post else 0,
+            "comments_count": first_post.get("comments_count", 0) if first_post else 0,
+            "can_like": first_post is not None,
+            "can_comment": first_post is not None,
+            "needs_first_photo": first_post is None,
         }
 
     return recommendations
@@ -614,6 +609,11 @@ def get_recommendations_for_user(
 ):
     user_profile = build_user_profile(user_id)
 
+    max_distance = (
+        user_profile.get("max_distance_miles")
+        or DEFAULT_MAX_DISTANCE_MILES
+    )
+
     cafes = get_all_active_cafes()
     cafe_tag_rows = get_all_cafe_tags()
     review_stats = get_cafe_review_stats()
@@ -651,11 +651,6 @@ def get_recommendations_for_user(
                 cafe.get("longitude"),
             )
 
-            max_distance = (
-                user_profile.get("max_distance_miles")
-                or DEFAULT_MAX_DISTANCE_MILES
-            )
-
             if distance_miles is not None and distance_miles > max_distance:
                 continue
 
@@ -688,6 +683,7 @@ def get_recommendations_for_user(
             "matching_tag_names": scored["matching_tag_names"],
             "review_stats": scored["review_stats"],
             "distance_miles": distance_miles,
+            "max_distance_miles": max_distance,
             "cafe_tags": cafe_tags,
             "menu_matches": scored["menu_matches"],
             "menu_preview": cafe_profile["menu_item_names"][:5],
@@ -696,7 +692,6 @@ def get_recommendations_for_user(
             "gemini_explanation": None,
         })
 
-    # 1. Rank all cafes by personalization score first
     recommendations.sort(
         key=lambda x: (
             x.get("score", 0),
@@ -707,10 +702,7 @@ def get_recommendations_for_user(
         reverse=True,
     )
 
-    # 2. First 2 are strongest personalized recommendations
     personalized = recommendations[:2]
-
-    # 3. Rest are discovery/nearby cafes, still decent but less repetitive
     discovery = recommendations[2:]
 
     discovery.sort(
@@ -723,7 +715,6 @@ def get_recommendations_for_user(
 
     recommendations = personalized + discovery[: max(0, limit - 2)]
 
-    # 4. Add review summaries only after final list is chosen
     top_to_enrich = recommendations[:TOP_K_FOR_AI_EXPLANATIONS]
     top_to_enrich = attach_review_summaries_to_recommendations(
         top_to_enrich,
@@ -731,8 +722,10 @@ def get_recommendations_for_user(
     )
     recommendations[:TOP_K_FOR_AI_EXPLANATIONS] = top_to_enrich
 
-    # 5. Attach optional post + guaranteed display image
     recommendations = attach_posts_to_recommendations(recommendations)
+
+    for rec in recommendations:
+        rec["max_distance_miles"] = max_distance
 
     return recommendations
 

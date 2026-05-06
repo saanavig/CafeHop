@@ -38,14 +38,44 @@ const getFallbackImage = (key?: string) => {
   return fallbackImages[Math.abs(hash) % fallbackImages.length];
 };
 
+const isValidImageUrl = (url?: string | null) => {
+  return !!url && (url.startsWith("http://") || url.startsWith("https://"));
+};
+
+const getRandomItem = <T,>(items: T[]): T | null => {
+  if (!items || items.length === 0) return null;
+  return items[Math.floor(Math.random() * items.length)];
+};
+
+const calculateDistanceMiles = (
+  lat1: number,
+  lon1: number,
+  lat2?: number | null,
+  lon2?: number | null
+) => {
+  if (lat2 == null || lon2 == null) return 999999;
+
+  const R = 3958.8;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 const FEED_CACHE_KEY = "cafehop_feed_cache";
-const FEED_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 type FeedPost = Post & {
-  itemType?: "post" | "recommendation" | "cafe";
+  itemType?: "post" | "empty_cafe_prompt";
   cafeId?: string;
   isRecommended?: boolean;
   postId?: string;
+  distanceMiles?: number;
   canLike?: boolean;
   canComment?: boolean;
   canSavePost?: boolean;
@@ -79,12 +109,12 @@ const Index = () => {
       Animated.timing(headerFade, {
         toValue: 1,
         duration: 400,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(headerSlide, {
         toValue: 0,
         duration: 400,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]).start();
   }, []);
@@ -95,49 +125,15 @@ const Index = () => {
     loadFeed();
   }, []);
 
-  const getCachedFeed = async () => {
-    if (sessionFeedCache && sessionFeedCache.length > 0) {
-      return sessionFeedCache;
-    }
-
-    const raw = await AsyncStorage.getItem(FEED_CACHE_KEY);
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw);
-    const age = Date.now() - parsed.savedAt;
-
-    if (age > FEED_CACHE_TTL_MS) {
-      await AsyncStorage.removeItem(FEED_CACHE_KEY);
-      return null;
-    }
-
-    sessionFeedCache = parsed.posts;
-    return parsed.posts;
-  };
-
-  const saveFeedCache = async (feed: FeedPost[]) => {
-    sessionFeedCache = feed;
-
-    await AsyncStorage.setItem(
-      FEED_CACHE_KEY,
-      JSON.stringify({
-        savedAt: Date.now(),
-        posts: feed,
-      })
-    );
+  const clearFeedCache = async () => {
+    sessionFeedCache = null;
+    await AsyncStorage.removeItem(FEED_CACHE_KEY);
   };
 
   const loadFeed = async () => {
     try {
       setLoading(true);
-
-      const cached = await getCachedFeed();
-
-      if (cached && cached.length > 0) {
-        setPosts(cached);
-        return;
-      }
-
+      await clearFeedCache();
       await getUserLocationAndFetchFeed();
     } catch (err) {
       console.error("LOAD FEED ERROR:", err);
@@ -204,28 +200,95 @@ const Index = () => {
     return String(rec?.display?.cafe_id || rec?.cafe?.id || rec?.cafe_id || "");
   };
 
-  const cafeToPost = (cafe: any): FeedPost => {
-    const cafeId = cafe.id ? String(cafe.id) : undefined;
-    const cafeName = cafe.name || "Cafe";
+  const getPostImageFromPost = (post: any) => {
+    const mediaList = post?.post_media || post?.media || [];
+    const validMedia = mediaList.filter((m: any) =>
+      isValidImageUrl(m?.file_url)
+    );
+
+    const randomMedia = getRandomItem(validMedia);
+    return randomMedia?.file_url || null;
+  };
+
+  const buildPostCard = (
+    post: any,
+    cafe: any,
+    isRecommended: boolean,
+    coords: UserCoords,
+    explanation?: string
+  ): FeedPost | null => {
+    const cafeId = String(post?.cafe_id || cafe?.id || "");
+    const postId = String(post?.id || post?.post_id || "");
+    const cafeName = cafe?.name || post?.cafes?.name || "Cafe";
+    const imageUrl = getPostImageFromPost(post);
+
+    if (!cafeId || !imageUrl) return null;
+
+    const distanceMiles = calculateDistanceMiles(
+      coords.lat,
+      coords.lng,
+      cafe?.latitude ?? post?.cafes?.latitude,
+      cafe?.longitude ?? post?.cafes?.longitude
+    );
+
+    return {
+      id: `cafe-${cafeId}`,
+      itemType: "post",
+      postId,
+      cafeId,
+      isRecommended,
+      cafeName,
+      image: { uri: imageUrl },
+      caption: isRecommended
+        ? explanation || "Recommended for you based on your cafe preferences."
+        : post.caption || `Posted at ${cafeName}`,
+      likes: Number(post.likes_count || 0),
+      comments: Number(post.comments_count || 0),
+      postedBy: cafeName,
+      tags: isRecommended ? ["recommended", "for-you"] : ["cafe"],
+      location: cafe?.address || post?.cafes?.address || "Nearby",
+      commentList: [],
+      distanceMiles,
+      canLike: !!postId,
+      canComment: !!postId,
+      canSavePost: !!postId,
+      canSaveCafe: true,
+    };
+  };
+
+  const buildEmptyCafePrompt = (
+    cafe: any,
+    isRecommended: boolean,
+    coords: UserCoords,
+    explanation?: string
+  ): FeedPost => {
+    const cafeId = String(cafe?.id || "");
+    const cafeName = cafe?.name || "Cafe";
+
+    const distanceMiles = calculateDistanceMiles(
+      coords.lat,
+      coords.lng,
+      cafe?.latitude,
+      cafe?.longitude
+    );
 
     return {
       id: `cafe-${cafeId || cafeName}`,
-      itemType: "cafe",
+      itemType: "empty_cafe_prompt",
       cafeId,
-      isRecommended: false,
+      isRecommended,
       cafeName,
-      image: {
-        uri: cafe.image_url || getFallbackImage(cafeId || cafeName),
-      },
-      caption:
-        cafe.description ||
-        "A cafe you may enjoy based on your preferences.",
+      image: { uri: getFallbackImage(cafeId || cafeName) },
+      caption: isRecommended
+        ? explanation || `Recommended for you. Be the first to post a picture at ${cafeName}.`
+        : `Be the first to post a picture at ${cafeName}.`,
       likes: 0,
       comments: 0,
       postedBy: "CafeHop",
-      tags: ["cafe"],
-      location: cafe.address || "Nearby",
+      tags: isRecommended ? ["recommended", "needs-photo"] : ["needs-photo"],
+      location: cafe?.address || "Nearby",
       commentList: [],
+      distanceMiles,
       canLike: false,
       canComment: false,
       canSavePost: false,
@@ -240,26 +303,21 @@ const Index = () => {
 
       if (!userId) return;
 
-      await supabase.from("cafe_visit_logs").insert({
-        user_id: userId,
-        cafe_id: cafeId,
-      });
-
-      const { data: existingVisited } = await supabase
+      const { data: existing } = await supabase
         .from("user_cafe_interactions")
-        .select("interaction_type")
+        .select("user_id")
         .eq("user_id", userId)
         .eq("cafe_id", cafeId)
         .eq("interaction_type", "visited")
         .maybeSingle();
 
-      if (!existingVisited) {
-        await supabase.from("user_cafe_interactions").insert({
-          user_id: userId,
-          cafe_id: cafeId,
-          interaction_type: "visited",
-        });
-      }
+      if (existing) return;
+
+      await supabase.from("user_cafe_interactions").insert({
+        user_id: userId,
+        cafe_id: cafeId,
+        interaction_type: "visited",
+      });
     } catch (err) {
       console.error("Mark visited failed:", err);
     }
@@ -282,6 +340,13 @@ const Index = () => {
 
       const recData = await recRes.json();
       const rawRecommendations = recData.recommendations || [];
+
+      const recommendations = uniqueByKey(rawRecommendations, (rec: any) =>
+        getRecCafeId(rec)
+      );
+
+      const maxDistanceMiles =
+        Number(rawRecommendations?.[0]?.max_distance_miles) || 5;
 
       let explanationMap: Record<string, string> = {};
 
@@ -307,80 +372,114 @@ const Index = () => {
         console.log("EXPLANATIONS FETCH FAILED:", err);
       }
 
-      const allCafeRes = await fetch(`${API_URL}/api/cafe/all`);
-      const allCafeData = await allCafeRes.json();
+      const cafesRes = await fetch(`${API_URL}/api/cafe/all`);
+      const cafesData = await cafesRes.json();
+      const allCafes = Array.isArray(cafesData) ? cafesData : [];
 
-      const rawAllCafes = Array.isArray(allCafeData)
-        ? allCafeData
-        : allCafeData.cafes || [];
-
-      const recommendations = uniqueByKey(rawRecommendations, (rec: any) =>
-        getRecCafeId(rec)
-      );
-
-      const recommendedPosts: FeedPost[] = recommendations.map((rec: any) => {
-        const display = rec.display || {};
-        const cafe = rec.cafe || {};
-        const post = rec.post || {};
-
-        const cafeId = String(display.cafe_id || cafe.id || "");
-        const postId = display.post_id || post.id;
-
-        return {
-          id: postId ? String(postId) : `recommended-cafe-${cafeId}`,
-          itemType: postId ? "post" : "recommendation",
-          cafeId,
-          isRecommended: true,
-          cafeName: display.cafe_name || cafe.name || "Cafe",
-          image: {
-            uri:
-              display.image_url ||
-              cafe.image_url ||
-              getFallbackImage(cafeId || cafe.name || "cafe"),
-          },
-          caption:
-            explanationMap[cafeId] ||
-            display.caption ||
-            rec.reasons?.[0] ||
-            cafe.description ||
-            "Recommended for you.",
-          likes: postId
-            ? Number(display.likes_count ?? post.likes_count ?? 0)
-            : 0,
-          comments: postId
-            ? Number(display.comments_count ?? post.comments_count ?? 0)
-            : 0,
-          postedBy: postId ? "CafeHop" : "CafeHop AI",
-          tags: ["recommended", "for-you"],
-          location: cafe.address || "Nearby",
-          commentList: [],
-          postId: postId ? String(postId) : undefined,
-          canLike: Boolean(postId),
-          canComment: Boolean(postId),
-          canSavePost: Boolean(postId),
-          canSaveCafe: !postId,
-        };
+      const postsRes = await fetch(`${API_URL}/api/posts/feed`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
-      const recommendedIds = new Set(
-        recommendations.map((rec: any) => getRecCafeId(rec)).filter(Boolean)
+      const postsData = await postsRes.json();
+      const rawPosts = postsData.posts || [];
+
+      const postsByCafe: Record<string, any[]> = {};
+
+      for (const post of rawPosts) {
+        const cafeId = String(post.cafe_id || post?.cafes?.id || "");
+        if (!cafeId) continue;
+
+        if (!postsByCafe[cafeId]) postsByCafe[cafeId] = [];
+        postsByCafe[cafeId].push(post);
+      }
+
+      const recMap: Record<string, any> = {};
+
+      for (const rec of recommendations) {
+        const cafeId = getRecCafeId(rec);
+        if (cafeId) recMap[cafeId] = rec;
+      }
+
+      const recommendedIds = new Set(Object.keys(recMap));
+
+      const recommendedCards: FeedPost[] = recommendations
+        .map((rec: any) => {
+          const cafe = rec.cafe || {};
+          const cafeId = String(cafe.id || rec.display?.cafe_id || "");
+          const randomPost = getRandomItem(postsByCafe[cafeId] || []);
+
+          const explanation =
+            explanationMap[cafeId] ||
+            rec.display?.caption ||
+            (rec.reasons?.length
+              ? `Recommended because ${String(rec.reasons[0]).toLowerCase()}.`
+              : "Recommended for you based on your cafe preferences.");
+
+          if (randomPost) {
+            const card = buildPostCard(randomPost, cafe, true, coords, explanation);
+            if (card) return card;
+          }
+
+          return buildEmptyCafePrompt(cafe, true, coords, explanation);
+        })
+        .filter((item: FeedPost | null): item is FeedPost => item !== null);
+
+      const nonRecommendedCafes = allCafes.filter(
+        (cafe: any) => !recommendedIds.has(String(cafe.id))
       );
 
-      const allCafes = uniqueByKey(rawAllCafes, (cafe: any) =>
-        cafe.id ? String(cafe.id) : cafe.name?.trim().toLowerCase()
-      );
+      const cafesWithDistance = nonRecommendedCafes.map((cafe: any) => ({
+        ...cafe,
+        distanceMiles: calculateDistanceMiles(
+          coords.lat,
+          coords.lng,
+          cafe.latitude,
+          cafe.longitude
+        ),
+      }));
 
-      const regularPosts: FeedPost[] = allCafes
-        .filter((cafe: any) => !recommendedIds.has(String(cafe.id)))
-        .map((cafe: any) => cafeToPost(cafe));
+      const nearbyCafes = cafesWithDistance
+        .filter((cafe: any) => cafe.distanceMiles <= maxDistanceMiles)
+        .sort((a: any, b: any) => a.distanceMiles - b.distanceMiles);
+
+      const nearbyIds = new Set(nearbyCafes.map((cafe: any) => String(cafe.id)));
+
+      const restCafes = cafesWithDistance
+        .filter((cafe: any) => !nearbyIds.has(String(cafe.id)))
+        .sort((a: any, b: any) => a.distanceMiles - b.distanceMiles);
+
+      const buildCafeCard = (cafe: any): FeedPost => {
+        const cafeId = String(cafe.id || "");
+        const randomPost = getRandomItem(postsByCafe[cafeId] || []);
+
+        if (randomPost) {
+          const card = buildPostCard(randomPost, cafe, false, coords);
+          if (card) {
+            return {
+              ...card,
+              id: `cafe-${cafeId}`,
+              cafeId,
+              isRecommended: false,
+              canSaveCafe: true,
+            };
+          }
+        }
+
+        return buildEmptyCafePrompt(cafe, false, coords);
+      };
+
+      const nearbyCards = nearbyCafes.map(buildCafeCard);
+      const restCards = restCafes.map(buildCafeCard);
 
       const finalFeed = uniqueByKey(
-        [...recommendedPosts, ...regularPosts],
-        (post) => post.cafeId || post.cafeName?.trim().toLowerCase()
+        [...recommendedCards, ...nearbyCards, ...restCards],
+        (item) => item.cafeId
       );
 
       setPosts(finalFeed);
-      await saveFeedCache(finalFeed);
+      sessionFeedCache = finalFeed;
     } catch (err) {
       console.error("FEED FETCH ERROR:", err);
     } finally {
@@ -429,7 +528,7 @@ const Index = () => {
           />
 
           <TextInput
-            placeholder="Search posts..."
+            placeholder="Search cafes..."
             placeholderTextColor="#AAA"
             style={styles.searchInput}
             value={search}
@@ -469,7 +568,7 @@ const Index = () => {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
-                {loading ? "Loading recommendations..." : "No cafes found."}
+                {loading ? "Loading feed..." : "No cafes found."}
               </Text>
             </View>
           }
@@ -534,10 +633,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(14),
     paddingVertical: scale(11),
     width: "100%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    boxShadow: "0px 2px 4px rgba(0,0,0,0.08)",
     elevation: 3,
   },
   searchInput: {
