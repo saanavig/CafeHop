@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { ArrowLeft, Bell, Lock, Moon } from "lucide-react-native";
 import {
   Dimensions,
   Pressable,
@@ -8,12 +8,13 @@ import {
   Text,
   View,
 } from "react-native";
-import { ArrowLeft, Bell, Lock, Moon } from "lucide-react-native";
+import React, { useCallback, useState } from "react";
 import { moderateScale, scale } from "../utils/responsive";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 
 import BottomNav from "../components/ui/BottomNav";
 import { supabase } from "../api/supabaseClient";
+import { useEffect } from "react";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:3001";
 
@@ -41,9 +42,9 @@ const preferenceCategories = [
 ] as const;
 
 const priceOptions = [
-  { label: "$ Budget-friendly", value: 1 },
-  { label: "$$ Moderate", value: 2 },
-  { label: "$$$ Premium", value: 3 },
+  { label: "$ - Budget-friendly", value: 1 },
+  { label: "$$ - Moderate", value: 2 },
+  { label: "$$$ - Premium", value: 3 },
 ];
 
 type PreferenceKey =
@@ -62,7 +63,7 @@ type PreferencesState = {
 const PreferencesScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const role = route.params?.role ?? "customer";
+  // const role = route.params?.role;
 
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
@@ -75,6 +76,7 @@ const PreferencesScreen = () => {
 
   const [maxDistance, setMaxDistance] = useState<number>(5);
   const [preferredPriceLevel, setPreferredPriceLevel] = useState<number | null>(null);
+  const [role, setRole] = useState<string | null>(null);
 
   const [prefs, setPrefs] = useState<PreferencesState>({
     atmosphere: [],
@@ -83,9 +85,44 @@ const PreferencesScreen = () => {
     vibe: [],
   });
 
+  const loadUserRole = async () => {
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      const res = await fetch(`${API_URL}/api/users/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      console.log(" /api/users/me response:", data);
+      console.log("role from API (raw):", data.role);
+
+      if (!res.ok) {
+        console.error("Load role error:", data);
+        return;
+      }
+
+      setRole(data.role);
+    } catch (err) {
+      console.error("Load role crash:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (role === "user") {
+      console.log("role state updated:", role);
+      loadPrefs();
+    }
+  }, [role]);
+
   useFocusEffect(
     useCallback(() => {
-      loadPrefs();
+      loadUserRole();
+      // loadPrefs();
     }, [])
   );
 
@@ -98,6 +135,9 @@ const PreferencesScreen = () => {
   };
 
   const loadPrefs = async () => {
+
+    if (role !== "user") return;
+
     try {
       const token = await getToken();
       if (!token) return;
@@ -109,6 +149,7 @@ const PreferencesScreen = () => {
       });
 
       const data = await res.json();
+      console.log("ROLE FROM BACKEND:", data.role);
 
       if (!res.ok) {
         console.error("Load preferences error:", data);
@@ -144,6 +185,9 @@ const PreferencesScreen = () => {
     nextPrice = preferredPriceLevel,
     nextDistance = maxDistance
   ) => {
+
+    if (role !== "user") return;
+
     try {
       const token = await getToken();
       if (!token) return;
@@ -264,7 +308,7 @@ const PreferencesScreen = () => {
             </View>
           </View>
 
-          {role === "customer" && (
+          {role === "user" ? (
             <>
               <View style={styles.section}>
                 <Text style={styles.sectionLabel}>Cafe Preferences</Text>
@@ -353,7 +397,7 @@ const PreferencesScreen = () => {
                 </View>
               </View>
             </>
-          )}
+          ) : null}
 
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Privacy & Security</Text>

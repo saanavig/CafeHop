@@ -412,7 +412,7 @@ const Index = () => {
         ]}
       >
         <View style={styles.titleRow}>
-          <Text style={styles.title}>CAFÉHOP</Text>
+          <Text style={styles.title}>CAFEHOP</Text>
           <TouchableOpacity
             onPress={() => navigation.navigate("Notifications")}
             style={styles.bellBtn}

@@ -15,21 +15,25 @@ def get_user_name():
     user_id = g.user.get("id")
 
     if not user_id:
-        return jsonify({"name": ""}), 401
+        return jsonify({"name": "", "role": None}), 401
 
     response = (
         supabase.table("profiles")
-        .select("full_name")
+        .select("full_name, role")
         .eq("id", user_id)
-        .limit(1)
+        .single()
         .execute()
     )
 
     if not response or not getattr(response, "data", None):
-        return jsonify({"name": ""}), 200
+        return jsonify({"name": "", "role": None}), 200
 
-    full = response.data[0].get("full_name") or ""
-    return jsonify({"name": full}), 200
+    profile = response.data
+
+    return jsonify({
+        "name": profile.get("full_name") or "",
+        "role": profile.get("role") or None
+    }), 200
 
     # return jsonify({"name": full}), 200
 
