@@ -292,7 +292,7 @@ const Index = () => {
         : "User",
     postedById:
       post.author_type === "cafe_owner"
-        ? post.cafe_id
+        ? post.cafes?.id || post.cafe_id
         : post.author_id,
     postedByType:
       post.author_type === "cafe_owner"
@@ -439,6 +439,7 @@ const Index = () => {
 
       const postsData = await postsRes.json();
       const rawPosts = postsData.posts || [];
+      console.log(rawPosts[0]);
 
       const postsByCafe: Record<string, any[]> = {};
 

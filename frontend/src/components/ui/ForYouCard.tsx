@@ -142,10 +142,11 @@ const ForYouCard = ({
     console.log("Pressed profile");
     console.log(post.postedById);
     console.log(post.postedByType);
+    console.log("NAVIGATING TO:", post.postedById);
 
     if (post.postedByType === "cafe_owner") {
       navigation.navigate("CafeProfile", {
-        cafeId: post.id,
+        cafeId: post.postedById,
       });
     } else {
       navigation.navigate("UserProfile", {
