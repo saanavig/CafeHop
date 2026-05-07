@@ -60,12 +60,14 @@ interface ForYouCardProps {
   post: Post;
   listHeight?: number;
   onModalToggle?: (isOpen: boolean) => void;
+  currentUserType?: "user" | "cafe_owner";
 }
 
 const ForYouCard = ({
   post,
   listHeight,
   onModalToggle,
+  currentUserType,
 }: ForYouCardProps) => {
   const wrapperH = listHeight ?? deviceHeight - 180;
   const cardH = wrapperH * 0.97;
@@ -264,19 +266,6 @@ const ForYouCard = ({
           <View style={styles.contentContainer}>
             <Text style={styles.cafeName}>{post.cafeName}</Text>
 
-          <TouchableOpacity
-            style={styles.postedByRow}
-            onPress={handleProfilePress}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.postedByText}>
-              Posted by{" "}
-              <Text style={styles.postedByUsername}>
-                {post.postedBy}
-              </Text>
-            </Text>
-          </TouchableOpacity>
-
             {post.location && (
               <View style={styles.locationRow}>
                 <MapPin
@@ -330,20 +319,22 @@ const ForYouCard = ({
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={handleSave}
-              style={styles.actionButton}
-            >
-              <Bookmark
-                size={scale(26)}
-                color={saved ? "#D4A373" : "#FFF"}
-                fill={saved ? "#D4A373" : "transparent"}
-                strokeWidth={saved ? 0 : 2}
-              />
-              <Text style={styles.actionText}>
-                {saved ? "Saved" : "Save"}
-              </Text>
-            </TouchableOpacity>
+            {currentUserType === "user" && (
+              <TouchableOpacity
+                onPress={handleSave}
+                style={styles.actionButton}
+              >
+                <Bookmark
+                  size={scale(26)}
+                  color={saved ? "#D4A373" : "#FFF"}
+                  fill={saved ? "#D4A373" : "transparent"}
+                  strokeWidth={saved ? 0 : 2}
+                />
+                <Text style={styles.actionText}>
+                  {saved ? "Saved" : "Save"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>

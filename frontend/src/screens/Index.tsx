@@ -657,6 +657,7 @@ const Index = () => {
             post={item}
             listHeight={listHeight}
             onModalToggle={(isOpen) => setModalOpen(isOpen)}
+            currentUserType={item.postedByType}
           />
           )}
           ListEmptyComponent={
