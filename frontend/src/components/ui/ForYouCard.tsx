@@ -278,6 +278,19 @@ const ForYouCard = ({
               </View>
             )}
 
+            <TouchableOpacity
+              style={styles.postedByRow}
+              onPress={handleProfilePress}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.postedByText}>
+                Posted by{" "}
+                <Text style={styles.postedByUsername}>
+                  {post.postedBy}
+                </Text>
+              </Text>
+            </TouchableOpacity>
+
             <Text style={styles.caption}>{post.caption}</Text>
 
             <View style={styles.tags}>
