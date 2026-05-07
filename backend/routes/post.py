@@ -365,6 +365,11 @@ def get_posts_feed_route():
                     latitude,
                     longitude
                 ),
+                author_profile:profiles!posts_author_id_fkey(
+                    id,
+                    full_name,
+                    first_name
+                ),
                 post_media(
                     id,
                     file_url,
@@ -378,6 +383,7 @@ def get_posts_feed_route():
         )
 
         posts = response.data or []
+        print(posts[0])
 
         return jsonify({
             "posts": posts
@@ -387,4 +393,57 @@ def get_posts_feed_route():
         print({"error": "Failed to fetch posts"}, e)
         return jsonify({
             "error": "Failed to fetch posts"
+        }), 500
+@posts_bp.route("/posts/user/<user_id>", methods=["GET"])
+@require_auth
+def get_user_posts_route(user_id):
+
+    try:
+        user_supabase = supabase_for_user(g.access_token)
+
+        response = (
+            user_supabase.table("posts")
+            .select("""
+                id,
+                caption,
+                likes_count,
+                comments_count,
+                created_at,
+                cafes(name),
+                post_media(
+                    file_url,
+                    file_type
+                )
+            """)
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+
+        posts = []
+
+        for post in (response.data or []):
+
+            media = post.get("post_media") or []
+
+            for item in media:
+                posts.append({
+                    "id": post["id"],
+                    "caption": post.get("caption"),
+                    "likes_count": post.get("likes_count", 0),
+                    "comments_count": post.get("comments_count", 0),
+                    "created_at": post.get("created_at"),
+                    "file_url": item.get("file_url"),
+                    "file_type": item.get("file_type"),
+                    "cafe_name": (
+                        post.get("cafes") or {}
+                    ).get("name"),
+                })
+
+        return jsonify(posts), 200
+
+    except Exception as e:
+        print("FETCH USER POSTS ERROR:", e)
+        return jsonify({
+            "error": "Failed to fetch user posts"
         }), 500

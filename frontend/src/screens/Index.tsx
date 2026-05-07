@@ -259,6 +259,8 @@ const Index = () => {
     const postId = String(post?.id || post?.post_id || "");
     const cafeName = cafe?.name || post?.cafes?.name || "Cafe";
 
+    console.log("PROFILE DATA:", post.profiles);
+
     const media = getPostMediaFromPost(post);
     const mediaUrl = media?.file_url;
     const mediaType = media?.file_type;
@@ -271,6 +273,13 @@ const Index = () => {
       cafe?.latitude ?? post?.cafes?.latitude,
       cafe?.longitude ?? post?.cafes?.longitude
     );
+
+    console.log("POST DEBUG:", {
+      author_type: post.author_type,
+      author_id: post.author_id,
+      user_id: post.user_id,
+      author_profile: post.author_profile,
+    });
 
   return {
     id: postId,
@@ -289,11 +298,13 @@ const Index = () => {
     postedBy:
       post.author_type === "cafe_owner"
         ? cafeName
-        : "User",
+        : post.author_profile?.full_name ||
+          post.author_profile?.first_name ||
+          "User",
     postedById:
       post.author_type === "cafe_owner"
         ? post.cafes?.id || post.cafe_id
-        : post.author_id,
+        : post.author_id || post.user_id,
     postedByType:
       post.author_type === "cafe_owner"
         ? "cafe_owner"
@@ -642,24 +653,11 @@ const Index = () => {
           data={filteredPosts}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              activeOpacity={0.95}
-              onPress={async () => {
-                if (!item.cafeId) return;
-
-                await markCafeVisited(item.cafeId);
-
-                navigation.navigate("CafeProfile", {
-                  cafeId: item.cafeId,
-                });
-              }}
-            >
-              <ForYouCard
-                post={item}
-                listHeight={listHeight}
-                onModalToggle={(isOpen) => setModalOpen(isOpen)}
-              />
-            </TouchableOpacity>
+          <ForYouCard
+            post={item}
+            listHeight={listHeight}
+            onModalToggle={(isOpen) => setModalOpen(isOpen)}
+          />
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
