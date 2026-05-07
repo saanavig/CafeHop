@@ -210,6 +210,7 @@ export default function AnalyticsScreen() {
               <Text style={styles.statValue}>
                 ${(analytics?.revenue ?? 0).toFixed(2)}
               </Text>
+              <Text style={styles.statLabel}>Revenue</Text>
             </View>
             <View style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: "#FCE4EC" }]}>

@@ -8,7 +8,6 @@ from services.receipt_item_service import (
 
 receipt_items_bp = Blueprint("receipt_items_bp", __name__)
 
-
 @receipt_items_bp.route("/users/me/receipt-items", methods=["GET"])
 @require_auth
 def get_my_receipt_items():

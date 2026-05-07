@@ -5,6 +5,7 @@ from database.supabase_client import supabase_admin as supabase
 import time
 from datetime import datetime, timedelta, timezone
 import traceback
+from services.notification_service import create_notification
 
 rewards_bp = Blueprint("rewards_bp", __name__)
 
@@ -179,6 +180,55 @@ def redeem_reward():
         }).execute()
 
         remaining_points = get_user_points(user_id)
+
+        # get cafe info
+        cafe_response = (
+            supabase.table("cafes")
+            .select("owner_id, name")
+            .eq("id", cafe_id)
+            .maybe_single()
+            .execute()
+        )
+
+        cafe_name = "Cafe"
+        cafe_owner_id = None
+
+        if cafe_response.data:
+            cafe_name = cafe_response.data["name"]
+            cafe_owner_id = cafe_response.data["owner_id"]
+
+        # get customer name
+        profile_response = (
+            supabase.table("profiles")
+            .select("full_name")
+            .eq("id", user_id)
+            .maybe_single()
+            .execute()
+        )
+
+        customer_name = (
+            profile_response.data["full_name"]
+            if profile_response.data
+            else "Someone"
+        )
+
+        # customer notification
+        create_notification(
+            user_id=user_id,
+            notif_type="reward_redeemed",
+            title="Reward redeemed 🎉",
+            message=f"You redeemed {points_needed} points at {cafe_name}",
+        )
+
+        # cafe owner notification
+        if cafe_owner_id and cafe_owner_id != user_id:
+
+            create_notification(
+                user_id=cafe_owner_id,
+                notif_type="reward_redeemed",
+                title="Reward redeemed",
+                message=f"{customer_name} redeemed {points_needed} points at {cafe_name}",
+            )
 
         return jsonify({
             "message": "Redeemed successfully",

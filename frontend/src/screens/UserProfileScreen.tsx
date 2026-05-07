@@ -23,6 +23,7 @@ import Button from "../components/ui/Button";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../api/supabaseClient";
 import { useRole } from "../context/RoleContext";
+import { useRoute } from "@react-navigation/native";
 
 const SCREEN_WIDTH = deviceWidth;
 
@@ -41,34 +42,72 @@ type Post = {
 
 export default function UserProfileScreen() {
   const { role } = useRole();
-  const isCafe = role === "cafe";
+  // const isCafe = role === "cafe";
 
   const [profileName, setProfileName] = useState("");
+  const route = useRoute<any>();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const viewedUserId =
+    route.params?.userId || currentUserId;
 
+  const [viewedProfile, setViewedProfile] = useState<any>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
   useEffect(() => {
-    if (isCafe) return;
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
 
-    const fetchUserName = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("first_name, last_name")
-          .eq("id", user.id)
-          .maybeSingle();
-        if (profile) {
-          const full = `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
-          setProfileName(full);
-        }
-      } catch (err) {
-        console.error("Error fetching user name:", err);
+      if (user) {
+        setCurrentUserId(user.id);
       }
     };
 
-    fetchUserName();
-  }, [isCafe]);
+    getCurrentUser();
+  }, []);
+
+  const isOwnProfile =
+    !!currentUserId &&
+    !!viewedUserId &&
+    currentUserId === viewedUserId;
+
+  useEffect(() => {
+    const fetchViewedProfile = async () => {
+      try {
+        if (!viewedUserId) return;
+
+        setLoadingProfile(true);
+
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", viewedUserId)
+          .maybeSingle();
+
+        if (error) {
+          console.error(error);
+          return;
+        }
+
+        setViewedProfile(data);
+
+        const full =
+          `${data?.first_name || ""} ${data?.last_name || ""}`.trim();
+
+        setProfileName(full);
+        setEditableName(full);
+        setEditableBio(data?.bio || "");
+
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchViewedProfile();
+  }, [viewedUserId, currentUserId]);
+
+  const isCafe = viewedProfile?.role === "cafe";
 
   useEffect(() => {
     if (!isCafe) {
@@ -78,16 +117,21 @@ export default function UserProfileScreen() {
   const contentWidth = Math.min(deviceWidth * 0.9, 480);
   const photoSize = (contentWidth - 6) / 3;
 
-  const profile = {
-    name: isCafe ? "Bean & Bloom Café" : profileName ,
-    bio: isCafe
-      ? "Cozy neighbourhood café in Brooklyn ☕ | Mon–Sun 7am–8pm"
-      : "Exploring NYC cafés ☕✨",
-    stats: isCafe
-      ? { posts: 42, visits: 5420, rating: 4.8 }
-      : { posts: 27, visits: 340, favorites: 12 },
-  };
+  // const profile = {
+  //   name: isCafe ? "Bean & Bloom Café" : profileName ,
+  //   bio: isCafe
+  //     ? "Cozy neighbourhood café in Brooklyn ☕ | Mon–Sun 7am–8pm"
+  //     : "Exploring NYC cafés ☕✨",
+  //   stats: isCafe
+  //     ? { posts: 42, visits: 5420, rating: 4.8 }
+  //     : { posts: 27, visits: 340, favorites: 12 },
+  // };
 
+  const bio =
+    viewedProfile?.bio ||
+    (isCafe
+      ? "Cafe profile"
+      : "Cafe explorer");
 
   const [activeTab, setActiveTab] = useState<"photos" | "reviews" | "saved">("photos");
 
@@ -114,7 +158,7 @@ export default function UserProfileScreen() {
   const [commentInput, setCommentInput] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editableName, setEditableName] = useState("");
-  const [editableBio, setEditableBio] = useState(profile.bio);
+  const [editableBio, setEditableBio] = useState("");
   const [showAddPost, setShowAddPost] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<
       { uri: string; type: "image" | "video" }[]
@@ -136,13 +180,13 @@ export default function UserProfileScreen() {
     const getCafe = async () => {
       if (!isCafe) return;
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // const { data: { user } } = await supabase.auth.getUser();
+      // if (!user) return;
 
       const { data, error } = await supabase
         .from("cafes")
         .select("id")
-        .eq("owner_id", user.id)
+        .eq("owner_id", viewedUserId)
         .maybeSingle();
 
       if (error) {
@@ -156,7 +200,7 @@ export default function UserProfileScreen() {
     };
 
     getCafe();
-  }, [isCafe]);
+  }, [isCafe, viewedUserId]);
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -177,14 +221,12 @@ export default function UserProfileScreen() {
 
           setReviews(data || []);
         } else {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
+          if (!viewedUserId) return;
 
           const { data, error } = await supabase
             .from("reviews")
             .select("*, cafes(name)")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false });
+            .eq("user_id", viewedUserId)
 
           if (error) {
             console.error(error);
@@ -199,7 +241,7 @@ export default function UserProfileScreen() {
     };
 
     fetchReviews();
-  }, [isCafe]);
+  }, [isCafe, viewedUserId, cafeId]);
 
   useEffect(() => {
     if (!cafeQuery.trim()) {
@@ -368,18 +410,27 @@ export default function UserProfileScreen() {
 
   useEffect(() => {
     const fetchPosts = async () => {
+      if (!viewedUserId) {
+        return;
+      }
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
 
         const res = await fetch(
-          `${process.env.EXPO_PUBLIC_API_URL}/api/posts/me`,
+          `${process.env.EXPO_PUBLIC_API_URL}/api/posts/user/${viewedUserId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }
         );
+
+        if (!res.ok) {
+          const text = await res.text();
+          console.error("Fetch failed:", res.status, text);
+          return;
+        }
 
         const data = await res.json();
 
@@ -401,7 +452,7 @@ export default function UserProfileScreen() {
     };
 
     fetchPosts();
-  }, []);
+  }, [viewedUserId]);
 
 
   const handleLike = (id: number) => {
@@ -505,6 +556,22 @@ export default function UserProfileScreen() {
     setCommentInput("");
   };
 
+  const profile = {
+      name:
+        viewedProfile?.role === "cafe"
+          ? viewedProfile?.cafe_name || profileName
+          : profileName,
+
+      bio,
+      stats: {
+        posts: posts.length,
+        visits: viewedProfile?.cafes_visited_count || 0,
+        favorites: viewedProfile?.favorites_count || 0,
+        rating: viewedProfile?.average_rating || 0,
+        checkins: viewedProfile?.checkins_count || 0,
+      },
+    };
+
   const handleSaveProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -549,7 +616,7 @@ export default function UserProfileScreen() {
             ) : (
               <>
                 <Text style={styles.name}>{editableName}</Text>
-                <Text style={styles.bio}>{editableBio}</Text>
+                <Text style={styles.bio}>{editableBio || bio}</Text>
               </>
             )}
 
@@ -558,17 +625,35 @@ export default function UserProfileScreen() {
                 <Text style={styles.statNumber}>{posts.length}</Text>
                 <Text style={styles.statLabel}>Posts</Text>
               </View>
+
               <View style={styles.stat}>
-                <Text style={styles.statNumber}>{isCafe ? "5.4k" : profile.stats.visits}</Text>
-                <Text style={styles.statLabel}>{isCafe ? "Check-ins" : "Cafes Visited"}</Text>
+                <Text style={styles.statNumber}>
+                  {isCafe ? profile.stats.checkins : reviews.length}
+                </Text>
+
+                <Text style={styles.statLabel}>
+                  {isCafe ? "Check-ins" : "Cafes Visited"}
+                </Text>
               </View>
+
               <View style={styles.stat}>
-                <Text style={styles.statNumber}>{isCafe ? "4.8 ★" : profile.stats.favorites}</Text>
-                <Text style={styles.statLabel}>{isCafe ? "Rating" : "Favourites"}</Text>
+                <Text style={styles.statNumber}>
+                  {isCafe
+                    ? `${(
+                        reviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
+                        (reviews.length || 1)
+                      ).toFixed(1)} ★`
+                    : profile.stats.favorites}
+                </Text>
+
+                <Text style={styles.statLabel}>
+                  {isCafe ? "Rating" : "Favourites"}
+                </Text>
               </View>
             </View>
 
-            <View style={styles.buttonRow}>
+            {isOwnProfile && (
+              <View style={styles.buttonRow}>
               <Button
                 style={{ flex: 1, marginRight: scale(8) }}
                 onPress={() => {
@@ -586,6 +671,7 @@ export default function UserProfileScreen() {
                 <Text>Add Post</Text>
               </Button>
             </View>
+          )}
           </View>
 
           {/* ── Tabs ── */}
@@ -622,23 +708,25 @@ export default function UserProfileScreen() {
                       </View>
                     )}
 
-                    <TouchableOpacity
-                      onPress={() => {
-                        setMenuPostId(post.id);
-                        setShowMenu(true);
-                      }}
-                      style={{
-                        position: "absolute",
-                        top: 6,
-                        left: 6,
-                        borderRadius: 10,
-                        paddingHorizontal: 6,
-                        paddingVertical: 2,
-                        zIndex: 10,
-                      }}
-                    >
-                      <Text style={{ color: "#FFF", fontSize: 12 }}>•••</Text>
-                    </TouchableOpacity>
+                    {isOwnProfile && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setMenuPostId(post.id);
+                          setShowMenu(true);
+                        }}
+                        style={{
+                          position: "absolute",
+                          top: 6,
+                          left: 6,
+                          borderRadius: 10,
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          zIndex: 10,
+                        }}
+                      >
+                        <Text style={{ color: "#FFF", fontSize: 12 }}>•••</Text>
+                      </TouchableOpacity>
+                    )}
                   </TouchableOpacity>
                 ))}
               </View>

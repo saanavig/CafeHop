@@ -98,6 +98,7 @@ const Index = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [listHeight, setListHeight] = useState(deviceHeight - 180);
   const [loading, setLoading] = useState(true);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   const flatListRef = useRef<FlatList<FeedPost>>(null);
   const hasFetchedFeed = useRef(false);
@@ -122,13 +123,49 @@ const Index = () => {
 
   useEffect(() => {
     if (hasFetchedFeed.current) return;
+
     hasFetchedFeed.current = true;
+
     loadFeed();
+    fetchUnreadNotificationStatus();
   }, []);
 
   const clearFeedCache = async () => {
     sessionFeedCache = null;
     await AsyncStorage.removeItem(FEED_CACHE_KEY);
+  };
+
+  const fetchUnreadNotificationStatus = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) return;
+
+      const response = await fetch(
+        `${API_URL}/api/notifications`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      const notifications = Array.isArray(data)
+        ? data
+        : data.notifications || [];
+
+      const hasUnread = notifications.some(
+        (n: any) => !n.is_read
+      );
+
+      setHasUnreadNotifications(hasUnread);
+    } catch (err) {
+      console.log("UNREAD NOTIFICATION ERROR:", err);
+    }
   };
 
   const loadFeed = async () => {
@@ -222,6 +259,8 @@ const Index = () => {
     const postId = String(post?.id || post?.post_id || "");
     const cafeName = cafe?.name || post?.cafes?.name || "Cafe";
 
+    console.log("PROFILE DATA:", post.profiles);
+
     const media = getPostMediaFromPost(post);
     const mediaUrl = media?.file_url;
     const mediaType = media?.file_type;
@@ -235,30 +274,51 @@ const Index = () => {
       cafe?.longitude ?? post?.cafes?.longitude
     );
 
-    return {
-      id: postId,
-      itemType: "post",
-      postId,
-      cafeId,
-      isRecommended,
-      cafeName,
-      image: { uri: mediaUrl },
-      mediaType,
-      caption: isRecommended
-        ? explanation || "Recommended for you based on your cafe preferences."
-        : post.caption || `Posted at ${cafeName}`,
-      likes: Number(post.likes_count || 0),
-      comments: Number(post.comments_count || 0),
-      postedBy: cafeName,
-      tags: isRecommended ? ["recommended", "for-you"] : ["cafe"],
-      location: cafe?.address || post?.cafes?.address || "Nearby",
-      commentList: [],
-      distanceMiles,
-      canLike: true,
-      canComment: true,
-      canSavePost: true,
-      canSaveCafe: true,
-    };
+    console.log("POST DEBUG:", {
+      author_type: post.author_type,
+      author_id: post.author_id,
+      user_id: post.user_id,
+      author_profile: post.author_profile,
+    });
+
+  return {
+    id: postId,
+    itemType: "post",
+    postId,
+    cafeId,
+    isRecommended,
+    cafeName,
+    image: { uri: mediaUrl },
+    mediaType,
+    caption: isRecommended
+      ? explanation || "Recommended for you based on your cafe preferences."
+      : post.caption || `Posted at ${cafeName}`,
+    likes: Number(post.likes_count || 0),
+    comments: Number(post.comments_count || 0),
+    postedBy:
+      post.author_type === "cafe_owner"
+        ? cafeName
+        : post.author_profile?.full_name ||
+          post.author_profile?.first_name ||
+          "User",
+    postedById:
+      post.author_type === "cafe_owner"
+        ? post.cafes?.id || post.cafe_id
+        : post.author_id || post.user_id,
+    postedByType:
+      post.author_type === "cafe_owner"
+        ? "cafe_owner"
+        : "user",
+    tags: isRecommended ? ["recommended", "for-you"] : ["cafe"],
+    location:
+      cafe?.address || post?.cafes?.address || "Nearby",
+    commentList: [],
+    distanceMiles,
+    canLike: true,
+    canComment: true,
+    canSavePost: true,
+    canSaveCafe: true,
+  };
   };
 
   const buildEmptyCafePrompt = (
@@ -390,6 +450,7 @@ const Index = () => {
 
       const postsData = await postsRes.json();
       const rawPosts = postsData.posts || [];
+      console.log(rawPosts[0]);
 
       const postsByCafe: Record<string, any[]> = {};
 
@@ -552,10 +613,17 @@ const Index = () => {
         <View style={styles.titleRow}>
           <Text style={styles.title}>CAFEHOP</Text>
           <TouchableOpacity
-            onPress={() => navigation.navigate("Notifications")}
+            onPress={() => {
+              setHasUnreadNotifications(false);
+              navigation.navigate("Notifications");
+            }}
             style={styles.bellBtn}
           >
             <Bell size={scale(22)} color="#D4A373" strokeWidth={2} />
+
+            {hasUnreadNotifications && (
+              <View style={styles.notificationDot} />
+            )}
           </TouchableOpacity>
         </View>
 
@@ -585,24 +653,12 @@ const Index = () => {
           data={filteredPosts}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              activeOpacity={0.95}
-              onPress={async () => {
-                if (!item.cafeId) return;
-
-                await markCafeVisited(item.cafeId);
-
-                navigation.navigate("CafeProfile", {
-                  cafeId: item.cafeId,
-                });
-              }}
-            >
-              <ForYouCard
-                post={item}
-                listHeight={listHeight}
-                onModalToggle={(isOpen) => setModalOpen(isOpen)}
-              />
-            </TouchableOpacity>
+          <ForYouCard
+            post={item}
+            listHeight={listHeight}
+            onModalToggle={(isOpen) => setModalOpen(isOpen)}
+            currentUserType={item.postedByType}
+          />
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -689,5 +745,16 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: moderateScale(15),
     color: "#777",
+  },
+  notificationDot: {
+    position: "absolute",
+    top: scale(6),
+    right: scale(6),
+    width: scale(10),
+    height: scale(10),
+    borderRadius: scale(5),
+    backgroundColor: "#FF4D4F",
+    borderWidth: 2,
+    borderColor: "#F7F3F0",
   },
 });

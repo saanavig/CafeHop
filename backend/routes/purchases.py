@@ -5,6 +5,7 @@ from services.purchase_repo import get_user_points
 from datetime import datetime, timedelta
 from datetime import timezone
 import math
+from services.notification_service import create_notification
 
 purchase_bp = Blueprint("purchase_bp", __name__)
 
@@ -21,122 +22,6 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
-
-# purchase submission by users
-# @purchase_bp.route("/purchase/submit", methods=["POST"])
-# @require_auth
-# def submit_purchase():
-#     data = request.get_json()
-
-#     user_id = g.user["id"]
-#     cafe_id = data["cafe_id"]
-#     amount = float(data["amount"])
-#     user_lat = float(data["latitude"])
-#     user_lon = float(data["longitude"])
-#     submission_token = data["submission_token"]
-#     receipt_time = datetime.fromisoformat(
-#     data["receipt_timestamp"].replace("Z", "+00:00")
-# ).astimezone(timezone.utc)
-
-#     now = datetime.now(timezone.utc)
-
-#     try:
-#         # get cafe
-#         cafe_response = supabase.table("cafes") \
-#             .select("latitude, longitude") \
-#             .eq("id", cafe_id) \
-#             .execute()
-
-#         if not cafe_response.data:
-#             return jsonify({"error": "Cafe not found"}), 400
-
-#         cafe = cafe_response.data[0]
-
-#         # check for distance <2
-#         distance = calculate_distance(
-#             user_lat, user_lon,
-#             float(cafe["latitude"]),
-#             float(cafe["longitude"])
-#         )
-
-#         if distance > 2:
-#             return jsonify({"error": "Outside 2-mile radius"}), 400
-
-#         # receipt cannot be in the future
-#         if receipt_time > now:
-#             return jsonify({"error": "Receipt timestamp is in the future"}), 400
-
-#         # receipt must be within last 60 minutes
-#         if now - receipt_time > timedelta(minutes=60):
-#             return jsonify({"error": "Receipt older than 60 minutes"}), 400
-
-#         # max 2 reciepts per hour per user
-#         one_hour_ago = now - timedelta(hours=1)
-
-#         rate_limit_response = supabase.table("purchases") \
-#             .select("id") \
-#             .eq("user_id", user_id) \
-#             .eq("status", "approved") \
-#             .gte("created_at", one_hour_ago.isoformat()) \
-#             .execute()
-
-#         if len(rate_limit_response.data) >= 2:
-#             return jsonify({"error": "Rate limit exceeded (2 receipts per hour)"}), 400
-
-#         # prevent duplicate receipt submissions
-#         duplicate = supabase.table("purchases") \
-#             .select("id") \
-#             .eq("submission_token", submission_token) \
-#             .eq("user_id", user_id) \
-#             .execute()
-
-#         if duplicate.data:
-#             return jsonify({"error": "Receipt already submitted"}), 400
-
-#         supabase.table("purchases").insert({
-#             "user_id": user_id,
-#             "cafe_id": cafe_id,
-#             "amount": amount,
-#             "latitude": user_lat,
-#             "longitude": user_lon,
-#             "receipt_timestamp": receipt_time.isoformat(),
-#             "submission_token": submission_token,
-#             "status": "approved"
-#         }).execute()
-
-#         # calculate points and update it
-#         points_earned = int(amount)
-
-#         current = supabase.table("user_points") \
-#             .select("total_points") \
-#             .eq("user_id", user_id) \
-#             .execute()
-
-#         if not current.data:
-#             # first purchase → create points row
-#             supabase.table("user_points").insert({
-#                 "user_id": user_id,
-#                 "total_points": points_earned
-#             }).execute()
-
-#             new_total = points_earned
-#         else:
-#             current_points = current.data[0]["total_points"]
-#             new_total = current_points + points_earned
-
-#             supabase.table("user_points").update({
-#                 "total_points": new_total
-#             }).eq("user_id", user_id).execute()
-
-#         return jsonify({
-#             "message": "Purchase approved",
-#             "points_earned": points_earned,
-#             "total_points": new_total
-#         }), 200
-
-#     except Exception as e:
-#         print("Purchase error:", str(e))
-#         return jsonify({"error": "Submission failed"}), 500
 
 # redeem points
 @purchase_bp.route("/points/redeem", methods=["POST"])
@@ -185,6 +70,55 @@ def redeem_points():
         supabase.table("user_points").update({
             "total_points": new_balance
         }).eq("user_id", user_id).execute()
+
+        # get cafe info
+        cafe_response = (
+            supabase.table("cafes")
+            .select("owner_id, name")
+            .eq("id", cafe_id)
+            .maybe_single()
+            .execute()
+        )
+
+        cafe_name = "Cafe"
+        cafe_owner_id = None
+
+        if cafe_response.data:
+            cafe_name = cafe_response.data["name"]
+            cafe_owner_id = cafe_response.data["owner_id"]
+
+        # get customer name
+        profile_response = (
+            supabase.table("profiles")
+            .select("full_name")
+            .eq("id", user_id)
+            .maybe_single()
+            .execute()
+        )
+
+        customer_name = (
+            profile_response.data["full_name"]
+            if profile_response.data
+            else "Someone"
+        )
+
+        # customer notification
+        create_notification(
+            user_id=user_id,
+            notif_type="reward_redeemed",
+            title="Reward redeemed 🎉",
+            message=f"You redeemed {points_to_redeem} points at {cafe_name}",
+        )
+
+        # cafe owner notification
+        if cafe_owner_id and cafe_owner_id != user_id:
+
+            create_notification(
+                user_id=cafe_owner_id,
+                notif_type="reward_redeemed",
+                title="Reward redeemed",
+                message=f"{customer_name} redeemed {points_to_redeem} points",
+            )
 
         return jsonify({
             "message": "Redemption successful",

@@ -13,71 +13,103 @@ import {
   Text,
   View,
 } from "react-native";
+import React, { useEffect, useState } from "react";
 import { moderateScale, scale } from "../utils/responsive";
 
-import React from "react";
-import { useNavigation } from "@react-navigation/native";
-import { useRole } from "../context/RoleContext";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from "../api/supabaseClient";
+import { useNavigation } from "@react-navigation/native";
 
-const customerNotifications = [
-  {
-    id: 1,
-    icon: Coffee,
-    title: "Visit approved ☕",
-    message: "Your receipt from BrewLab was verified. +120 points!",
-    time: "2h ago",
-  },
-  {
-    id: 2,
-    icon: Star,
-    title: "Reward unlocked 🎉",
-    message: "You can now redeem a free latte at Oak Tree Cafe.",
-    time: "Yesterday",
-  },
-  {
-    id: 3,
-    icon: Bell,
-    title: "New café nearby",
-    message: "Sunrise Roasters just joined CafeHop near you.",
-    time: "2 days ago",
-  },
-];
-
-const cafeVisits = [
-  {
-    id: 1,
-    customer: "Sarah M.",
-    points: 120,
-    cafe: "BrewLab",
-    time: "2h ago",
-  },
-  {
-    id: 2,
-    customer: "Alex K.",
-    points: 90,
-    cafe: "Java Junction",
-    time: "3h ago",
-  },
-  {
-    id: 3,
-    customer: "Jamie L.",
-    points: 150,
-    cafe: "Bean Street",
-    time: "Yesterday",
-  },
-];
+// import { useRole } from "../context/RoleContext";
 
 const NotificationsScreen = () => {
   const navigation = useNavigation<any>();
-  const { role } = useRole();
+  // const { role } = useRole();
 
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
 
-  const isCustomer = role === "customer";
-  const notifications = isCustomer ? customerNotifications : cafeVisits;
-  const title = isCustomer ? "Notifications" : "Customer Visits";
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const title = "Notifications";
+
+  const formatTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+
+    const seconds = Math.floor(
+      (now.getTime() - date.getTime()) / 1000
+    );
+
+    if (seconds < 60) return "Just now";
+
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/notifications`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+      console.log("NOTIFICATIONS RESPONSE:", data);
+
+      setNotifications(data || []);
+    } catch (err) {
+      console.log("NOTIFICATIONS ERROR:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case "reward_redeemed":
+        return Star;
+
+      case "new_review":
+        return Star;
+
+      case "new_comment":
+        return Bell;
+
+      case "customer_visit":
+        return Store;
+
+      case "points_earned":
+        return Coffee;
+
+      default:
+        return Bell;
+    }
+  };
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "#F7F3F0" }}>
@@ -95,36 +127,44 @@ const NotificationsScreen = () => {
 
       {/* Main Content */}
       <View style={[styles.content, { width: contentWidth }]}>
-        {notifications.length === 0 ? (
+        {loading ? (
           <Text style={styles.emptyText}>
-            {isCustomer ? "You're all caught up 🎉" : "No recent customer visits"}
+            Loading...
+          </Text>
+        ) : notifications.length === 0 ? (
+          <Text style={styles.emptyText}>
+            You're all caught up 🎉
           </Text>
         ) : (
           <View style={styles.notifications}>
-            {notifications.map((item: any, index: number) => {
-              const Icon = isCustomer ? item.icon : Store;
+            {notifications.map((item: any) => {
+              const Icon = getNotificationIcon(item.type);
+
               return (
-                <View key={item.id} style={styles.notificationCard}>
-                  {/* Icon Background */}
+                <View
+                  key={item.id}
+                  style={[
+                    styles.notificationCard,
+                    !item.is_read && styles.unreadCard,
+                  ]}
+                >
                   <View style={styles.iconBackground}>
                     <Icon size={24} color="#D4A373" />
                   </View>
 
-                  {/* Content */}
                   <View style={styles.notificationContent}>
                     <View style={styles.titleRow}>
                       <Text style={styles.notificationTitle}>
-                        {isCustomer ? item.title : `${item.customer} visited`}
+                        {item.title}
                       </Text>
-                      <Text style={styles.timeText}>{item.time}</Text>
+
+                      <Text style={styles.timeText}>
+                        {formatTimeAgo(item.created_at)}
+                      </Text>
                     </View>
+
                     <Text style={styles.notificationMessage}>
-                      {isCustomer
-                        ? item.message
-                        : `${item.cafe} • `}
-                      {!isCustomer && (
-                        <Text style={styles.pointsText}>+{item.points} pts</Text>
-                      )}
+                      {item.message}
                     </Text>
                   </View>
                 </View>
@@ -222,6 +262,10 @@ const styles = StyleSheet.create({
   pointsText: {
     color: "#D4A373",
     fontWeight: "600",
+  },
+  unreadCard: {
+    backgroundColor: "#FDF6EE",
+    borderColor: "#E7C9A9",
   },
 });
 

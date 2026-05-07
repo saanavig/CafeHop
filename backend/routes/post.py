@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, g
 from database.auth_middleware import require_auth
 from services.post_service import create_post_with_uploaded_media
 from database.supabase_client import supabase,  supabase_for_user
+from services.notification_service import create_notification
 
 posts_bp = Blueprint("posts", __name__)
 
@@ -144,6 +145,7 @@ def like_post(post_id):
         "likes_count": current + 1
     }).eq("id", post_id).execute()
 
+
     return jsonify({
         "message": "Liked",
         "likes_count": current + 1,
@@ -282,6 +284,56 @@ def add_post_comment(post_id):
         "comments_count": current + 1
     }).eq("id", post_id).execute()
 
+    # get post cafe
+    post_details = (
+        user_supabase.table("posts")
+        .select("cafe_id")
+        .eq("id", post_id)
+        .maybe_single()
+        .execute()
+    )
+
+    if post_details.data:
+
+        cafe_id = post_details.data["cafe_id"]
+
+        cafe_response = (
+            user_supabase.table("cafes")
+            .select("owner_id, name")
+            .eq("id", cafe_id)
+            .maybe_single()
+            .execute()
+        )
+
+        if cafe_response.data:
+
+            cafe_owner_id = cafe_response.data["owner_id"]
+            cafe_name = cafe_response.data["name"]
+
+            # don't notify yourself
+            if cafe_owner_id != user_id:
+
+                profile_response = (
+                    user_supabase.table("profiles")
+                    .select("full_name")
+                    .eq("id", user_id)
+                    .maybe_single()
+                    .execute()
+                )
+
+                customer_name = (
+                    profile_response.data["full_name"]
+                    if profile_response.data
+                    else "Someone"
+                )
+
+                create_notification(
+                    user_id=cafe_owner_id,
+                    notif_type="new_review",
+                    title="New comment 💬",
+                    message=f"{customer_name} commented on a post from {cafe_name}",
+                )
+
     return jsonify({
         "comment": response.data[0],
         "comments_count": current + 1,
@@ -299,6 +351,8 @@ def get_posts_feed_route():
                 id,
                 user_id,
                 cafe_id,
+                author_id,
+                author_type,
                 caption,
                 post_type,
                 likes_count,
@@ -310,6 +364,11 @@ def get_posts_feed_route():
                     address,
                     latitude,
                     longitude
+                ),
+                author_profile:profiles!posts_author_id_fkey(
+                    id,
+                    full_name,
+                    first_name
                 ),
                 post_media(
                     id,
@@ -324,6 +383,7 @@ def get_posts_feed_route():
         )
 
         posts = response.data or []
+        print(posts[0])
 
         return jsonify({
             "posts": posts
@@ -333,4 +393,64 @@ def get_posts_feed_route():
         print({"error": "Failed to fetch posts"}, e)
         return jsonify({
             "error": "Failed to fetch posts"
+        }), 500
+@posts_bp.route("/posts/user/<user_id>", methods=["GET"])
+@require_auth
+def get_user_posts_route(user_id):
+
+    try:
+        user_supabase = supabase_for_user(g.access_token)
+
+        response = (
+            user_supabase.table("posts")
+            .select("""
+                id,
+                caption,
+                likes_count,
+                comments_count,
+                created_at,
+                cafes(name),
+                post_media(
+                    file_url,
+                    file_type
+                )
+            """)
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+
+        posts = []
+
+        for post in (response.data or []):
+
+            media = post.get("post_media") or []
+
+            cafes = post.get("cafes") or []
+
+            cafe_name = None
+
+            if isinstance(cafes, list) and len(cafes) > 0:
+                cafe_name = cafes[0].get("name")
+            elif isinstance(cafes, dict):
+                cafe_name = cafes.get("name")
+
+            for item in media:
+                posts.append({
+                    "id": post["id"],
+                    "caption": post.get("caption"),
+                    "likes_count": post.get("likes_count", 0),
+                    "comments_count": post.get("comments_count", 0),
+                    "created_at": post.get("created_at"),
+                    "file_url": item.get("file_url"),
+                    "file_type": item.get("file_type"),
+                    "cafe_name": cafe_name,
+                })
+
+        return jsonify(posts), 200
+
+    except Exception as e:
+        print("FETCH USER POSTS ERROR:", e)
+        return jsonify({
+            "error": "Failed to fetch user posts"
         }), 500

@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react-native";
 import React, { useRef, useState } from "react";
+import { ResizeMode, Video } from "expo-av";
 import {
   deviceHeight,
   deviceWidth,
@@ -28,7 +29,7 @@ import {
 
 import Button from "./Button";
 import { apiFetch } from "../../api/client";
-import { ResizeMode, Video } from "expo-av";
+import { useNavigation } from "@react-navigation/native";
 
 const CARD_WIDTH = deviceWidth * 0.88;
 
@@ -45,6 +46,8 @@ export interface Post {
   likes: number;
   comments: number;
   postedBy: string;
+  postedById?: string;
+  postedByType?: "user" | "cafe_owner";
   tags: string[];
   location?: string;
   commentList?: Comment[];
@@ -57,12 +60,14 @@ interface ForYouCardProps {
   post: Post;
   listHeight?: number;
   onModalToggle?: (isOpen: boolean) => void;
+  currentUserType?: "user" | "cafe_owner";
 }
 
 const ForYouCard = ({
   post,
   listHeight,
   onModalToggle,
+  currentUserType,
 }: ForYouCardProps) => {
   const wrapperH = listHeight ?? deviceHeight - 180;
   const cardH = wrapperH * 0.97;
@@ -72,6 +77,7 @@ const ForYouCard = ({
   const [likesState, setLikesState] = useState(post.likes);
   const [commentsCount, setCommentsCount] = useState(post.comments);
   const [loadingLike, setLoadingLike] = useState(false);
+  const navigation = useNavigation<any>();
 
   const [showComments, setShowComments] = useState(false);
   const [commentsState, setCommentsState] = useState<any[]>([]);
@@ -133,6 +139,31 @@ const ForYouCard = ({
       onModalToggle?.(false);
     });
   };
+
+  const handleProfilePress = () => {
+    console.log("Pressed profile");
+    console.log(post.postedById);
+    console.log(post.postedByType);
+
+    if (!post.postedById) {
+      console.log("Missing postedById");
+      return;
+    }
+
+    if (post.postedByType === "cafe_owner") {
+      navigation.navigate("CafeProfile", {
+        cafeId: post.postedById,
+      });
+    } else {
+      navigation.navigate("UserProfile", {
+        userId: post.postedById,
+      });
+    }
+  };
+
+//   const handleProfilePress = () => {
+//   navigation.navigate("CafeProfile");
+// };
 
   const handleLike = async () => {
     if (!post.id || post.id.startsWith("cafe-")) return;
@@ -247,6 +278,19 @@ const ForYouCard = ({
               </View>
             )}
 
+            <TouchableOpacity
+              style={styles.postedByRow}
+              onPress={handleProfilePress}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.postedByText}>
+                Posted by{" "}
+                <Text style={styles.postedByUsername}>
+                  {post.postedBy}
+                </Text>
+              </Text>
+            </TouchableOpacity>
+
             <Text style={styles.caption}>{post.caption}</Text>
 
             <View style={styles.tags}>
@@ -288,20 +332,22 @@ const ForYouCard = ({
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={handleSave}
-              style={styles.actionButton}
-            >
-              <Bookmark
-                size={scale(26)}
-                color={saved ? "#D4A373" : "#FFF"}
-                fill={saved ? "#D4A373" : "transparent"}
-                strokeWidth={saved ? 0 : 2}
-              />
-              <Text style={styles.actionText}>
-                {saved ? "Saved" : "Save"}
-              </Text>
-            </TouchableOpacity>
+            {currentUserType === "user" && (
+              <TouchableOpacity
+                onPress={handleSave}
+                style={styles.actionButton}
+              >
+                <Bookmark
+                  size={scale(26)}
+                  color={saved ? "#D4A373" : "#FFF"}
+                  fill={saved ? "#D4A373" : "transparent"}
+                  strokeWidth={saved ? 0 : 2}
+                />
+                <Text style={styles.actionText}>
+                  {saved ? "Saved" : "Save"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
@@ -524,6 +570,17 @@ const styles = StyleSheet.create({
   commentText: {
     marginBottom: scale(8),
     fontSize: moderateScale(14),
+  },
+  postedByRow: {
+    marginBottom: scale(6),
+  },
+  postedByText: {
+    color: "rgba(255,255,255,0.78)",
+    fontSize: moderateScale(12),
+  },
+  postedByUsername: {
+    color: "#FFF",
+    fontWeight: "600",
   },
 });
 
