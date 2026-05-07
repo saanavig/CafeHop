@@ -11,14 +11,25 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Bookmark, Heart, MapPin, MessageCircle, X } from "lucide-react-native";
+import {
+  Bookmark,
+  Heart,
+  MapPin,
+  MessageCircle,
+  X,
+} from "lucide-react-native";
 import React, { useRef, useState } from "react";
-import { deviceHeight, deviceWidth, moderateScale, scale } from "../../utils/responsive";
+import {
+  deviceHeight,
+  deviceWidth,
+  moderateScale,
+  scale,
+} from "../../utils/responsive";
 
 import Button from "./Button";
 import { apiFetch } from "../../api/client";
+import { ResizeMode, Video } from "expo-av";
 
-// 88% of screen width → consistent proportional side padding on all devices
 const CARD_WIDTH = deviceWidth * 0.88;
 
 export interface Comment {
@@ -39,18 +50,23 @@ export interface Post {
   commentList?: Comment[];
   liked_by_user?: boolean;
   saved_by_user?: boolean;
+  mediaType?: "image" | "video" | string;
 }
 
 interface ForYouCardProps {
   post: Post;
-  listHeight?: number; // measured FlatList height passed from Index
+  listHeight?: number;
   onModalToggle?: (isOpen: boolean) => void;
 }
 
-const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
-  // Fill the measured FlatList space; fall back to a reasonable estimate
+const ForYouCard = ({
+  post,
+  listHeight,
+  onModalToggle,
+}: ForYouCardProps) => {
   const wrapperH = listHeight ?? deviceHeight - 180;
-  const cardH    = wrapperH * 0.97; // 1.5% gap top + bottom inside the page
+  const cardH = wrapperH * 0.97;
+
   const [liked, setLiked] = useState(post.liked_by_user ?? false);
   const [saved, setSaved] = useState(post.saved_by_user ?? false);
   const [likesState, setLikesState] = useState(post.likes);
@@ -69,14 +85,13 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
       const res = await apiFetch(`/posts/${post.id}/comments`);
       const data = await res.json();
 
-      console.log("COMMENTS:", data);
       setCommentsState(data);
       setCommentsCount(data.length);
     } catch (err) {
       console.error("Fetch error:", err);
     }
   };
-  
+
   const openComments = () => {
     if (!post.id || post.id.startsWith("cafe-")) return;
 
@@ -86,17 +101,33 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
 
     setShowComments(true);
     onModalToggle?.(true);
-  
+
     Animated.parallel([
-      Animated.timing(slideAnim, { toValue: deviceHeight * 0.45, duration: 250, useNativeDriver: false }),
-      Animated.timing(backdropAnim, { toValue: 1, duration: 250, useNativeDriver: false }),
+      Animated.timing(slideAnim, {
+        toValue: deviceHeight * 0.45,
+        duration: 250,
+        useNativeDriver: false,
+      }),
+      Animated.timing(backdropAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: false,
+      }),
     ]).start();
   };
 
   const closeComments = () => {
     Animated.parallel([
-      Animated.timing(slideAnim, { toValue: deviceHeight, duration: 200, useNativeDriver: false }),
-      Animated.timing(backdropAnim, { toValue: 0, duration: 200, useNativeDriver: false }),
+      Animated.timing(slideAnim, {
+        toValue: deviceHeight,
+        duration: 200,
+        useNativeDriver: false,
+      }),
+      Animated.timing(backdropAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }),
     ]).start(() => {
       setShowComments(false);
       onModalToggle?.(false);
@@ -133,7 +164,6 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
 
   const handlePostComment = async () => {
     if (!post.id || post.id.startsWith("cafe-")) return;
-
     if (!newComment.trim()) return;
 
     try {
@@ -164,7 +194,6 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
   };
 
   const handleSave = async () => {
-
     if (!post.id || post.id.startsWith("cafe-")) return;
 
     const newState = !saved;
@@ -172,12 +201,16 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
 
     try {
       if (newState) {
-        await apiFetch(`/posts/${post.id}/save`, { method: "POST" });
+        await apiFetch(`/posts/${post.id}/save`, {
+          method: "POST",
+        });
       } else {
-        await apiFetch(`/posts/${post.id}/save`, { method: "DELETE" });
+        await apiFetch(`/posts/${post.id}/save`, {
+          method: "DELETE",
+        });
       }
     } catch (err) {
-      setSaved(!newState); // revert on failure
+      setSaved(!newState);
       console.error("Save error:", err);
     }
   };
@@ -185,17 +218,32 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
   return (
     <View style={[styles.cardWrapper, { height: wrapperH }]}>
       <View style={[styles.card, { width: CARD_WIDTH, height: cardH }]}>
-        <Image source={post.image} style={styles.image} />
+        {post.mediaType === "video" ? (
+          <Video
+            source={post.image}
+            style={styles.image}
+            resizeMode={ResizeMode.COVER}
+            shouldPlay
+            isLooping
+            isMuted
+          />
+        ) : (
+          <Image source={post.image} style={styles.image} />
+        )}
 
         <View style={styles.overlay}>
-          {/* Left: cafe info */}
           <View style={styles.contentContainer}>
             <Text style={styles.cafeName}>{post.cafeName}</Text>
 
             {post.location && (
               <View style={styles.locationRow}>
-                <MapPin size={scale(12)} color="rgba(255,255,255,0.85)" />
-                <Text style={styles.locationText}>{post.location}</Text>
+                <MapPin
+                  size={scale(12)}
+                  color="rgba(255,255,255,0.85)"
+                />
+                <Text style={styles.locationText}>
+                  {post.location}
+                </Text>
               </View>
             )}
 
@@ -203,42 +251,61 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
 
             <View style={styles.tags}>
               {post.tags.map((tag, i) => (
-                <Text key={i} style={styles.tag}>#{tag}</Text>
+                <Text key={i} style={styles.tag}>
+                  #{tag}
+                </Text>
               ))}
             </View>
           </View>
 
-          {/* Right: action buttons */}
           <View style={styles.actionsContainer}>
-            <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
+            <TouchableOpacity
+              onPress={handleLike}
+              style={styles.actionButton}
+            >
               <Heart
                 size={scale(26)}
                 color={liked ? "#FF6B6B" : "#FFF"}
                 fill={liked ? "#FF6B6B" : "transparent"}
                 strokeWidth={liked ? 0 : 2}
               />
-              <Text style={styles.actionText}>{likesState}</Text>
+              <Text style={styles.actionText}>
+                {likesState}
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={openComments} style={styles.actionButton}>
-              <MessageCircle size={scale(26)} color="#FFF" strokeWidth={2} />
-              <Text style={styles.actionText}>{commentsCount}</Text>
+            <TouchableOpacity
+              onPress={openComments}
+              style={styles.actionButton}
+            >
+              <MessageCircle
+                size={scale(26)}
+                color="#FFF"
+                strokeWidth={2}
+              />
+              <Text style={styles.actionText}>
+                {commentsCount}
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleSave} style={styles.actionButton}>
+            <TouchableOpacity
+              onPress={handleSave}
+              style={styles.actionButton}
+            >
               <Bookmark
                 size={scale(26)}
                 color={saved ? "#D4A373" : "#FFF"}
                 fill={saved ? "#D4A373" : "transparent"}
                 strokeWidth={saved ? 0 : 2}
               />
-              <Text style={styles.actionText}>{saved ? "Saved" : "Save"}</Text>
+              <Text style={styles.actionText}>
+                {saved ? "Saved" : "Save"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
 
-      {/* Comments Modal */}
       <Modal
         visible={showComments}
         transparent
@@ -253,14 +320,24 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
             onPress={closeComments}
           >
             <Animated.View
-              style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.4)", opacity: backdropAnim }]}
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: "rgba(0,0,0,0.4)",
+                  opacity: backdropAnim,
+                },
+              ]}
             />
           </TouchableOpacity>
 
-          <Animated.View style={[styles.modalContent, { top: slideAnim }]}>
+          <Animated.View
+            style={[styles.modalContent, { top: slideAnim }]}
+          >
             <View style={styles.dragBar} />
+
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Comments</Text>
+
               <TouchableOpacity onPress={closeComments}>
                 <X size={scale(20)} color="#555" />
               </TouchableOpacity>
@@ -268,21 +345,29 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
 
             <FlatList
               data={commentsState}
-              keyExtractor={(item, index) => item.id || index.toString()}
+              keyExtractor={(item, index) =>
+                item.id || index.toString()
+              }
               renderItem={({ item }) => (
                 <Text style={styles.commentText}>
-                <Text style={{ fontWeight: "bold" }}>
-                  {(item.username ?? "User") + ": "}
-                </Text>
+                  <Text style={{ fontWeight: "bold" }}>
+                    {(item.username ?? "User") + ": "}
+                  </Text>
                   {item.content}
                 </Text>
               )}
               style={{ flex: 1 }}
-              contentContainerStyle={{ paddingBottom: scale(20) }}
+              contentContainerStyle={{
+                paddingBottom: scale(20),
+              }}
               showsVerticalScrollIndicator={false}
             />
 
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+            <KeyboardAvoidingView
+              behavior={
+                Platform.OS === "ios" ? "padding" : undefined
+              }
+            >
               <View style={styles.commentRow}>
                 <TextInput
                   placeholder="Add a comment..."
@@ -290,7 +375,12 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
                   value={newComment}
                   onChangeText={setNewComment}
                 />
-                <Button variant="caramel" size="sm" onPress={handlePostComment}>
+
+                <Button
+                  variant="caramel"
+                  size="sm"
+                  onPress={handlePostComment}
+                >
                   <Text>Post</Text>
                 </Button>
               </View>
@@ -303,9 +393,19 @@ const ForYouCard = ({ post, listHeight, onModalToggle }: ForYouCardProps) => {
 };
 
 const styles = StyleSheet.create({
-  cardWrapper: { alignItems: "center", justifyContent: "center" },
-  card: { borderRadius: scale(20), overflow: "hidden", backgroundColor: "#000" },
-  image: { width: "100%", height: "100%" },
+  cardWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  card: {
+    borderRadius: scale(20),
+    overflow: "hidden",
+    backgroundColor: "#000",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+  },
   overlay: {
     position: "absolute",
     bottom: 0,
@@ -317,12 +417,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
   },
-  contentContainer: { flex: 1, marginRight: scale(12) },
-  cafeName: { color: "#FFF", fontSize: moderateScale(18), fontWeight: "700", marginBottom: scale(2) },
-  locationRow: { flexDirection: "row", alignItems: "center", gap: scale(4), marginBottom: scale(4) },
-  locationText: { color: "rgba(255,255,255,0.85)", fontSize: moderateScale(12) },
-  caption: { color: "#FFF", fontSize: moderateScale(13), lineHeight: moderateScale(18), marginBottom: scale(6) },
-  tags: { flexDirection: "row", flexWrap: "wrap" },
+  contentContainer: {
+    flex: 1,
+    marginRight: scale(12),
+  },
+  cafeName: {
+    color: "#FFF",
+    fontSize: moderateScale(18),
+    fontWeight: "700",
+    marginBottom: scale(2),
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(4),
+    marginBottom: scale(4),
+  },
+  locationText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: moderateScale(12),
+  },
+  caption: {
+    color: "#FFF",
+    fontSize: moderateScale(13),
+    lineHeight: moderateScale(18),
+    marginBottom: scale(6),
+  },
+  tags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
   tag: {
     backgroundColor: "rgba(212,163,115,0.25)",
     color: "#D4A373",
@@ -345,7 +469,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.3)",
     minWidth: scale(44),
   },
-  actionText: { color: "#FFF", fontSize: moderateScale(11), marginTop: scale(2) },
+  actionText: {
+    color: "#FFF",
+    fontSize: moderateScale(11),
+    marginTop: scale(2),
+  },
   modalContent: {
     position: "absolute",
     left: 0,
@@ -357,23 +485,46 @@ const styles = StyleSheet.create({
     padding: scale(20),
   },
   dragBar: {
-    width: scale(40), height: scale(5), backgroundColor: "#DDD",
-    borderRadius: scale(3), alignSelf: "center", marginBottom: scale(10),
+    width: scale(40),
+    height: scale(5),
+    backgroundColor: "#DDD",
+    borderRadius: scale(3),
+    alignSelf: "center",
+    marginBottom: scale(10),
   },
   modalHeader: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    marginBottom: scale(16), paddingBottom: scale(12),
-    borderBottomWidth: 1, borderBottomColor: "#F0F0F0",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: scale(16),
+    paddingBottom: scale(12),
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
   },
-  modalTitle: { fontSize: moderateScale(20), fontWeight: "600", color: "#2C1810" },
-  commentRow: { flexDirection: "row", alignItems: "center", gap: scale(12) },
+  modalTitle: {
+    fontSize: moderateScale(20),
+    fontWeight: "600",
+    color: "#2C1810",
+  },
+  commentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(12),
+  },
   commentInput: {
-    flex: 1, borderWidth: 1, borderColor: "#E0E0E0",
-    borderRadius: scale(20), paddingHorizontal: scale(16),
-    paddingVertical: scale(10), fontSize: moderateScale(15),
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: scale(20),
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(10),
+    fontSize: moderateScale(15),
     backgroundColor: "#F8F8F8",
   },
-  commentText: { marginBottom: scale(8), fontSize: moderateScale(14) },
+  commentText: {
+    marginBottom: scale(8),
+    fontSize: moderateScale(14),
+  },
 });
 
 export default ForYouCard;

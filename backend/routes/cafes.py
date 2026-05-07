@@ -273,25 +273,21 @@ def get_all_cafes():
 
 def is_cafe_open(hours):
     now = datetime.now()
-    day = (now.weekday() + 1) % 7
-    current_time = now.strftime("%H:%M")
+    day = (now.weekday() + 1) % 7  # Sunday = 0, Monday = 1
+    current_time = now.strftime("%H:%M:%S")
 
     for h in hours:
-        try:
-            if h["day_of_week"] == day:
-                open_time = h.get("open_time")
-                close_time = h.get("close_time")
+        if h.get("day_of_week") != day:
+            continue
 
-                if not open_time or not close_time:
-                    continue
+        open_time = h.get("open_time")
+        close_time = h.get("close_time")
 
-                open_time = str(open_time)
-                close_time = str(close_time)
+        if not open_time or not close_time:
+            continue
 
-                if open_time <= current_time <= close_time:
-                    return True
-        except Exception as e:
-            print("is_cafe_open error:", e)
+        if open_time <= current_time <= close_time:
+            return True
 
     return False
 
@@ -545,3 +541,35 @@ def get_cafe_by_id(cafe_id):
     except Exception as e:
         print("Error fetching cafe:", str(e))
         return jsonify({"error": "Internal server error"}), 500
+    
+@cafe_bp.route("/cafes/feed", methods=["GET"])
+@require_auth
+def get_cafes_feed():
+    response = (
+        supabase.table("cafes")
+        .select("""
+            id,
+            name,
+            address,
+            latitude,
+            longitude,
+            description,
+            active,
+            posts(
+                id,
+                caption,
+                likes_count,
+                comments_count,
+                created_at,
+                post_media(
+                    id,
+                    file_url,
+                    file_type
+                )
+            )
+        """)
+        .eq("active", True)
+        .execute()
+    )
+
+    return jsonify({"cafes": response.data or []}), 200
