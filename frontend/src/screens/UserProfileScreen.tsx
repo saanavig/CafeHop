@@ -410,6 +410,9 @@ export default function UserProfileScreen() {
 
   useEffect(() => {
     const fetchPosts = async () => {
+      if (!viewedUserId) {
+        return;
+      }
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;

@@ -426,6 +426,15 @@ def get_user_posts_route(user_id):
 
             media = post.get("post_media") or []
 
+            cafes = post.get("cafes") or []
+
+            cafe_name = None
+
+            if isinstance(cafes, list) and len(cafes) > 0:
+                cafe_name = cafes[0].get("name")
+            elif isinstance(cafes, dict):
+                cafe_name = cafes.get("name")
+
             for item in media:
                 posts.append({
                     "id": post["id"],
@@ -435,9 +444,7 @@ def get_user_posts_route(user_id):
                     "created_at": post.get("created_at"),
                     "file_url": item.get("file_url"),
                     "file_type": item.get("file_type"),
-                    "cafe_name": (
-                        post.get("cafes") or {}
-                    ).get("name"),
+                    "cafe_name": cafe_name,
                 })
 
         return jsonify(posts), 200
