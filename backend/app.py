@@ -26,6 +26,7 @@ from routes.menu import menu_bp
 from routes.receipt_items import receipt_items_bp
 from routes.ai_profile import ai_profile_bp
 from routes.favorites import favorites_bp
+from routes.notifications import notifications_bp
 
 
 
@@ -59,6 +60,7 @@ app.register_blueprint(menu_bp, url_prefix="/api")
 app.register_blueprint(receipt_items_bp, url_prefix="/api")
 app.register_blueprint(ai_profile_bp, url_prefix="/api")
 app.register_blueprint(favorites_bp, url_prefix="/api")
+app.register_blueprint(notifications_bp, url_prefix="/api")
 
 
 def fallback_extract_total(ocr_text: str):

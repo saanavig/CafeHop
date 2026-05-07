@@ -98,6 +98,7 @@ const Index = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [listHeight, setListHeight] = useState(deviceHeight - 180);
   const [loading, setLoading] = useState(true);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   const flatListRef = useRef<FlatList<FeedPost>>(null);
   const hasFetchedFeed = useRef(false);
@@ -122,13 +123,49 @@ const Index = () => {
 
   useEffect(() => {
     if (hasFetchedFeed.current) return;
+
     hasFetchedFeed.current = true;
+
     loadFeed();
+    fetchUnreadNotificationStatus();
   }, []);
 
   const clearFeedCache = async () => {
     sessionFeedCache = null;
     await AsyncStorage.removeItem(FEED_CACHE_KEY);
+  };
+
+  const fetchUnreadNotificationStatus = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) return;
+
+      const response = await fetch(
+        `${API_URL}/api/notifications`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      const notifications = Array.isArray(data)
+        ? data
+        : data.notifications || [];
+
+      const hasUnread = notifications.some(
+        (n: any) => !n.is_read
+      );
+
+      setHasUnreadNotifications(hasUnread);
+    } catch (err) {
+      console.log("UNREAD NOTIFICATION ERROR:", err);
+    }
   };
 
   const loadFeed = async () => {
@@ -552,10 +589,17 @@ const Index = () => {
         <View style={styles.titleRow}>
           <Text style={styles.title}>CAFEHOP</Text>
           <TouchableOpacity
-            onPress={() => navigation.navigate("Notifications")}
+            onPress={() => {
+              setHasUnreadNotifications(false);
+              navigation.navigate("Notifications");
+            }}
             style={styles.bellBtn}
           >
             <Bell size={scale(22)} color="#D4A373" strokeWidth={2} />
+
+            {hasUnreadNotifications && (
+              <View style={styles.notificationDot} />
+            )}
           </TouchableOpacity>
         </View>
 
@@ -689,5 +733,16 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: moderateScale(15),
     color: "#777",
+  },
+  notificationDot: {
+    position: "absolute",
+    top: scale(6),
+    right: scale(6),
+    width: scale(10),
+    height: scale(10),
+    borderRadius: scale(5),
+    backgroundColor: "#FF4D4F",
+    borderWidth: 2,
+    borderColor: "#F7F3F0",
   },
 });

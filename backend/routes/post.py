@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, g
 from database.auth_middleware import require_auth
 from services.post_service import create_post_with_uploaded_media
 from database.supabase_client import supabase,  supabase_for_user
+from services.notification_service import create_notification
 
 posts_bp = Blueprint("posts", __name__)
 
@@ -144,6 +145,7 @@ def like_post(post_id):
         "likes_count": current + 1
     }).eq("id", post_id).execute()
 
+
     return jsonify({
         "message": "Liked",
         "likes_count": current + 1,
@@ -281,6 +283,56 @@ def add_post_comment(post_id):
     user_supabase.table("posts").update({
         "comments_count": current + 1
     }).eq("id", post_id).execute()
+
+    # get post cafe
+    post_details = (
+        user_supabase.table("posts")
+        .select("cafe_id")
+        .eq("id", post_id)
+        .maybe_single()
+        .execute()
+    )
+
+    if post_details.data:
+
+        cafe_id = post_details.data["cafe_id"]
+
+        cafe_response = (
+            user_supabase.table("cafes")
+            .select("owner_id, name")
+            .eq("id", cafe_id)
+            .maybe_single()
+            .execute()
+        )
+
+        if cafe_response.data:
+
+            cafe_owner_id = cafe_response.data["owner_id"]
+            cafe_name = cafe_response.data["name"]
+
+            # don't notify yourself
+            if cafe_owner_id != user_id:
+
+                profile_response = (
+                    user_supabase.table("profiles")
+                    .select("full_name")
+                    .eq("id", user_id)
+                    .maybe_single()
+                    .execute()
+                )
+
+                customer_name = (
+                    profile_response.data["full_name"]
+                    if profile_response.data
+                    else "Someone"
+                )
+
+                create_notification(
+                    user_id=cafe_owner_id,
+                    notif_type="new_review",
+                    title="New comment 💬",
+                    message=f"{customer_name} commented on a post from {cafe_name}",
+                )
 
     return jsonify({
         "comment": response.data[0],

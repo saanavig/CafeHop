@@ -7,8 +7,6 @@ from datetime import timezone
 
 profile_bp = Blueprint("profile_bp", __name__)
 
-
-
 @profile_bp.route("/users/me", methods=["GET"])
 @require_auth
 def get_user_name():

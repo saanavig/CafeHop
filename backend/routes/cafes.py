@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from database.supabase_client import supabase_admin as supabase
 from datetime import datetime
 import requests
+from services.notification_service import create_notification
 
 load_dotenv()
 
@@ -326,6 +327,43 @@ def create_comment(cafe_id):
             "content": content.strip()
         }).execute()
 
+        # get cafe owner
+        cafe_response = (
+            supabase.table("cafes")
+            .select("owner_id, name")
+            .eq("id", cafe_id)
+            .maybe_single()
+            .execute()
+        )
+
+        if cafe_response.data:
+            cafe_owner_id = cafe_response.data["owner_id"]
+            cafe_name = cafe_response.data["name"]
+
+            # avoid notifying yourself
+            if cafe_owner_id != user_id:
+
+                profile_response = (
+                    supabase.table("profiles")
+                    .select("full_name")
+                    .eq("id", user_id)
+                    .maybe_single()
+                    .execute()
+                )
+
+                customer_name = (
+                    profile_response.data["full_name"]
+                    if profile_response.data
+                    else "Someone"
+                )
+
+                create_notification(
+                    user_id=cafe_owner_id,
+                    notif_type="new_review",
+                    title="New comment 💬",
+                    message=f"{customer_name} commented on {cafe_name}",
+                )
+
         return jsonify(response.data[0]), 201
 
     except Exception as e:
@@ -410,7 +448,7 @@ def get_comments_by_post(post_id):
     except Exception as e:
         print("Error fetching post comments:", str(e))
         return jsonify({"error": "Failed to fetch comments"}), 500
-    
+
 @cafe_bp.route("/posts/<post_id>/comments", methods=["POST"])
 @require_auth
 def create_comment_by_post(post_id):
@@ -428,6 +466,56 @@ def create_comment_by_post(post_id):
             "user_id": user_id,
             "content": content.strip()
         }).execute()
+
+        # get post cafe
+        post_response = (
+            supabase.table("posts")
+            .select("cafe_id")
+            .eq("id", post_id)
+            .maybe_single()
+            .execute()
+        )
+
+        if post_response.data:
+
+            cafe_id = post_response.data["cafe_id"]
+
+            cafe_response = (
+                supabase.table("cafes")
+                .select("owner_id, name")
+                .eq("id", cafe_id)
+                .maybe_single()
+                .execute()
+            )
+
+            if cafe_response.data:
+
+                cafe_owner_id = cafe_response.data["owner_id"]
+                cafe_name = cafe_response.data["name"]
+
+                # don't notify yourself
+                if cafe_owner_id != user_id:
+
+                    profile_response = (
+                        supabase.table("profiles")
+                        .select("full_name")
+                        .eq("id", user_id)
+                        .maybe_single()
+                        .execute()
+                    )
+
+                    customer_name = (
+                        profile_response.data["full_name"]
+                        if profile_response.data
+                        else "Someone"
+                    )
+
+                    create_notification(
+                        user_id=cafe_owner_id,
+                        notif_type="new_review",
+                        title="New comment 💬",
+                        message=f"{customer_name} commented on a post from {cafe_name}",
+                    )
 
         return jsonify(response.data[0]), 201
 

@@ -48,7 +48,7 @@ def get_analytics():
     start_iso = start.isoformat()
 
     res = supabase.table("purchases") \
-        .select("user_id, amount, receipt_timestamp, points_earned") \
+        .select("user_id, amount, receipt_timestamp") \
         .eq("cafe_id", cafe_id) \
         .gte("receipt_timestamp", start_iso) \
         .execute()
@@ -172,7 +172,7 @@ def get_analytics():
                     r["receipt_timestamp"].replace("Z", "+00:00")
                 )
             ),
-            "pts": r.get("points_earned", 0)
+            "pts": r.get("amount", 0)
         })
 
     redeem_res = supabase.table("reward_redemptions") \
@@ -238,18 +238,3 @@ def get_analytics():
         "peak_hours": peak_hours,
         "recent_visitors": recent_visitors
     })
-
-    # # TEMP mock data (so frontend works immediately)
-    # return jsonify({
-    #     "visits": 47,
-    #     "revenue": 423,
-    #     "redeemed": 8,
-    #     "new_customers": 5,
-    #     "peak_hours": [
-    #         {"hour": h, "count": (h % 5) + 3} for h in range(8, 20)
-    #     ],
-    #     "recent_visitors": [
-    #         {"name": "Alice", "time": "2 min ago"},
-    #         {"name": "Bob", "time": "10 min ago"}
-    #     ]
-    # })

@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, g
 from database.auth_middleware import require_auth
 from database.supabase_client import supabase
 from postgrest.exceptions import APIError
+from services.notification_service import create_notification
 
 reviews_bp = Blueprint("reviews_bp", __name__)
 
@@ -55,6 +56,44 @@ def create_review(cafe_id):
         }
 
         response = supabase.table("reviews").insert(review_data).execute()
+
+        # get cafe owner
+        cafe_response = (
+            supabase.table("cafes")
+            .select("owner_id, name")
+            .eq("id", cafe_id)
+            .maybe_single()
+            .execute()
+        )
+
+        if cafe_response.data:
+
+            cafe_owner_id = cafe_response.data["owner_id"]
+            cafe_name = cafe_response.data["name"]
+
+            # avoid notifying yourself
+            if cafe_owner_id != g.user["id"]:
+
+                profile_response = (
+                    supabase.table("profiles")
+                    .select("full_name")
+                    .eq("id", g.user["id"])
+                    .maybe_single()
+                    .execute()
+                )
+
+                customer_name = (
+                    profile_response.data["full_name"]
+                    if profile_response.data
+                    else "Someone"
+                )
+
+                create_notification(
+                    user_id=cafe_owner_id,
+                    notif_type="new_review",
+                    title="New review ⭐",
+                    message=f"{customer_name} reviewed {cafe_name}",
+                )
 
         return jsonify({
             "message": "Review created successfully",
