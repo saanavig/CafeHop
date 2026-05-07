@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react-native";
 import React, { useRef, useState } from "react";
+import { ResizeMode, Video } from "expo-av";
 import {
   deviceHeight,
   deviceWidth,
@@ -28,7 +29,6 @@ import {
 
 import Button from "./Button";
 import { apiFetch } from "../../api/client";
-import { ResizeMode, Video } from "expo-av";
 
 const CARD_WIDTH = deviceWidth * 0.88;
 
@@ -234,6 +234,12 @@ const ForYouCard = ({
         <View style={styles.overlay}>
           <View style={styles.contentContainer}>
             <Text style={styles.cafeName}>{post.cafeName}</Text>
+
+            <TouchableOpacity style={styles.postedByRow}>
+              <Text style={styles.postedByText}>
+                Posted by <Text style={styles.postedByUsername}>{post.postedBy}</Text>
+              </Text>
+            </TouchableOpacity>
 
             {post.location && (
               <View style={styles.locationRow}>
@@ -524,6 +530,17 @@ const styles = StyleSheet.create({
   commentText: {
     marginBottom: scale(8),
     fontSize: moderateScale(14),
+  },
+  postedByRow: {
+    marginBottom: scale(6),
+  },
+  postedByText: {
+    color: "rgba(255,255,255,0.78)",
+    fontSize: moderateScale(12),
+  },
+  postedByUsername: {
+    color: "#FFF",
+    fontWeight: "600",
   },
 });
 
