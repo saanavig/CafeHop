@@ -4,9 +4,16 @@ from database.supabase_client import supabase, supabase_for_user
 def create_post(access_token, user_id, cafe_id, caption, post_type="user"):
     user_supabase = supabase_for_user(access_token)
 
+    author_id = user_id
+    author_type = "cafe_owner" if post_type == "owner" else "user"
+
     response = user_supabase.table("posts").insert({
         "user_id": user_id,
         "cafe_id": cafe_id,
+
+        "author_id": author_id,
+        "author_type": author_type,
+
         "caption": caption,
         "post_type": post_type,
         "likes_count": 0,
@@ -14,7 +21,6 @@ def create_post(access_token, user_id, cafe_id, caption, post_type="user"):
     }).execute()
 
     return response.data[0]
-
 
 def create_post_media(access_token, post_id, bucket_name, file_path, file_url, file_type):
     user_supabase = supabase_for_user(access_token)
@@ -37,6 +43,8 @@ def get_posts_by_user(access_token, user_id):
             id,
             user_id,
             cafe_id,
+            author_id,
+            author_type,
             caption,
             post_type,
             likes_count,
@@ -60,6 +68,8 @@ def get_posts_feed():
             id,
             user_id,
             cafe_id,
+            author_id,
+            author_type,
             caption,
             post_type,
             likes_count,
@@ -85,6 +95,8 @@ def get_posts_for_cafes(cafe_ids: list[str]):
             id,
             user_id,
             cafe_id,
+            author_id,
+            author_type,
             caption,
             post_type,
             likes_count,

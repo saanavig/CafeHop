@@ -351,6 +351,8 @@ def get_posts_feed_route():
                 id,
                 user_id,
                 cafe_id,
+                author_id,
+                author_type,
                 caption,
                 post_type,
                 likes_count,

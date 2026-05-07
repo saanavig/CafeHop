@@ -272,30 +272,42 @@ const Index = () => {
       cafe?.longitude ?? post?.cafes?.longitude
     );
 
-    return {
-      id: postId,
-      itemType: "post",
-      postId,
-      cafeId,
-      isRecommended,
-      cafeName,
-      image: { uri: mediaUrl },
-      mediaType,
-      caption: isRecommended
-        ? explanation || "Recommended for you based on your cafe preferences."
-        : post.caption || `Posted at ${cafeName}`,
-      likes: Number(post.likes_count || 0),
-      comments: Number(post.comments_count || 0),
-      postedBy: cafeName,
-      tags: isRecommended ? ["recommended", "for-you"] : ["cafe"],
-      location: cafe?.address || post?.cafes?.address || "Nearby",
-      commentList: [],
-      distanceMiles,
-      canLike: true,
-      canComment: true,
-      canSavePost: true,
-      canSaveCafe: true,
-    };
+  return {
+    id: postId,
+    itemType: "post",
+    postId,
+    cafeId,
+    isRecommended,
+    cafeName,
+    image: { uri: mediaUrl },
+    mediaType,
+    caption: isRecommended
+      ? explanation || "Recommended for you based on your cafe preferences."
+      : post.caption || `Posted at ${cafeName}`,
+    likes: Number(post.likes_count || 0),
+    comments: Number(post.comments_count || 0),
+    postedBy:
+      post.author_type === "cafe_owner"
+        ? cafeName
+        : "User",
+    postedById:
+      post.author_type === "cafe_owner"
+        ? post.cafe_id
+        : post.author_id,
+    postedByType:
+      post.author_type === "cafe_owner"
+        ? "cafe_owner"
+        : "user",
+    tags: isRecommended ? ["recommended", "for-you"] : ["cafe"],
+    location:
+      cafe?.address || post?.cafes?.address || "Nearby",
+    commentList: [],
+    distanceMiles,
+    canLike: true,
+    canComment: true,
+    canSavePost: true,
+    canSaveCafe: true,
+  };
   };
 
   const buildEmptyCafePrompt = (

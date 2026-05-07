@@ -29,6 +29,7 @@ import {
 
 import Button from "./Button";
 import { apiFetch } from "../../api/client";
+import { useNavigation } from "@react-navigation/native";
 
 const CARD_WIDTH = deviceWidth * 0.88;
 
@@ -45,6 +46,8 @@ export interface Post {
   likes: number;
   comments: number;
   postedBy: string;
+  postedById?: string;
+  postedByType?: "user" | "cafe_owner";
   tags: string[];
   location?: string;
   commentList?: Comment[];
@@ -72,6 +75,7 @@ const ForYouCard = ({
   const [likesState, setLikesState] = useState(post.likes);
   const [commentsCount, setCommentsCount] = useState(post.comments);
   const [loadingLike, setLoadingLike] = useState(false);
+  const navigation = useNavigation<any>();
 
   const [showComments, setShowComments] = useState(false);
   const [commentsState, setCommentsState] = useState<any[]>([]);
@@ -133,6 +137,26 @@ const ForYouCard = ({
       onModalToggle?.(false);
     });
   };
+
+  const handleProfilePress = () => {
+    console.log("Pressed profile");
+    console.log(post.postedById);
+    console.log(post.postedByType);
+
+    if (post.postedByType === "cafe_owner") {
+      navigation.navigate("CafeProfile", {
+        cafeId: post.id,
+      });
+    } else {
+      navigation.navigate("UserProfile", {
+        userId: post.postedById,
+      });
+    }
+  };
+
+//   const handleProfilePress = () => {
+//   navigation.navigate("CafeProfile");
+// };
 
   const handleLike = async () => {
     if (!post.id || post.id.startsWith("cafe-")) return;
@@ -235,11 +259,18 @@ const ForYouCard = ({
           <View style={styles.contentContainer}>
             <Text style={styles.cafeName}>{post.cafeName}</Text>
 
-            <TouchableOpacity style={styles.postedByRow}>
-              <Text style={styles.postedByText}>
-                Posted by <Text style={styles.postedByUsername}>{post.postedBy}</Text>
+          <TouchableOpacity
+            style={styles.postedByRow}
+            onPress={handleProfilePress}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.postedByText}>
+              Posted by{" "}
+              <Text style={styles.postedByUsername}>
+                {post.postedBy}
               </Text>
-            </TouchableOpacity>
+            </Text>
+          </TouchableOpacity>
 
             {post.location && (
               <View style={styles.locationRow}>
