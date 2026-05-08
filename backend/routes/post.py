@@ -112,81 +112,82 @@ def delete_post(post_id):
 @require_auth
 def like_post(post_id):
     user_id = g.user["id"]
-    user_supabase = supabase_for_user(g.access_token)
 
-    existing = (
-        user_supabase.table("post_likes")
-        .select("id")
-        .eq("post_id", post_id)
-        .eq("user_id", user_id)
-        .maybe_single()
-        .execute()
-    )
+    try:
+        existing = (
+            supabase.table("post_likes")
+            .select("id")
+            .eq("post_id", post_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
 
-    if existing and existing.data:
-        return jsonify({"message": "Already liked"}), 200
+        existing_rows = existing.data if existing and existing.data else []
 
-    user_supabase.table("post_likes").insert({
-        "post_id": post_id,
-        "user_id": user_id,
-    }).execute()
+        if not existing_rows:
+            supabase.table("post_likes").insert({
+                "post_id": post_id,
+                "user_id": user_id,
+            }).execute()
 
-    post = (
-        user_supabase.table("posts")
-        .select("likes_count")
-        .eq("id", post_id)
-        .maybe_single()
-        .execute()
-    )
+        likes_res = (
+            supabase.table("post_likes")
+            .select("id")
+            .eq("post_id", post_id)
+            .execute()
+        )
 
-    current = (post.data or {}).get("likes_count") or 0
+        likes_count = len(likes_res.data or [])
 
-    user_supabase.table("posts").update({
-        "likes_count": current + 1
-    }).eq("id", post_id).execute()
+        supabase.table("posts").update({
+            "likes_count": likes_count
+        }).eq("id", post_id).execute()
 
+        return jsonify({
+            "message": "Liked",
+            "liked_by_user": True,
+            "likes_count": likes_count,
+        }), 200
 
-    return jsonify({
-        "message": "Liked",
-        "likes_count": current + 1,
-    }), 201
+    except Exception as e:
+        print("LIKE POST ERROR:", e)
+        return jsonify({"error": str(e)}), 500
+
 
 @posts_bp.route("/posts/<post_id>/like", methods=["DELETE"])
 @require_auth
 def unlike_post(post_id):
     user_id = g.user["id"]
-    user_supabase = supabase_for_user(g.access_token)
 
-    deleted = (
-        user_supabase.table("post_likes")
-        .delete()
-        .eq("post_id", post_id)
-        .eq("user_id", user_id)
-        .execute()
-    )
+    try:
+        supabase.table("post_likes") \
+            .delete() \
+            .eq("post_id", post_id) \
+            .eq("user_id", user_id) \
+            .execute()
 
-    if deleted.data:
-        post = (
-            user_supabase.table("posts")
-            .select("likes_count")
-            .eq("id", post_id)
-            .maybe_single()
+        likes_res = (
+            supabase.table("post_likes")
+            .select("id")
+            .eq("post_id", post_id)
             .execute()
         )
 
-        current = (post.data or {}).get("likes_count") or 0
-        new_count = max(0, current - 1)
+        likes_count = len(likes_res.data or [])
 
-        user_supabase.table("posts").update({
-            "likes_count": new_count
+        supabase.table("posts").update({
+            "likes_count": likes_count
         }).eq("id", post_id).execute()
 
         return jsonify({
             "message": "Unliked",
-            "likes_count": new_count,
+            "liked_by_user": False,
+            "likes_count": likes_count,
         }), 200
 
-    return jsonify({"message": "Like not found"}), 200
+    except Exception as e:
+        print("UNLIKE POST ERROR:", e)
+        return jsonify({"error": str(e)}), 500
 
 @posts_bp.route("/posts/<post_id>/save", methods=["POST"])
 @require_auth
@@ -343,6 +344,7 @@ def add_post_comment(post_id):
 @require_auth
 def get_posts_feed_route():
     try:
+        user_id = g.user["id"]
         user_supabase = supabase_for_user(g.access_token)
 
         response = (
@@ -383,17 +385,36 @@ def get_posts_feed_route():
         )
 
         posts = response.data or []
-        print(posts[0])
+        post_ids = [post["id"] for post in posts if post.get("id")]
 
-        return jsonify({
-            "posts": posts
-        }), 200
+        liked_ids = set()
+
+        if post_ids:
+            liked_response = (
+                user_supabase.table("post_likes")
+                .select("post_id")
+                .eq("user_id", user_id)
+                .in_("post_id", post_ids)
+                .execute()
+            )
+
+            liked_ids = {
+                row["post_id"]
+                for row in (liked_response.data or [])
+                if row.get("post_id")
+            }
+
+        for post in posts:
+            post["liked_by_user"] = post.get("id") in liked_ids
+
+        return jsonify({"posts": posts}), 200
 
     except Exception as e:
-        print({"error": "Failed to fetch posts"}, e)
-        return jsonify({
-            "error": "Failed to fetch posts"
-        }), 500
+        print("POST FEED ERROR:", e)
+        return jsonify({"error": "Failed to fetch posts"}), 500
+    
+
+
 @posts_bp.route("/posts/user/<user_id>", methods=["GET"])
 @require_auth
 def get_user_posts_route(user_id):
