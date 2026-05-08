@@ -58,3 +58,4 @@ storage3
 gotrue
 supafunc
 rapidfuzz==3.9.6
+python-jose==3.3.0
