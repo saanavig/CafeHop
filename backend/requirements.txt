@@ -50,3 +50,4 @@ websockets==14.2
 Werkzeug==3.0.6
 pytesseract
 yarl==1.18.3
+google-generativeai
