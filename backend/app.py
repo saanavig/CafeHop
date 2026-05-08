@@ -3,7 +3,7 @@ import re
 from flask import Flask, request, jsonify, g as flask_g
 from flask_cors import CORS
 from pydantic import ValidationError
-from services.ocr_services import ocr_image
+# from services.ocr_services import ocr_image
 from services.gemini_services import parse_purchase_from_image
 from services.cafe_matcher import lookup_cafe_id
 from services.purchase_repo import insert_purchase, add_points_to_user
