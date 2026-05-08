@@ -50,5 +50,10 @@ websockets==14.2
 Werkzeug==3.0.6
 pytesseract
 yarl==1.18.3
-google-generativeai
+google-generativeai==0.8.6
 supabase==2.15.3
+postgrest
+realtime
+storage3
+gotrue
+supafunc
