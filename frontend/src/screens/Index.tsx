@@ -18,7 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:3001";
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const fallbackImages = [
   "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=900",

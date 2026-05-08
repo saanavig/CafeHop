@@ -16,7 +16,7 @@ import BottomNav from "../components/ui/BottomNav";
 import { supabase } from "../api/supabaseClient";
 import { useEffect } from "react";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:3001";
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const preferenceCategories = [
   {
