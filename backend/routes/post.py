@@ -253,92 +253,96 @@ def get_post_comments(post_id):
 
     return jsonify(comments), 200
 
-@posts_bp.route("/posts/<post_id>/comments", methods=["POST"])
-@require_auth
-def add_post_comment(post_id):
-    user_id = g.user["id"]
-    data = request.get_json(silent=True) or {}
-    user_supabase = supabase_for_user(g.access_token)
+# @posts_bp.route("/posts/<post_id>/comments", methods=["POST"])
+# @require_auth
+# def add_post_comment(post_id):
+#     print("🔥 NEW ADD POST COMMENT ROUTE IS RUNNING")
 
-    content = (data.get("content") or "").strip()
+#     user_id = g.user["id"]
+#     data = request.get_json(silent=True) or {}
+#     user_supabase = supabase_for_user(g.access_token)
 
-    if not content:
-        return jsonify({"error": "Missing content"}), 400
+#     content = (data.get("content") or "").strip()
 
-    response = user_supabase.table("comments").insert({
-        "post_id": post_id,
-        "user_id": user_id,
-        "content": content,
-    }).execute()
+#     if not content:
+#         return jsonify({"error": "Missing content"}), 400
 
-    post = (
-        user_supabase.table("posts")
-        .select("comments_count")
-        .eq("id", post_id)
-        .maybe_single()
-        .execute()
-    )
+#     response = user_supabase.table("comments").insert({
+#         "post_id": post_id,
+#         "user_id": user_id,
+#         "content": content,
+#     }).execute()
 
-    current = (post.data or {}).get("comments_count") or 0
+#     if not response.data:
+#         return jsonify({"error": "Failed to create comment"}), 500
 
-    user_supabase.table("posts").update({
-        "comments_count": current + 1
-    }).eq("id", post_id).execute()
+#     post_res = (
+#         supabase.table("posts")
+#         .select("comments_count, cafe_id")
+#         .eq("id", post_id)
+#         .maybe_single()
+#         .execute()
+#     )
 
-    # get post cafe
-    post_details = (
-        user_supabase.table("posts")
-        .select("cafe_id")
-        .eq("id", post_id)
-        .maybe_single()
-        .execute()
-    )
+#     if not post_res.data:
+#         return jsonify({"error": "Post not found"}), 404
 
-    if post_details.data:
+#     current_count = post_res.data.get("comments_count") or 0
+#     cafe_id = post_res.data.get("cafe_id")
+#     new_count = current_count + 1
 
-        cafe_id = post_details.data["cafe_id"]
+#     update_res = (
+#         supabase.table("posts")
+#         .update({"comments_count": new_count})
+#         .eq("id", post_id)
+#         .execute()
+#     )
 
-        cafe_response = (
-            user_supabase.table("cafes")
-            .select("owner_id, name")
-            .eq("id", cafe_id)
-            .maybe_single()
-            .execute()
-        )
+#     print("COMMENTS COUNT UPDATE:", update_res.data)
 
-        if cafe_response.data:
+#     if not update_res.data:
+#         print("COMMENTS COUNT UPDATE FAILED OR RLS BLOCKED")
 
-            cafe_owner_id = cafe_response.data["owner_id"]
-            cafe_name = cafe_response.data["name"]
+#     if cafe_id:
+#         cafe_response = (
+#             user_supabase.table("cafes")
+#             .select("owner_id, name")
+#             .eq("id", cafe_id)
+#             .maybe_single()
+#             .execute()
+#         )
 
-            # don't notify yourself
-            if cafe_owner_id != user_id:
+#         if cafe_response.data:
+#             cafe_owner_id = cafe_response.data["owner_id"]
+#             cafe_name = cafe_response.data["name"]
 
-                profile_response = (
-                    user_supabase.table("profiles")
-                    .select("full_name")
-                    .eq("id", user_id)
-                    .maybe_single()
-                    .execute()
-                )
+#             if cafe_owner_id != user_id:
+#                 profile_response = (
+#                     user_supabase.table("profiles")
+#                     .select("full_name")
+#                     .eq("id", user_id)
+#                     .maybe_single()
+#                     .execute()
+#                 )
 
-                customer_name = (
-                    profile_response.data["full_name"]
-                    if profile_response.data
-                    else "Someone"
-                )
+#                 customer_name = (
+#                     profile_response.data["full_name"]
+#                     if profile_response.data
+#                     else "Someone"
+#                 )
 
-                create_notification(
-                    user_id=cafe_owner_id,
-                    notif_type="new_review",
-                    title="New comment 💬",
-                    message=f"{customer_name} commented on a post from {cafe_name}",
-                )
+#                 create_notification(
+#                     user_id=cafe_owner_id,
+#                     notif_type="new_review",
+#                     title="New comment 💬",
+#                     message=f"{customer_name} commented on a post from {cafe_name}",
+#                 )
 
-    return jsonify({
-        "comment": response.data[0],
-        "comments_count": current + 1,
-    }), 201
+#     return jsonify({
+#         "comment": response.data[0],
+#         "comments_count": new_count,
+#     }), 201
+
 
 @posts_bp.route("/posts/feed", methods=["GET"])
 @require_auth

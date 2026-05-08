@@ -219,7 +219,14 @@ const Index = () => {
         throw new Error(data?.error || data?.message || "Fetch comments failed");
       }
 
-      return Array.isArray(data) ? data : [];
+      const comments = Array.isArray(data) ? data : [];
+
+      updatePostInState(postId, (post) => ({
+        ...post,
+        comments: comments.length,
+      }));
+
+      return comments;
     } catch (err) {
       console.error("FETCH COMMENTS ERROR:", err);
       return [];
