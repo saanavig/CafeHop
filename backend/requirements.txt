@@ -51,3 +51,4 @@ Werkzeug==3.0.6
 pytesseract
 yarl==1.18.3
 google-generativeai
+supabase==2.15.3
