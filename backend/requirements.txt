@@ -57,3 +57,4 @@ realtime
 storage3
 gotrue
 supafunc
+rapidfuzz==3.9.6
