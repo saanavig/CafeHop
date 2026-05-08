@@ -3,7 +3,7 @@ import re
 from flask import Flask, request, jsonify, g as flask_g
 from flask_cors import CORS
 from pydantic import ValidationError
-from services.ocr_services import ocr_image
+# from services.ocr_services import ocr_image
 from services.gemini_services import parse_purchase_from_image
 from services.cafe_matcher import lookup_cafe_id
 from services.purchase_repo import insert_purchase, add_points_to_user
@@ -27,7 +27,7 @@ from routes.receipt_items import receipt_items_bp
 from routes.ai_profile import ai_profile_bp
 from routes.favorites import favorites_bp
 from routes.notifications import notifications_bp
-
+import os
 
 
 app = Flask(__name__)
@@ -243,4 +243,13 @@ def receipt_upload():
     )
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=3001, debug=True)
+    try:
+        print("Starting Flask app...")
+        app.run(
+            host="0.0.0.0",
+            port=int(os.environ.get("PORT", 3001)),
+            debug=True
+        )
+    except Exception as e:
+        print("STARTUP ERROR:", e)
+        raise

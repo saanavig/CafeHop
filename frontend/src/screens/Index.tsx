@@ -19,8 +19,25 @@ import { apiFetch } from "../api/client";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:3001";
-const FEED_CACHE_KEY = "cafehop_feed_cache";
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+const fallbackImages = [
+  "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=900",
+  "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=900",
+  "https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=900",
+  "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=900",
+];
+
+const getFallbackImage = (key?: string) => {
+  const value = key || "cafe";
+  let hash = 0;
+
+  for (let i = 0; i < value.length; i++) {
+    hash = value.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  return fallbackImages[Math.abs(hash) % fallbackImages.length];
+};
 
 const isValidMediaUrl = (url?: string | null) => {
   return !!url && (url.startsWith("http://") || url.startsWith("https://"));

@@ -1,6 +1,6 @@
-//recueptuploadscreen.tsx
-import React, { useState } from "react";
-import { supabase } from "../api/supabaseClient";
+import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
+
 import {
   ActivityIndicator,
   Alert,
@@ -12,10 +12,12 @@ import {
   Text,
   View,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import * as Location from "expo-location";
-import { scale, moderateScale } from "../utils/responsive";
+//recueptuploadscreen.tsx
+import React, { useState } from "react";
+import { moderateScale, scale } from "../utils/responsive";
+
 import Button from "../components/ui/Button";
+import { supabase } from "../api/supabaseClient";
 
 type UploadState = "idle" | "uploading" | "success" | "error";
 

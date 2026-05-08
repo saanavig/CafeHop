@@ -1,9 +1,10 @@
-import React, { useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import React, { useState } from "react";
+
 import { supabase } from "../api/supabaseClient";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:3001";
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default function CafeQRScannerScreen({ navigation }: any) {
   const [permission, requestPermission] = useCameraPermissions();
