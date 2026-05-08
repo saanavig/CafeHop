@@ -27,7 +27,7 @@ from routes.receipt_items import receipt_items_bp
 from routes.ai_profile import ai_profile_bp
 from routes.favorites import favorites_bp
 from routes.notifications import notifications_bp
-
+import os
 
 
 app = Flask(__name__)
@@ -243,4 +243,8 @@ def receipt_upload():
     )
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=3001, debug=True)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 3001)),
+        debug=True
+    )
