@@ -243,8 +243,13 @@ def receipt_upload():
     )
 
 if __name__ == "__main__":
-    app.run(
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", 3001)),
-        debug=True
-    )
+    try:
+        print("Starting Flask app...")
+        app.run(
+            host="0.0.0.0",
+            port=int(os.environ.get("PORT", 3001)),
+            debug=True
+        )
+    except Exception as e:
+        print("STARTUP ERROR:", e)
+        raise
