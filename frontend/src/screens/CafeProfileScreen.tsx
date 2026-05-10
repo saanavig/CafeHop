@@ -30,6 +30,8 @@ import { ResizeMode, Video } from "expo-av";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { useRoute } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "../context/ThemeContext";
 
 type Comment = { text: string };
 
@@ -143,6 +145,8 @@ export default function CafeProfileScreen() {
 
   const isOwner = !!userId && !!ownerId && userId === ownerId;
   const canReview = userRole === "user";
+
+  const { colors: themeColors } = useTheme();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(scale(18))).current;
@@ -685,10 +689,12 @@ export default function CafeProfileScreen() {
 
   const inputStyle = {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: themeColors.border,
     borderRadius: scale(8),
     padding: scale(10),
     marginBottom: verticalScale(10),
+    color: themeColors.text,
+    backgroundColor: themeColors.card,
   };
 
 
@@ -828,7 +834,7 @@ export default function CafeProfileScreen() {
 
     if (cafeLoading) {
     return (
-      <View style={styles.centered}>
+      <View style={[styles.centered, { backgroundColor: themeColors.bg }]}>
         <ActivityIndicator size="small" color="#D4A373" />
       </View>
     );
@@ -836,8 +842,8 @@ export default function CafeProfileScreen() {
 
   if (!cafe) {
     return (
-      <View style={styles.centered}>
-        <Text>Cafe not found.</Text>
+      <View style={[styles.centered, { backgroundColor: themeColors.bg }]}>
+        <Text style={{ color: themeColors.text }}>Cafe not found.</Text>
         <BottomNav />
       </View>
     );
@@ -854,7 +860,7 @@ export default function CafeProfileScreen() {
   })();
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
       <Animated.ScrollView
         contentContainerStyle={{ paddingBottom: scale(100) }}
         style={{
@@ -901,13 +907,13 @@ export default function CafeProfileScreen() {
 
         <View style={{ width: contentWidth, alignSelf: "center" }}>
           <View style={styles.header}>
-            <View style={styles.avatar}>
-              <Store size={scale(44)} color="#888" />
+            <View style={[styles.avatar, { backgroundColor: themeColors.iconBg }]}>
+              <Store size={scale(44)} color={themeColors.textMuted} />
             </View>
 
-            <Text style={styles.name}>{cafe.name || "Cafe"}</Text>
+            <Text style={[styles.name, { color: themeColors.text }]}>{cafe.name || "Cafe"}</Text>
 
-            <Text style={styles.bio}>
+            <Text style={[styles.bio, { color: themeColors.textMuted }]}>
               {cafe.description || "No description yet"} •{" "}
               <Text
                 style={[styles.statusLink, { color: status.color }]}
@@ -919,27 +925,27 @@ export default function CafeProfileScreen() {
 
             <View style={styles.statsRow}>
               <View style={styles.stat}>
-                <Text style={styles.statNumber}>{posts.length}</Text>
-                <Text style={styles.statLabel}>Posts</Text>
+                <Text style={[styles.statNumber, { color: themeColors.text }]}>{posts.length}</Text>
+                <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Posts</Text>
               </View>
 
               <View style={styles.stat}>
-                <Text style={styles.statNumber}>{visitCount}</Text>
-                <Text style={styles.statLabel}>Visits</Text>
+                <Text style={[styles.statNumber, { color: themeColors.text }]}>{visitCount}</Text>
+                <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Visits</Text>
               </View>
 
               <View style={styles.stat}>
-                <Text style={styles.statNumber}>
+                <Text style={[styles.statNumber, { color: themeColors.text }]}>
                   {averageRating ?? "New"}
                 </Text>
-                <Text style={styles.statLabel}>Rating</Text>
+                <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Rating</Text>
               </View>
 
               <View style={styles.stat}>
-                <Text style={styles.statNumber}>
+                <Text style={[styles.statNumber, { color: themeColors.text }]}>
                   {"$".repeat(cafe.price_level || 1)}
                 </Text>
-                <Text style={styles.statLabel}>Price</Text>
+                <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Price</Text>
               </View>
             </View>
 
@@ -947,7 +953,7 @@ export default function CafeProfileScreen() {
               <View style={styles.socialsRow}>
                 {cafe.instagram_url ? (
                   <TouchableOpacity
-                    style={styles.socialChip}
+                    style={[styles.socialChip, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border }]}
                     onPress={() => Linking.openURL(cafe.instagram_url!).catch(() => {})}
                   >
                     <Globe size={scale(13)} color="#D4A373" />
@@ -956,7 +962,7 @@ export default function CafeProfileScreen() {
                 ) : null}
                 {cafe.facebook_url ? (
                   <TouchableOpacity
-                    style={styles.socialChip}
+                    style={[styles.socialChip, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border }]}
                     onPress={() => Linking.openURL(cafe.facebook_url!).catch(() => {})}
                   >
                     <Globe size={scale(13)} color="#D4A373" />
@@ -965,7 +971,7 @@ export default function CafeProfileScreen() {
                 ) : null}
                 {cafe.website_url ? (
                   <TouchableOpacity
-                    style={styles.socialChip}
+                    style={[styles.socialChip, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border }]}
                     onPress={() => Linking.openURL(cafe.website_url!).catch(() => {})}
                   >
                     <Globe size={scale(13)} color="#D4A373" />
@@ -978,7 +984,7 @@ export default function CafeProfileScreen() {
             {Array.isArray(cafe.attributes) && cafe.attributes.length > 0 && (
               <View style={styles.tagChipsRow}>
                 {cafe.attributes.map((tag) => (
-                  <View key={tag} style={styles.attributeChip}>
+                  <View key={tag} style={[styles.attributeChip, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border }]}>
                     <Text style={styles.attributeChipText}>{tag}</Text>
                   </View>
                 ))}
@@ -990,7 +996,7 @@ export default function CafeProfileScreen() {
           <View style={styles.actionRow}>
             <TouchableOpacity
               onPress={() => navigation.navigate("CafeEdit")}
-              style={styles.editProfileButton}
+              style={[styles.editProfileButton, { backgroundColor: themeColors.card }]}
               activeOpacity={0.85}
             >
               <Pencil size={scale(15)} color="#D4A373" />
@@ -1008,7 +1014,7 @@ export default function CafeProfileScreen() {
           </View>
         )}
 
-          <View style={styles.tabs}>
+          <View style={[styles.tabs, { borderBottomColor: themeColors.border }]}>
             <TouchableOpacity onPress={() => switchTab("posts")}>
               <Grid3X3
                 size={scale(22)}
@@ -1041,7 +1047,7 @@ export default function CafeProfileScreen() {
                   </View>
                 ) : posts.length === 0 ? (
                   <View style={styles.emptyState}>
-                    <Text style={styles.emptyTitle}>No posts yet</Text>
+                    <Text style={[styles.emptyTitle, { color: themeColors.textMuted }]}>No posts yet</Text>
                     <Text style={styles.emptySubtitle}>
                       {isOwner
                         ? "Share your first photo!"
@@ -1121,7 +1127,7 @@ export default function CafeProfileScreen() {
               <View style={styles.section}>
                 {!hasMenu && !isEditing && (
                   <View style={styles.emptyState}>
-                    <Text style={styles.emptyTitle}>No menu yet</Text>
+                    <Text style={[styles.emptyTitle, { color: themeColors.textMuted }]}>No menu yet</Text>
 
                     {isOwner && (
                       <TouchableOpacity
@@ -1163,9 +1169,9 @@ export default function CafeProfileScreen() {
                     )}
 
                     {isEditing && addingItemCategory === "GLOBAL" && (
-                      <View style={styles.formCard}>
+                      <View style={[styles.formCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
                         <View style={styles.formHeader}>
-                          <Text style={styles.formTitle}>Add Item</Text>
+                          <Text style={[styles.formTitle, { color: themeColors.text }]}>Add Item</Text>
 
                           <TouchableOpacity
                             onPress={() => {
@@ -1177,7 +1183,7 @@ export default function CafeProfileScreen() {
                               setNewDescription("");
                               setNewImage(null);
                             }}
-                            style={styles.closeSmallButton}
+                            style={[styles.closeSmallButton, { backgroundColor: themeColors.iconBg }]}
                           >
                             <Text style={styles.closeSmallText}>×</Text>
                           </TouchableOpacity>
@@ -1196,7 +1202,6 @@ export default function CafeProfileScreen() {
                           onChangeText={setNewDescription}
                           style={[inputStyle, { minHeight: verticalScale(60) }]}
                           multiline
-                          textAlignVertical="top"
                         />
 
                         <TextInput
@@ -1217,7 +1222,7 @@ export default function CafeProfileScreen() {
 
                         <TouchableOpacity
                           onPress={pickImage}
-                          style={styles.imageButton}
+                          style={[styles.imageButton, { backgroundColor: themeColors.iconBg }]}
                         >
                           <Text style={{ fontSize: moderateScale(14) }}>
                             {newImage ? "Change Image" : "Add Image"}
@@ -1236,10 +1241,10 @@ export default function CafeProfileScreen() {
                             onPress={() =>
                               setShowCategoryDropdown((prev) => !prev)
                             }
-                            style={styles.dropdownTrigger}
+                            style={[styles.dropdownTrigger, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}
                           >
                             <View style={styles.dropdownRow}>
-                              <Text style={{ color: newCategory ? "#000" : "#888" }}>
+                              <Text style={{ color: newCategory ? themeColors.text : themeColors.textMuted }}>
                                 {newCategory || "Select Category"}
                               </Text>
                               <Text>▼</Text>
@@ -1247,7 +1252,7 @@ export default function CafeProfileScreen() {
                           </TouchableOpacity>
 
                           {showCategoryDropdown && (
-                            <View style={styles.dropdownList}>
+                            <View style={[styles.dropdownList, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
                               {categories.length > 0 ? (
                                 categories.map((cat, index) => (
                                   <TouchableOpacity
@@ -1259,13 +1264,13 @@ export default function CafeProfileScreen() {
                                     }}
                                     style={{ padding: scale(10) }}
                                   >
-                                    <Text style={{ fontSize: moderateScale(14) }}>
+                                    <Text style={{ fontSize: moderateScale(14), color: themeColors.text }}>
                                       {cat}
                                     </Text>
                                   </TouchableOpacity>
                                 ))
                               ) : (
-                                <Text style={{ padding: 10, color: "#888" }}>
+                                <Text style={{ padding: 10, color: themeColors.textMuted }}>
                                   No categories yet
                                 </Text>
                               )}
@@ -1424,7 +1429,7 @@ export default function CafeProfileScreen() {
                               onChangeText={setNewCategoryName}
                               onBlur={() => handleRenameCategory(section.title)}
                               autoFocus
-                              style={styles.categoryEditInput}
+                              style={[styles.categoryEditInput, { backgroundColor: themeColors.iconBg, color: themeColors.text }]}
                             />
                           ) : (
                             <TouchableOpacity
@@ -1433,20 +1438,20 @@ export default function CafeProfileScreen() {
                                 setNewCategoryName(section.title);
                               }}
                             >
-                              <Text style={styles.menuSectionTitle}>
+                              <Text style={[styles.menuSectionTitle, { color: themeColors.text }]}>
                                 {section.title}
                               </Text>
                             </TouchableOpacity>
                           )
                         ) : (
-                          <Text style={styles.menuSectionTitle}>
+                          <Text style={[styles.menuSectionTitle, { color: themeColors.text }]}>
                             {section.title}
                           </Text>
                         )}
 
                         {section.items.map((item: any, j: number) => (
                           <View key={j}>
-                            <View style={styles.menuItem}>
+                            <View style={[styles.menuItem, { borderBottomColor: themeColors.border }]}>
                               {isEditing && isOwner ? (
                                 <>
                                   <Image
@@ -1455,7 +1460,7 @@ export default function CafeProfileScreen() {
                                         ? { uri: item.image_url }
                                         : undefined
                                     }
-                                    style={styles.editItemImage}
+                                    style={[styles.editItemImage, { backgroundColor: themeColors.iconBg }]}
                                   />
 
                                   <TextInput
@@ -1463,7 +1468,7 @@ export default function CafeProfileScreen() {
                                     onChangeText={(text) =>
                                       handleEditItem(item.id, "name", text)
                                     }
-                                    style={styles.editNameInput}
+                                    style={[styles.editNameInput, { backgroundColor: themeColors.iconBg, color: themeColors.text }]}
                                   />
 
                                   <TextInput
@@ -1471,7 +1476,7 @@ export default function CafeProfileScreen() {
                                     onChangeText={(text) =>
                                       handleEditItem(item.id, "price", text)
                                     }
-                                    style={styles.editPriceInput}
+                                    style={[styles.editPriceInput, { backgroundColor: themeColors.iconBg, color: themeColors.text }]}
                                   />
 
                                   <View style={styles.rowActions}>
@@ -1510,24 +1515,24 @@ export default function CafeProfileScreen() {
                                             ? { uri: item.image_url }
                                             : undefined
                                         }
-                                        style={styles.menuDisplayImage}
+                                        style={[styles.menuDisplayImage, { backgroundColor: themeColors.iconBg }]}
                                       />
                                     </TouchableOpacity>
 
                                     <View style={{ flex: 1 }}>
-                                      <Text style={styles.menuItemName}>
+                                      <Text style={[styles.menuItemName, { color: themeColors.text }]}>
                                         {item.name}
                                       </Text>
 
                                       {item.description ? (
-                                        <Text style={styles.menuItemDescription}>
+                                        <Text style={[styles.menuItemDescription, { color: themeColors.textMuted }]}>
                                           {item.description}
                                         </Text>
                                       ) : null}
                                     </View>
                                   </View>
 
-                                  <Text style={styles.menuItemPrice}>
+                                  <Text style={[styles.menuItemPrice, { color: themeColors.textMuted }]}>
                                     ${item.price}
                                   </Text>
                                 </View>
@@ -1535,7 +1540,7 @@ export default function CafeProfileScreen() {
                             </View>
 
                             {editingItemId === item.id && isOwner && (
-                              <View style={styles.formCard}>
+                              <View style={[styles.formCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
                                 <TextInput
                                   value={editName}
                                   onChangeText={setEditName}
@@ -1565,7 +1570,7 @@ export default function CafeProfileScreen() {
                                       setEditImage(result.assets[0].uri);
                                     }
                                   }}
-                                  style={styles.imageButton}
+                                  style={[styles.imageButton, { backgroundColor: themeColors.iconBg }]}
                                 >
                                   <Text>
                                     {editImage ? "Change Image" : "Add Image"}
@@ -1665,8 +1670,8 @@ export default function CafeProfileScreen() {
                 )}
 
                 {canReview && reviewFormOpen && (
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>
+                <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+                    <Text style={[styles.cardTitle, { color: themeColors.text }]}>
                     {myReview ? "Edit your review" : "Leave a review"}
                     </Text>
 
@@ -1713,7 +1718,7 @@ export default function CafeProfileScreen() {
                             setReviewText("");
                           }
                         }}
-                        style={[styles.editProfileButton, { flex: 0, paddingHorizontal: scale(18) }]}
+                        style={[styles.editProfileButton, { flex: 0, paddingHorizontal: scale(18), backgroundColor: themeColors.card }]}
                         activeOpacity={0.85}
                       >
                         <Text style={styles.editProfileButtonText}>Cancel</Text>
@@ -1732,9 +1737,9 @@ export default function CafeProfileScreen() {
                     <ActivityIndicator size="small" color="#D4A373" />
                 </View>
                 ) : reviews.length === 0 ? (
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>No reviews yet</Text>
-                    <Text style={styles.cardSubtitle}>
+                <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+                    <Text style={[styles.cardTitle, { color: themeColors.text }]}>No reviews yet</Text>
+                    <Text style={[styles.cardSubtitle, { color: themeColors.textMuted }]}>
                     Be the first to leave a review.
                     Please note that cafe owners cannot review any cafes.
                     </Text>
@@ -1764,7 +1769,7 @@ export default function CafeProfileScreen() {
                               setReviewFormOpen(true);
                             }}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            style={styles.reviewEditBtn}
+                            style={[styles.reviewEditBtn, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border }]}
                             accessibilityLabel="Edit your review"
                           >
                             <Pencil size={scale(14)} color="#D4A373" />
@@ -1772,7 +1777,7 @@ export default function CafeProfileScreen() {
                         )}
                       </View>
 
-                      <Text style={styles.cardTitle}>
+                      <Text style={[styles.cardTitle, { color: themeColors.text }]}>
                         {review.review_text || "No written review"}
                       </Text>
                       {isMine && (
@@ -1808,8 +1813,8 @@ export default function CafeProfileScreen() {
           activeOpacity={1}
           onPress={() => setShowHoursModal(false)}
         >
-          <View style={styles.hoursModal}>
-            <Text style={styles.hoursTitle}>Opening Hours</Text>
+          <View style={[styles.hoursModal, { backgroundColor: themeColors.card }]}>
+            <Text style={[styles.hoursTitle, { color: themeColors.text }]}>Opening Hours</Text>
 
             {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day, index) => {
               const now = new Date();
@@ -1826,12 +1831,13 @@ export default function CafeProfileScreen() {
                   key={day}
                   style={[
                     styles.hoursRow,
-                    isToday && { backgroundColor: "#F3EDE7", borderRadius: 8, padding: 6 },
+                    isToday && { backgroundColor: themeColors.accentMuted, borderRadius: 8, padding: 6 },
                   ]}
                 >
                   <Text
                     style={[
                       styles.hoursDay,
+                      { color: themeColors.text },
                       isToday && { fontWeight: "700", color: "#D4A373" },
                     ]}
                   >
@@ -1841,6 +1847,7 @@ export default function CafeProfileScreen() {
                   <Text
                     style={[
                       styles.hoursTime,
+                      { color: themeColors.textMuted },
                       isToday && { fontWeight: "700", color: "#D4A373" },
                     ]}
                   >
@@ -1865,10 +1872,10 @@ export default function CafeProfileScreen() {
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View style={styles.postModalContainer}>
+          <View style={[styles.postModalContainer, { backgroundColor: themeColors.bg }]}>
 
             {/* Header */}
-            <View style={styles.addPostHeader}>
+            <View style={[styles.addPostHeader, { borderBottomColor: themeColors.border }]}>
               <TouchableOpacity
                 onPress={() => {
                   setShowAddPostModal(false);
@@ -1879,7 +1886,7 @@ export default function CafeProfileScreen() {
                 <Text style={{ fontSize: 18 }}>✕</Text>
               </TouchableOpacity>
 
-              <Text style={styles.addPostTitle}>New Post</Text>
+              <Text style={[styles.addPostTitle, { color: themeColors.text }]}>New Post</Text>
 
               <TouchableOpacity
                 onPress={handleCreatePost}
@@ -1912,7 +1919,7 @@ export default function CafeProfileScreen() {
                     { height: scale(100), marginBottom: scale(12) },
                   ]}
                 >
-                  <Text style={styles.mediaEmptyTitle}>
+                  <Text style={[styles.mediaEmptyTitle, { color: themeColors.text }]}>
                     {selectedMedia.length === 0 ? "Add Photos" : "Add More"}
                   </Text>
                   <Text style={styles.mediaEmptySubtitle}>
@@ -1945,19 +1952,19 @@ export default function CafeProfileScreen() {
 
               {/* CAPTION */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Caption</Text>
+                <Text style={[styles.inputLabel, { color: themeColors.text }]}>Caption</Text>
                 <TextInput
                   placeholder="Write something..."
                   placeholderTextColor="#BBB"
                   value={postCaption}
                   onChangeText={setPostCaption}
                   multiline
-                  style={styles.captionInput}
+                  style={[styles.captionInput, { backgroundColor: themeColors.bg, borderColor: themeColors.border, color: themeColors.text }]}
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Tags</Text>
+                <Text style={[styles.inputLabel, { color: themeColors.text }]}>Tags</Text>
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: scale(8) }}>
                     {TAG_OPTIONS.map((tag) => {
                       const selected = selectedTags.includes(tag);
@@ -1965,9 +1972,9 @@ export default function CafeProfileScreen() {
                       <TouchableOpacity
                         key={tag}
                         onPress={() => toggleTag(tag)}
-                        style={[styles.tagChip, selected && styles.tagChipSelected]}
+                        style={[styles.tagChip, { backgroundColor: themeColors.card, borderColor: themeColors.border }, selected && styles.tagChipSelected]}
                       >
-                    <Text style={[styles.tagChipText, selected && styles.tagChipTextSelected]}>{tag}</Text>
+                    <Text style={[styles.tagChipText, { color: themeColors.textMuted }, selected && styles.tagChipTextSelected]}>{tag}</Text>
                     </TouchableOpacity>
                     );
                   })}
@@ -1992,7 +1999,7 @@ export default function CafeProfileScreen() {
       onRequestClose={() => { setSelectedPost(null); setPreviewIndex(0); }}
     >
       {selectedPost && (
-        <View style={styles.previewSheet}>
+        <View style={[styles.previewSheet, { backgroundColor: themeColors.bg }]}>
           <TouchableOpacity
             style={styles.previewCloseBtn}
             onPress={() => { setSelectedPost(null); setPreviewIndex(0); }}
@@ -2049,13 +2056,13 @@ export default function CafeProfileScreen() {
             ) : null}
 
             {selectedPost.caption ? (
-              <Text style={styles.previewCaption}>{selectedPost.caption}</Text>
+              <Text style={[styles.previewCaption, { color: themeColors.text }]}>{selectedPost.caption}</Text>
             ) : null}
 
             {selectedPost.tags && selectedPost.tags.length > 0 && (
               <View style={styles.previewTagsRow}>
                 {selectedPost.tags.map((tag, i) => (
-                  <View key={`pv-tag-${i}`} style={styles.previewTagChip}>
+                  <View key={`pv-tag-${i}`} style={[styles.previewTagChip, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border }]}>
                     <Text style={styles.previewTagChipText}>{tag}</Text>
                   </View>
                 ))}
@@ -2067,7 +2074,7 @@ export default function CafeProfileScreen() {
     </Modal>
 
       <BottomNav />
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -84,6 +84,11 @@ type FeedPost = Post & {
   mediaType?: "image" | "video" | string;
 };
 
+type PostMedia = {
+  file_url: string;
+  file_type: string;
+};
+
 type UserCoords = {
   lat: number;
   lng: number;
@@ -240,14 +245,15 @@ const Index = () => {
     return String(rec?.display?.cafe_id || rec?.cafe?.id || rec?.cafe_id || "");
   };
 
-  const getPostMediaFromPost = (post: any) => {
-    const mediaList = post?.post_media || post?.media || [];
+  const getPostMediaFromPost = (post: any): PostMedia | null => {
+    const mediaList: any[] = post?.post_media || post?.media || [];
 
-    const validMedia = mediaList.filter((m: any) =>
-      isValidMediaUrl(m?.file_url)
+    const validMedia: PostMedia[] = mediaList.filter((m: any): m is PostMedia =>
+      isValidMediaUrl(m?.file_url) && typeof m?.file_type === 'string'
     );
 
-    return getRandomItem(validMedia);
+    const item = getRandomItem(validMedia);
+    return item;
   };
 
   const buildPostCard = (
@@ -613,7 +619,7 @@ const Index = () => {
         ]}
       >
         <View style={styles.titleRow}>
-          <Text style={styles.title}>CAFEHOP</Text>
+          <Text style={[styles.title, { color: themeColors.text }]}>CAFEHOP</Text>
           <TouchableOpacity
             onPress={() => {
               setHasUnreadNotifications(false);
@@ -624,12 +630,12 @@ const Index = () => {
             <Bell size={scale(22)} color="#D4A373" strokeWidth={2} />
 
             {hasUnreadNotifications && (
-              <View style={styles.notificationDot} />
+              <View style={[styles.notificationDot, { borderColor: themeColors.bg }]} />
             )}
           </TouchableOpacity>
         </View>
 
-        <View style={styles.searchRow}>
+        <View style={[styles.searchRow, { backgroundColor: themeColors.card, borderColor: themeColors.border }] }>
           <Search
             size={scale(18)}
             color="#AAA"
@@ -638,8 +644,8 @@ const Index = () => {
 
           <TextInput
             placeholder="Search cafes..."
-            placeholderTextColor="#AAA"
-            style={styles.searchInput}
+            placeholderTextColor={themeColors.textMuted}
+            style={[styles.searchInput, { color: themeColors.text }]}
             value={search}
             onChangeText={setSearch}
           />
@@ -664,7 +670,7 @@ const Index = () => {
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyText, { color: themeColors.textMuted }]}> 
                 {loading ? "Loading feed..." : "No cafes found."}
               </Text>
             </View>

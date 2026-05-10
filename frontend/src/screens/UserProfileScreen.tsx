@@ -158,7 +158,7 @@ export default function UserProfileScreen() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [commentInput, setCommentInput] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
+
   const [editableName, setEditableName] = useState("");
   const [editableBio, setEditableBio] = useState("");
   const [showAddPost, setShowAddPost] = useState(false);
@@ -574,26 +574,6 @@ export default function UserProfileScreen() {
       },
     };
 
-  const handleSaveProfile = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const parts = editableName.trim().split(" ");
-      const first_name = parts[0] || "";
-      const last_name = parts.slice(1).join(" ") || "";
-
-      await supabase
-        .from("profiles")
-        .update({ first_name, last_name })
-        .eq("id", user.id);
-
-      setProfileName(editableName);
-      setIsEditing(false);
-    } catch (err) {
-      console.error("Error updating name:", err);
-    }
-  };
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
@@ -607,24 +587,15 @@ export default function UserProfileScreen() {
           {/* ── Profile Header ── */}
           <View style={styles.header}>
             <View style={styles.avatar}>
-              {isCafe ? <Store size={scale(44)} color="#888" /> : <User size={scale(44)} color="#888" />}
+              {isCafe ? <Store size={scale(44)} color={themeColors.textMuted} /> : <User size={scale(44)} color={themeColors.textMuted} />}
             </View>
 
-            {isEditing ? (
-              <>
-                <TextInput style={styles.editInput} value={editableName} onChangeText={setEditableName} placeholder="Name" />
-                <TextInput style={styles.editInput} value={editableBio} onChangeText={setEditableBio} placeholder="Bio" multiline />
-              </>
-            ) : (
-              <>
-                <Text style={styles.name}>{editableName}</Text>
-                <Text style={styles.bio}>{editableBio || bio}</Text>
-              </>
-            )}
+            <Text style={[styles.name, { color: themeColors.text }]}>{editableName}</Text>
+            <Text style={styles.bio}>{editableBio || bio}</Text>
 
             <View style={styles.statsRow}>
               <View style={styles.stat}>
-                <Text style={styles.statNumber}>{posts.length}</Text>
+                <Text style={[styles.statNumber, { color: themeColors.text }]}>{posts.length}</Text>
                 <Text style={styles.statLabel}>Posts</Text>
               </View>
 
@@ -656,19 +627,6 @@ export default function UserProfileScreen() {
 
             {isOwnProfile && (
               <View style={styles.buttonRow}>
-              <Button
-                style={{ flex: 1, marginRight: scale(8) }}
-                onPress={() => {
-                  if (isEditing) {
-                    handleSaveProfile();
-                  } else {
-                    setIsEditing(true);
-                  }
-                }}
-              >
-                <Text>{isEditing ? "Save" : "Edit Profile"}</Text>
-              </Button>
-
               <Button style={{ flex: 1 }} onPress={() => setShowAddPost(true)}>
                 <Text>Add Post</Text>
               </Button>
@@ -737,7 +695,7 @@ export default function UserProfileScreen() {
             {/* Reviews */}
             {activeTab === "reviews" && (
   <View style={styles.reviewsContainer}>
-    <Text style={styles.sectionTitle}>
+    <Text style={[styles.sectionTitle, { color: themeColors.text }]}> 
       {isCafe ? "Customer Reviews" : "Reviews"}
     </Text>
 
@@ -810,9 +768,9 @@ export default function UserProfileScreen() {
       {/* ── Add Post Modal ── */}
       <Modal visible={showAddPost} animationType="slide" presentationStyle="pageSheet">
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <View style={styles.addPostModal}>
+          <View style={[styles.addPostModal, { backgroundColor: themeColors.bg }]}>
             {/* Header */}
-            <View style={styles.addPostHeader}>
+            <View style={[styles.addPostHeader, { borderBottomColor: themeColors.border }]}>
               <TouchableOpacity
                 onPress={() => {
                   setShowAddPost(false);
@@ -823,9 +781,9 @@ export default function UserProfileScreen() {
                   setSelectedTags([]);
                 }}
               >
-                <X size={scale(22)} color="#333" />
+                <X size={scale(22)} color={themeColors.text} />
               </TouchableOpacity>
-              <Text style={styles.addPostTitle}>New Post</Text>
+              <Text style={[styles.addPostTitle, { color: themeColors.text }]}>New Post</Text>
               <TouchableOpacity
                 onPress={handleCreatePost}
                 disabled={isPosting || selectedMedia.length === 0 || !selectedCafeId}
@@ -843,10 +801,10 @@ export default function UserProfileScreen() {
 
               {/* Media area */}
               {selectedMedia.length === 0 ? (
-                <TouchableOpacity onPress={pickMedia} style={styles.mediaEmptyBox}>
+                <TouchableOpacity onPress={pickMedia} style={[styles.mediaEmptyBox, { borderColor: themeColors.border }]}>
                   <Camera size={scale(36)} color="#D4A373" />
-                  <Text style={styles.mediaEmptyTitle}>Add Photos or Videos</Text>
-                  <Text style={styles.mediaEmptySubtitle}>Tap to select up to 5 files</Text>
+                  <Text style={[styles.mediaEmptyTitle, { color: themeColors.text }]}>Add Photos or Videos</Text>
+                  <Text style={[styles.mediaEmptySubtitle, { color: themeColors.textMuted }]}>Tap to select up to 5 files</Text>
                 </TouchableOpacity>
               ) : (
                 <View style={{ marginBottom: scale(16) }}>
@@ -880,49 +838,49 @@ export default function UserProfileScreen() {
 
               {/* Caption */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Caption</Text>
+                <Text style={[styles.inputLabel, { color: themeColors.text }]}>Caption</Text>
                 <TextInput
                   placeholder="Write something about this moment…"
-                  placeholderTextColor="#BBB"
+                  placeholderTextColor={themeColors.textMuted}
                   value={caption}
                   onChangeText={setCaption}
                   multiline
-                  style={styles.captionInput}
+                  style={[styles.captionInput, { backgroundColor: themeColors.card, borderColor: themeColors.border, color: themeColors.text }]}
                 />
               </View>
 
               {/* Cafe Selector */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Cafe</Text>
+                <Text style={[styles.inputLabel, { color: themeColors.text }]}>Cafe</Text>
                 <TextInput
                   placeholder="Search for a cafe…"
-                  placeholderTextColor="#BBB"
+                  placeholderTextColor={themeColors.textMuted}
                   value={selectedCafeId ? cafes.find((c) => c.id === selectedCafeId)?.name || "" : cafeQuery}
                   onChangeText={(text) => { setCafeQuery(text); setSelectedCafeId(null); }}
-                  style={styles.cafeSearchInput}
+                  style={[styles.cafeSearchInput, { backgroundColor: themeColors.card, borderColor: themeColors.border, color: themeColors.text }]}
                 />
                 {!selectedCafeId && filteredCafes.length > 0 && (
-                  <View style={styles.cafeDropdown}>
+                  <View style={[styles.cafeDropdown, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
                     {filteredCafes.slice(0, 5).map((cafe) => (
                       <TouchableOpacity
                         key={cafe.id}
                         onPress={() => { setSelectedCafeId(cafe.id); setCafeQuery(cafe.name); setFilteredCafes([]); }}
-                        style={styles.cafeDropdownItem}
+                        style={[styles.cafeDropdownItem, { borderBottomColor: themeColors.border }]}
                       >
                         <MapPin size={scale(13)} color="#D4A373" />
-                        <Text style={styles.cafeDropdownText}>{cafe.name}</Text>
+                        <Text style={[styles.cafeDropdownText, { color: themeColors.text }]}>{cafe.name}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
                 {cafeQuery.length > 0 && !selectedCafeId && filteredCafes.length === 0 && (
-                  <Text style={{ color: "#BBB", fontSize: moderateScale(12), marginTop: 4 }}>No cafes found</Text>
+                  <Text style={{ color: themeColors.textMuted, fontSize: moderateScale(12), marginTop: 4 }}>No cafes found</Text>
                 )}
               </View>
 
               {/* Tags */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Tags</Text>
+                <Text style={[styles.inputLabel, { color: themeColors.text }]}>Tags</Text>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: scale(8) }}>
                   {TAG_OPTIONS.map((tag) => {
                     const selected = selectedTags.includes(tag);
@@ -930,9 +888,9 @@ export default function UserProfileScreen() {
                       <TouchableOpacity
                         key={tag}
                         onPress={() => toggleTag(tag)}
-                        style={[styles.tagChip, selected && styles.tagChipSelected]}
+                        style={[styles.tagChip, { backgroundColor: themeColors.card, borderColor: themeColors.border }, selected && styles.tagChipSelected]}
                       >
-                        <Text style={[styles.tagChipText, selected && styles.tagChipTextSelected]}>{tag}</Text>
+                        <Text style={[styles.tagChipText, { color: themeColors.textMuted }, selected && styles.tagChipTextSelected]}>{tag}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -948,11 +906,11 @@ export default function UserProfileScreen() {
       <Modal visible={!!selectedPost} animationType="slide" presentationStyle="pageSheet">
         {selectedPost && (
           <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-            <View style={styles.detailModal}>
+            <View style={[styles.detailModal, { backgroundColor: themeColors.bg }]}>
 
               {/* Close button – top right, floating */}
-              <TouchableOpacity style={styles.detailCloseBtn} onPress={() => { setSelectedPost(null); setCommentInput(""); }}>
-                <X size={scale(18)} color="#333" />
+              <TouchableOpacity style={[styles.detailCloseBtn, { backgroundColor: themeColors.card }]} onPress={() => { setSelectedPost(null); setCommentInput(""); }}>
+                <X size={scale(18)} color={themeColors.text} />
               </TouchableOpacity>
 
               <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
@@ -1002,17 +960,17 @@ export default function UserProfileScreen() {
                   <TouchableOpacity style={styles.actionBtn} onPress={() => handleLike(selectedPost.id)}>
                     <Heart
                       size={scale(24)}
-                      color={selectedPost.liked ? "#E0635A" : "#222"}
+                      color={selectedPost.liked ? "#E0635A" : themeColors.text}
                       fill={selectedPost.liked ? "#E0635A" : "transparent"}
                       strokeWidth={selectedPost.liked ? 0 : 2}
                     />
                   </TouchableOpacity>
-                  <Text style={styles.likeCount}>{selectedPost.likes}</Text>
+                  <Text style={[styles.likeCount, { color: themeColors.text }]}>{selectedPost.likes}</Text>
                   <View style={{ flex: 1 }} />
                   <TouchableOpacity style={styles.actionBtn} onPress={() => handleSave(selectedPost.id)}>
                     <Bookmark
                       size={scale(24)}
-                      color={selectedPost.saved ? "#D4A373" : "#222"}
+                      color={selectedPost.saved ? "#D4A373" : themeColors.text}
                       fill={selectedPost.saved ? "#D4A373" : "transparent"}
                       strokeWidth={selectedPost.saved ? 0 : 2}
                     />
@@ -1021,14 +979,14 @@ export default function UserProfileScreen() {
 
                 {/* ── Caption ── */}
                 {selectedPost.caption ? (
-                  <Text style={styles.detailCaption}>{selectedPost.caption}</Text>
+                  <Text style={[styles.detailCaption, { color: themeColors.text }]}>{selectedPost.caption}</Text>
                 ) : null}
 
                 {/* ── Comments ── */}
                 {selectedPost.comments.length > 0 && (
-                  <View style={styles.commentsSection}>
+                  <View style={[styles.commentsSection, { borderTopColor: themeColors.border }]}>
                     {selectedPost.comments.map((c, i) => (
-                      <Text key={i} style={styles.commentText}>{c.text}</Text>
+                      <Text key={i} style={[styles.commentText, { color: themeColors.textMuted }]}>{c.text}</Text>
                     ))}
                   </View>
                 )}
@@ -1040,7 +998,7 @@ export default function UserProfileScreen() {
                     <View
                       key={i}
                       style={{
-                        backgroundColor: "#EEE",
+                        backgroundColor: themeColors.iconBg,
                         paddingHorizontal: 10,
                         paddingVertical: 4,
                         borderRadius: 12,
@@ -1048,7 +1006,7 @@ export default function UserProfileScreen() {
                         marginBottom: 6,
                       }}
                     >
-                      <Text style={{ fontSize: 12, color: "#555" }}>{tag}</Text>
+                      <Text style={{ fontSize: 12, color: themeColors.textMuted }}>{tag}</Text>
                     </View>
                   ))}
                 </View>
@@ -1056,13 +1014,13 @@ export default function UserProfileScreen() {
               </ScrollView>
 
               {/* ── Comment input ── */}
-              <View style={styles.commentBar}>
+              <View style={[styles.commentBar, { backgroundColor: themeColors.card, borderTopColor: themeColors.border }]}>
                 <TextInput
                   placeholder="Add a comment…"
-                  placeholderTextColor="#AAA"
+                  placeholderTextColor={themeColors.textMuted}
                   value={commentInput}
                   onChangeText={setCommentInput}
-                  style={styles.commentInput}
+                  style={[styles.commentInput, { backgroundColor: themeColors.iconBg, color: themeColors.text }]}
                   returnKeyType="send"
                   onSubmitEditing={handleAddComment}
                 />
@@ -1093,7 +1051,7 @@ export default function UserProfileScreen() {
           <View
             style={{
               width: 260,
-              backgroundColor: "#FFF",
+              backgroundColor: themeColors.card,
               borderRadius: 14,
               paddingVertical: 10,
             }}
@@ -1113,7 +1071,7 @@ export default function UserProfileScreen() {
               </Text>
             </TouchableOpacity>
 
-            <View style={{ height: 1, backgroundColor: "#EEE" }} />
+            <View style={{ height: 1, backgroundColor: themeColors.border }} />
 
             <TouchableOpacity
               onPress={() => setShowMenu(false)}
@@ -1122,7 +1080,7 @@ export default function UserProfileScreen() {
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: "#333" }}>Cancel</Text>
+              <Text style={{ color: themeColors.textMuted }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

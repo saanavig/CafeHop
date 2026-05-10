@@ -23,6 +23,8 @@ import RewardsCard from "../components/ui/RewardsCard";
 import { supabase } from "../api/supabaseClient";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "../context/ThemeContext";
 
 interface Reward {
   id: string;
@@ -84,8 +86,9 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL;
 // ];
 
 // ─── Component ───────────────────────────────────────────────────────────────
-export default function RewardsScreen({ navigation }) {
+export default function RewardsScreen({ navigation }: { navigation: any }) {
   const { role } = useRole();
+  const { colors: themeColors } = useTheme();
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
   // const [earnedPoints, setEarnedPoints] = useState(0);
@@ -698,16 +701,16 @@ export default function RewardsScreen({ navigation }) {
 // ── Cafe owner view ─────────────────────────────────────────────────────────
 if (role === "cafe") {
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
       <Animated.ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { backgroundColor: themeColors.bg }]}
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
       >
         <View style={[styles.content, { width: contentWidth }]}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Reward Manager</Text>
-            <Text style={styles.subtitle}>Create and manage cafe rewards</Text>
+            <Text style={[styles.title, { color: themeColors.text }]}>Reward Manager</Text>
+            <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>Create and manage cafe rewards</Text>
           </View>
 
           {/* QR Scanner Button */}
@@ -717,26 +720,26 @@ if (role === "cafe") {
           />
 
           {/* Stats row */}
-          <View style={[styles.cafeStatsRow, { marginTop: scale(16) }]}>
+          <View style={[styles.cafeStatsRow, { marginTop: scale(16), backgroundColor: themeColors.card, borderColor: themeColors.border }]}> 
             <View style={styles.cafeStat}>
-              <Text style={styles.cafeStatNumber}>
+              <Text style={[styles.cafeStatNumber, { color: themeColors.text }]}>
                 {analytics.points_issued.toLocaleString()}
               </Text>
-              <Text style={styles.cafeStatLabel}>Points Issued</Text>
+              <Text style={[styles.cafeStatLabel, { color: themeColors.textMuted }]}>Points Issued</Text>
             </View>
             <View style={styles.cafeStatDivider} />
             <View style={styles.cafeStat}>
-              <Text style={styles.cafeStatNumber}>
+              <Text style={[styles.cafeStatNumber, { color: themeColors.text }]}>
                 {analytics.redemptions.toLocaleString()}
               </Text>
-              <Text style={styles.cafeStatLabel}>Redemptions</Text>
+              <Text style={[styles.cafeStatLabel, { color: themeColors.textMuted }]}>Redemptions</Text>
             </View>
             <View style={styles.cafeStatDivider} />
             <View style={styles.cafeStat}>
-              <Text style={styles.cafeStatNumber}>
+              <Text style={[styles.cafeStatNumber, { color: themeColors.text }]}>
                 {analytics.active_today}
               </Text>
-              <Text style={styles.cafeStatLabel}>Active Today</Text>
+              <Text style={[styles.cafeStatLabel, { color: themeColors.textMuted }]}>Active Today</Text>
             </View>
           </View>
 
@@ -750,7 +753,7 @@ if (role === "cafe") {
                 marginBottom: 16,
               }}
             >
-              <Text style={styles.sectionTitle}>Reward Catalog</Text>
+<Text style={[styles.sectionTitle, { color: themeColors.text }]}>Reward Catalog</Text>
 
               <TouchableOpacity
                 style={styles.addBtn}
@@ -777,7 +780,7 @@ if (role === "cafe") {
                       marginBottom: 4,
                     }}
                   >
-                    <Text style={styles.programName}>{prog.title}</Text>
+                    <Text style={[styles.programName, { color: themeColors.text }]}>{prog.title}</Text>
 
                     <View
                       style={[
@@ -800,13 +803,13 @@ if (role === "cafe") {
                     </View>
                   </View>
 
-                  <Text style={styles.programDesc}>{prog.description || "Cafe Reward"}</Text>
+                  <Text style={[styles.programDesc, { color: themeColors.textMuted }]}>{prog.description || "Cafe Reward"}</Text>
 
                   <View style={{ flexDirection: "row", gap: 16, marginTop: 8 }}>
-                    <Text style={styles.programStat}>
+                    <Text style={[styles.programStat, { color: themeColors.textMuted }]}> 
                       {prog.points_required} pts required
                     </Text>
-                    <Text style={styles.programStat}>
+                    <Text style={[styles.programStat, { color: themeColors.textMuted }]}> 
                       {prog.active ? "Active reward" : "Paused reward"}
                     </Text>
                   </View>
@@ -859,17 +862,17 @@ if (role === "cafe") {
 
           {/* Recent redemptions */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Redemptions</Text>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Recent Redemptions</Text>
 
             {recentRedemptions.map((r, i) => (
-              <View key={i} style={styles.redemptionRow}>
+              <View key={i} style={[styles.redemptionRow, { borderBottomColor: themeColors.border }]}>
                 <View style={styles.redemptionAvatar}>
                   <Text style={{ fontSize: 16 }}>☕</Text>
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.redemptionCustomer}>{r.customer}</Text>
-                  <Text style={styles.redemptionReward}>{r.reward}</Text>
+                  <Text style={[styles.redemptionCustomer, { color: themeColors.text }]}>{r.customer}</Text>
+                  <Text style={[styles.redemptionReward, { color: themeColors.textMuted }]}>{r.reward}</Text>
                 </View>
 
                 <View style={{ alignItems: "flex-end" }}>
@@ -887,31 +890,34 @@ if (role === "cafe") {
       {/* New Program Modal */}
       <Modal visible={showNewProgram} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}> 
             <Text style={styles.modalTitle}>
               {editingRewardId ? "Edit Reward" : "New Reward Program"}
             </Text>
   
             <TextInput
               placeholder="Program name"
+              placeholderTextColor={themeColors.textMuted}
               value={newProgName}
               onChangeText={setNewProgName}
-              style={styles.newProgInput}
+              style={[styles.newProgInput, { backgroundColor: themeColors.bg, borderColor: themeColors.border, color: themeColors.text }]}
             />
 
             <TextInput
               placeholder="Description"
+              placeholderTextColor={themeColors.textMuted}
               value={newProgDesc}
               onChangeText={setNewProgDesc}
-              style={styles.newProgInput}
+              style={[styles.newProgInput, { backgroundColor: themeColors.bg, borderColor: themeColors.border, color: themeColors.text }]}
               multiline
             />
 
             <TextInput
               placeholder="Points Required"
+              placeholderTextColor={themeColors.textMuted}
               value={newProgPoints}
               onChangeText={setNewProgPoints}
-              style={styles.newProgInput}
+              style={[styles.newProgInput, { backgroundColor: themeColors.bg, borderColor: themeColors.border, color: themeColors.text }]}
               keyboardType="numeric"
             />
 
@@ -932,7 +938,7 @@ if (role === "cafe") {
                 style={[styles.closeBtn, { flex: 1, alignItems: "center" }]}
                 onPress={() => setShowNewProgram(false)}
               >
-                <Text style={{ color: "#999", fontWeight: "500" }}>
+                <Text style={{ color: themeColors.textMuted, fontWeight: "500" }}>
                   Cancel
                 </Text>
               </Pressable>
@@ -947,12 +953,12 @@ if (role === "cafe") {
         animationType="fade"
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.confirmModalCard}>
-            <Text style={styles.modalTitle}>
+          <View style={[styles.confirmModalCard, { backgroundColor: themeColors.card }]}>
+            <Text style={[styles.modalTitle, { color: themeColors.text }]}> 
               Delete Reward?
             </Text>
 
-            <Text style={styles.confirmText}>
+            <Text style={[styles.confirmText, { color: themeColors.text }]}> 
               Are you sure you want to delete{" "}
               <Text style={{ fontWeight: "700" }}>
                 {deleteRewardName}
@@ -966,13 +972,13 @@ if (role === "cafe") {
 
             <View style={styles.confirmBtnRow}>
               <Pressable
-                style={styles.cancelDeleteBtn}
+                style={[styles.cancelDeleteBtn, { backgroundColor: themeColors.iconBg }]}
                 onPress={() => {
                   setDeleteRewardId(null);
                   setDeleteRewardName("");
                 }}
               >
-                <Text style={styles.cancelDeleteText}>
+                <Text style={[styles.cancelDeleteText, { color: themeColors.text }]}>
                   Cancel
                 </Text>
               </Pressable>
@@ -996,22 +1002,22 @@ if (role === "cafe") {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
   // ── Customer view ───────────────────────────────────────────────────────────
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
       <Animated.ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { backgroundColor: themeColors.bg }]}
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
       >
         <View style={[styles.content, { width: contentWidth }]}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Rewards</Text>
-            <Text style={styles.subtitle}>Earn & redeem across cafes</Text>
+            <Text style={[styles.title, { color: themeColors.text }]}>Rewards</Text>
+            <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>Earn & redeem across cafes</Text>
           </View>
 
           {/* Rewards Card */}
@@ -1045,36 +1051,36 @@ if (role === "cafe") {
 
           {/* ─── SELECT CAFE (CUSTOMER ONLY) ─── */}
           <TouchableOpacity
-              style={styles.cafeSelector}
+              style={[styles.cafeSelector, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}
               onPress={() => setShowCafePicker(true)}
             >
 
-            <Text style={styles.cafeSelectorText}>
+            <Text style={[styles.cafeSelectorText, { color: themeColors.text }]}> 
               {selectedCafe ? selectedCafe.name : "Select a cafe"}
             </Text>
           </TouchableOpacity>
 
           {/* Rewards List */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Available Rewards</Text>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Available Rewards</Text>
 
             {!selectedCafe ? (
-              <Text style={{ color: "#777" }}>
+              <Text style={{ color: themeColors.textMuted }}>
                 Select a cafe to view rewards
               </Text>
             ) : catalogRewards.length === 0 ? (
-              <Text style={{ color: "#777" }}>
+              <Text style={{ color: themeColors.textMuted }}>
                 No rewards available for this cafe.
               </Text>
             ) : (
               catalogRewards.map((reward) => {
               const canAfford = points >= reward.points;
               return (
-                <View key={reward.id} style={styles.rewardCard}>
+                <View key={reward.id} style={[styles.rewardCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}> 
                   <Image source={reward.image} style={styles.rewardImage} />
                   <View style={styles.rewardInfo}>
-                    <Text style={styles.rewardTitle}>{reward.title}</Text>
-                    <Text style={styles.rewardCafe}>{reward.cafe}</Text>
+                    <Text style={[styles.rewardTitle, { color: themeColors.text }]}>{reward.title}</Text>
+                    <Text style={[styles.rewardCafe, { color: themeColors.textMuted }]}>{reward.cafe}</Text>
                     <Text style={styles.rewardPoints}>{reward.points} pts</Text>
                   </View>
                   <Button
@@ -1096,11 +1102,11 @@ if (role === "cafe") {
 
           {/* Recent Redemptions */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Redemptions</Text>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Recent Redemptions</Text>
 
             {recentRedemptions.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>
+              <View style={[styles.emptyCard, { backgroundColor: themeColors.card }]}>
+                <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>
                   No rewards redeemed yet
                 </Text>
               </View>
@@ -1108,7 +1114,7 @@ if (role === "cafe") {
               recentRedemptions.map((item, index) => (
                 <View
                   key={item.id || index}
-                  style={styles.redemptionCard}
+                  style={[styles.redemptionCard, { backgroundColor: themeColors.card }]}
                 >
                   <View style={styles.redemptionLeft}>
                     <Image
@@ -1117,15 +1123,15 @@ if (role === "cafe") {
                     />
 
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.rewardName}>
+                      <Text style={[styles.rewardName, { color: themeColors.text }]}>
                         {item.reward_name || item.reward || "Reward"}
                       </Text>
 
-                      <Text style={styles.cafeName}>
+                      <Text style={[styles.cafeName, { color: themeColors.textMuted }]}>
                         {item.cafe_name || item.cafe || "Cafe"}
                       </Text>
 
-                      <Text style={styles.redemptionDate}>
+                      <Text style={[styles.redemptionDate, { color: themeColors.textMuted }]}>
                         Redeemed on{" "}
                         {item.redeemed_at || item.created_at || ""}
                       </Text>
@@ -1145,23 +1151,23 @@ if (role === "cafe") {
       {/* Redeem Modal */}
       <Modal visible={!!selectedReward || showQR} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, { backgroundColor: themeColors.card }]}>
 
             {/* ─── HEADER ─── */}
             <View style={{ alignItems: "center", marginBottom: 16 }}>
-              <Text style={styles.modalTitle}>Show this to cafe</Text>
-              <Text style={styles.modalSubtitle}>
+              <Text style={[styles.modalTitle, { color: themeColors.text }]}>Show this to cafe</Text>
+              <Text style={[styles.modalSubtitle, { color: themeColors.textMuted }]}>
                 Present this QR code to redeem your reward
               </Text>
             </View>
 
             {/* ─── REWARD INFO ─── */}
             {selectedReward && (
-              <View style={styles.rewardPreview}>
+              <View style={[styles.rewardPreview, { backgroundColor: themeColors.iconBg }]}>
                 <Image source={selectedReward.image} style={styles.rewardPreviewImage} />
                 <View>
-                  <Text style={styles.rewardPreviewTitle}>{selectedReward.title}</Text>
-                  <Text style={styles.rewardPreviewCafe}>{selectedReward.cafe}</Text>
+                  <Text style={[styles.rewardPreviewTitle, { color: themeColors.text }]}>{selectedReward.title}</Text>
+                  <Text style={[styles.rewardPreviewCafe, { color: themeColors.textMuted }]}>{selectedReward.cafe}</Text>
                   <Text style={styles.rewardPreviewPoints}>{selectedReward.points} pts</Text>
                 </View>
               </View>
@@ -1213,7 +1219,7 @@ if (role === "cafe") {
                 setShowQR(false);
               }}
             >
-              <Text style={{ color: "#999" }}>Close</Text>
+              <Text style={{ color: themeColors.textMuted }}>Close</Text>
             </Pressable>
 
           </View>
@@ -1222,16 +1228,17 @@ if (role === "cafe") {
 
       <Modal visible={showCafePicker} transparent animationType="fade">
               <View style={styles.modalOverlay}>
-                <View style={styles.modalCard}>
+                <View style={[styles.modalCard, { backgroundColor: themeColors.card }]}>
 
-                  <Text style={styles.modalTitle}>Select a Cafe</Text>
+                  <Text style={[styles.modalTitle, { color: themeColors.text }]}>Select a Cafe</Text>
 
                   <TextInput
                     ref={searchRef}
                     placeholder="Search cafes..."
+                    placeholderTextColor={themeColors.textMuted}
                     value={cafeSearch}
                     onChangeText={setCafeSearch}
-                    style={styles.searchInput}
+                    style={[styles.searchInput, { backgroundColor: themeColors.bg, borderColor: themeColors.border, color: themeColors.text }]}
                   />
 
                   <ScrollView style={{ maxHeight: 300 }}>
@@ -1245,12 +1252,12 @@ if (role === "cafe") {
                           setCafeSearch("");
                         }}
                       >
-                        <Text style={styles.cafeOptionText}>{cafe.name}</Text>
+                        <Text style={[styles.cafeOptionText, { color: themeColors.text }]}>{cafe.name}</Text>
                       </TouchableOpacity>
                     ))}
 
                     {filteredCafes.length === 0 && (
-                      <Text style={{ color: "#777", textAlign: "center", marginTop: 20 }}>
+                      <Text style={{ color: themeColors.textMuted, textAlign: "center", marginTop: 20 }}>
                         No cafes found
                       </Text>
                     )}
@@ -1263,7 +1270,7 @@ if (role === "cafe") {
                       setCafeSearch("");
                     }}
                   >
-                    <Text style={{ color: "#999" }}>Cancel</Text>
+                    <Text style={{ color: themeColors.textMuted }}>Cancel</Text>
                   </Pressable>
 
                   {/* {cafeSearch.length > 0 && (
@@ -1290,7 +1297,7 @@ if (role === "cafe") {
           <Text style={styles.toastText}>{toast.message}</Text>
         </Animated.View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

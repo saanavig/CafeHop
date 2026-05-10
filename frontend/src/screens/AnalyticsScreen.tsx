@@ -3,7 +3,6 @@ import {
   Animated,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -20,7 +19,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { deviceWidth, moderateScale, scale } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../api/supabaseClient";
+import { useTheme } from "../context/ThemeContext";
 
 const contentWidth = deviceWidth - 40;
 
@@ -60,6 +61,7 @@ const statsByPeriod: Record<Period, { visits: number; revenue: string; redeemed:
 };
 
 export default function AnalyticsScreen() {
+  const { colors: themeColors } = useTheme();
   const [period, setPeriod] = useState<Period>("Today");
   // const stats = statsByPeriod[period];
   // const maxBar = Math.max(...PEAK_HOURS.map((h) => h.value));
@@ -138,7 +140,7 @@ export default function AnalyticsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
       <Animated.ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -156,8 +158,8 @@ export default function AnalyticsScreen() {
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Analytics</Text>
-            <Text style={styles.subtitle}>Your cafe at a glance</Text>
+            <Text style={[styles.title, { color: themeColors.text }]}>Analytics</Text>
+            <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>Your cafe at a glance</Text>
           </View>
 
           {/* Period Toggle */}
@@ -187,55 +189,55 @@ export default function AnalyticsScreen() {
 
           {/* Stats Grid */}
           <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
               <View style={[styles.statIcon, { backgroundColor: "#FFF8E1" }]}>
                 <DollarSign size={20} color="#FFA000" />
               </View>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statValue, { color: themeColors.text }]}>
                 ${analytics?.aov?.toFixed(2) ?? "0.00"}
               </Text>
-              <Text style={styles.statLabel}>Avg Order</Text>
+              <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Avg Order</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
               <View style={[styles.statIcon, { backgroundColor: "#FFF0E6" }]}>
                 <Users size={20} color="#D4A373" />
               </View>
-              <Text style={styles.statValue}> {analytics?.visits ?? 0}</Text>
-              <Text style={styles.statLabel}>Visits</Text>
+              <Text style={[styles.statValue, { color: themeColors.text }]}> {analytics?.visits ?? 0}</Text>
+              <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Visits</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
               <View style={[styles.statIcon, { backgroundColor: "#E8F5E9" }]}>
                 <DollarSign size={20} color="#4CAF50" />
               </View>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statValue, { color: themeColors.text }]}>
                 ${(analytics?.revenue ?? 0).toFixed(2)}
               </Text>
-              <Text style={styles.statLabel}>Revenue</Text>
+              <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Revenue</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
               <View style={[styles.statIcon, { backgroundColor: "#FCE4EC" }]}>
                 <Gift size={20} color="#E91E63" />
               </View>
-              <Text style={styles.statValue}>{analytics?.redeemed ?? 0}</Text>
-              <Text style={styles.statLabel}>Redeemed</Text>
+              <Text style={[styles.statValue, { color: themeColors.text }]}>{analytics?.redeemed ?? 0}</Text>
+              <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Redeemed</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
               <View style={[styles.statIcon, { backgroundColor: "#E3F2FD" }]}>
                 <TrendingUp size={20} color="#2196F3" />
               </View>
-              <Text style={styles.statValue}>{analytics?.new_customers ?? 0}</Text>
-              <Text style={styles.statLabel}>Unique Customers</Text>
+              <Text style={[styles.statValue, { color: themeColors.text }]}>{analytics?.new_customers ?? 0}</Text>
+              <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Unique Customers</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
               <View style={[styles.statIcon, { backgroundColor: "#E8F5E9" }]}>
                 <Users size={20} color="#4CAF50" />
               </View>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statValue, { color: themeColors.text }]}>
                 {analytics?.repeat_rate != null
                 ? `${(analytics.repeat_rate * 100).toFixed(0)}%`
                 : "0%"}
               </Text>
-              <Text style={styles.statLabel}>Returning</Text>
+              <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Returning</Text>
             </View>
           </View>
 
@@ -259,7 +261,7 @@ export default function AnalyticsScreen() {
           {loading && (
             <View style={styles.loadingState}>
               <ActivityIndicator size="small" color="#D4A373" />
-              <Text style={styles.loadingText}>Loading analytics…</Text>
+              <Text style={[styles.loadingText, { color: themeColors.textMuted }]}>Loading analytics…</Text>
             </View>
           )}
 
@@ -268,12 +270,12 @@ export default function AnalyticsScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Clock size={16} color="#D4A373" />
-              <Text style={styles.sectionTitle}>Peak Hours</Text>
+              <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Peak Hours</Text>
             </View>
-            <View style={styles.chartContainer}>
+            <View style={[styles.chartContainer, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
               {peakHours.length === 0 ? (
                 <View style={styles.chartEmpty}>
-                  <Text style={styles.emptyText}>No data yet</Text>
+                  <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>No data yet</Text>
                 </View>
               ) : peakHours.map((hour) => (
                 <View key={hour.hour} style={styles.barGroup}>
@@ -286,7 +288,7 @@ export default function AnalyticsScreen() {
                       ]}
                     />
                   </View>
-                  <Text style={styles.barLabel}>
+                  <Text style={[styles.barLabel, { color: themeColors.textMuted }]}>
                     {formatHour(hour.hour)}
                   </Text>
                 </View>
@@ -300,21 +302,21 @@ export default function AnalyticsScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Coffee size={16} color="#D4A373" />
-              <Text style={styles.sectionTitle}>Recent Visitors</Text>
+              <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Recent Visitors</Text>
             </View>
             <View style={styles.visitorsList}>
               {(analytics?.recent_visitors || []).length === 0 ? (
-                <View style={styles.emptyVisitors}>
-                  <Text style={styles.emptyText}>No recent visitors yet</Text>
+                <View style={[styles.emptyVisitors, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+                  <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>No recent visitors yet</Text>
                 </View>
               ) : (analytics?.recent_visitors || []).map((v, i) => (
-                <View key={i} style={styles.visitorRow}>
+                <View key={i} style={[styles.visitorRow, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
                   <View style={styles.visitorAvatar}>
                     <Text style={styles.visitorInitial}>{v.name[0]}</Text>
                   </View>
                   <View style={styles.visitorInfo}>
-                    <Text style={styles.visitorName}>{v.name}</Text>
-                    <Text style={styles.visitorTime}>{v.time}</Text>
+                    <Text style={[styles.visitorName, { color: themeColors.text }]}>{v.name}</Text>
+                    <Text style={[styles.visitorTime, { color: themeColors.textMuted }]}>{v.time}</Text>
                   </View>
                   <View style={styles.ptsBadge}>
                     <Text style={styles.ptsText}>+{v.pts ?? 0} pts</Text>
@@ -326,33 +328,33 @@ export default function AnalyticsScreen() {
           )}
 
           {/* Loyalty Summary */}
-          <View style={styles.loyaltyCard}>
-            <Text style={styles.loyaltyTitle}>Loyalty Program</Text>
+          <View style={[styles.loyaltyCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+            <Text style={[styles.loyaltyTitle, { color: themeColors.text }]}>Loyalty Program</Text>
 
             <View style={styles.loyaltyRow}>
               <View style={styles.loyaltyStat}>
                 <Text style={styles.loyaltyValue}>
                   {(analytics?.loyalty?.total_points_given ?? 0).toLocaleString()}
                 </Text>
-                <Text style={styles.loyaltyLabel}>Total Pts Given</Text>
+                <Text style={[styles.loyaltyLabel, { color: themeColors.textMuted }]}>Total Pts Given</Text>
               </View>
 
-              <View style={styles.loyaltyDivider} />
+              <View style={[styles.loyaltyDivider, { backgroundColor: themeColors.border }]} />
 
               <View style={styles.loyaltyStat}>
                 <Text style={styles.loyaltyValue}>
                   {(analytics?.loyalty?.rewards_redeemed ?? 0).toLocaleString()}
                 </Text>
-                <Text style={styles.loyaltyLabel}>Rewards Redeemed</Text>
+                <Text style={[styles.loyaltyLabel, { color: themeColors.textMuted }]}>Rewards Redeemed</Text>
               </View>
 
-              <View style={styles.loyaltyDivider} />
+              <View style={[styles.loyaltyDivider, { backgroundColor: themeColors.border }]} />
 
               <View style={styles.loyaltyStat}>
                 <Text style={styles.loyaltyValue}>
                   {Math.round((analytics?.loyalty?.return_rate ?? 0) * 100)}%
                 </Text>
-                <Text style={styles.loyaltyLabel}>Return Rate</Text>
+                <Text style={[styles.loyaltyLabel, { color: themeColors.textMuted }]}>Return Rate</Text>
               </View>
             </View>
           </View>
@@ -360,7 +362,7 @@ export default function AnalyticsScreen() {
         </View>
       </Animated.ScrollView>
       <BottomNav />
-    </View>
+    </SafeAreaView>
   );
 }
 

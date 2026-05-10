@@ -21,6 +21,7 @@ import { Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
+import { useTheme } from "../context/ThemeContext";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -38,6 +39,7 @@ const defaultHours: Record<string, DayHours> = Object.fromEntries(
 
 export default function CafeEditScreen() {
   const navigation = useNavigation<any>();
+  const { colors: themeColors } = useTheme();
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
 
@@ -381,33 +383,33 @@ export default function CafeEditScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F7F3F0" }}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: themeColors.bg }}>
         <ActivityIndicator size="small" color="#D4A373" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView edges={["top"]} style={styles.container}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <ArrowLeft size={24} color="#333" />
+            <ArrowLeft size={24} color={themeColors.text} />
           </Pressable>
-          <Text style={styles.headerTitle}>Edit Cafe Profile</Text>
+          <Text style={[styles.headerTitle, { color: themeColors.text }]}>Edit Cafe Profile</Text>
         </View>
 
         <View style={[styles.content, { width: contentWidth }]}>
 
           {/* Basic Info */}
-          <Text style={styles.sectionLabel}>Basic Information</Text>
-          <View style={styles.card}>
-            <Text style={styles.fieldLabel}>Cafe Name</Text>
-            <TextInput style={styles.input} value={cafeName} onChangeText={setCafeName} placeholder="Cafe name" />
-            <Text style={styles.fieldLabel}>Address</Text>
+          <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>Basic Information</Text>
+          <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+            <Text style={[styles.fieldLabel, { color: themeColors.textMuted }]}>Cafe Name</Text>
+            <TextInput style={[styles.input, { backgroundColor: themeColors.card, borderColor: themeColors.border, color: themeColors.text }]} value={cafeName} onChangeText={setCafeName} placeholder="Cafe name" />
+            <Text style={[styles.fieldLabel, { color: themeColors.textMuted }]}>Address</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: themeColors.card, borderColor: themeColors.border, color: themeColors.text }]}
               value={address}
               onChangeText={(text) => {
                 setAddress(text);
@@ -436,11 +438,11 @@ export default function CafeEditScreen() {
             {suggestions.length > 0 && (
               <View style={{
                 maxHeight: 200,
-                backgroundColor: "#fff",
+                backgroundColor: themeColors.card,
                 borderRadius: 10,
                 marginTop: 4,
                 borderWidth: 1,
-                borderColor: "#ddd",
+                borderColor: themeColors.border,
                 overflow: "hidden"
               }}>
                 <ScrollView keyboardShouldPersistTaps="handled">
@@ -464,13 +466,13 @@ export default function CafeEditScreen() {
                       style={{
                         padding: 12,
                         borderBottomWidth: 1,
-                        borderColor: "#eee"
+                        borderColor: themeColors.border
                       }}
                     >
-                      <Text style={{ fontWeight: "600" }}>
+                      <Text style={{ fontWeight: "600", color: themeColors.text }}>
                         {item.placePrediction.structuredFormat.mainText.text}
                       </Text>
-                      <Text style={{ color: "#666", fontSize: 12 }}>
+                      <Text style={{ color: themeColors.textMuted, fontSize: 12 }}>
                         {item.placePrediction.structuredFormat.secondaryText.text}
                       </Text>
                     </Pressable>
@@ -479,9 +481,9 @@ export default function CafeEditScreen() {
               </View>
             )}
 
-            <Text style={styles.fieldLabel}>Description</Text>
+            <Text style={[styles.fieldLabel, { color: themeColors.textMuted }]}>Description</Text>
             <TextInput
-              style={[styles.input, styles.multilineInput]}
+              style={[styles.input, styles.multilineInput, { backgroundColor: themeColors.card, borderColor: themeColors.border, color: themeColors.text }]}
               value={description}
               onChangeText={setDescription}
               placeholder="What makes your cafe special?"
@@ -489,7 +491,7 @@ export default function CafeEditScreen() {
               numberOfLines={4}
             />
 
-            <Text style={styles.fieldLabel}>Photos</Text>
+            <Text style={[styles.fieldLabel, { color: themeColors.textMuted }]}>Photos</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
 
               {images.map((url, index) => (
@@ -520,7 +522,7 @@ export default function CafeEditScreen() {
                       position: "absolute",
                       top: -6,
                       right: -6,
-                      backgroundColor: "#fff",
+                      backgroundColor: themeColors.card,
                       borderRadius: 12,
                       padding: 2,
                     }}
@@ -562,34 +564,34 @@ export default function CafeEditScreen() {
                   height: 80,
                   borderRadius: 10,
                   borderWidth: 1,
-                  borderColor: "#ccc",
+                  borderColor: themeColors.border,
                   justifyContent: "center",
                   alignItems: "center",
                 }}
               >
-                <Text style={{ fontSize: 24, color: "#888" }}>+</Text>
+                <Text style={{ fontSize: 24, color: themeColors.textMuted }}>+</Text>
               </Pressable>
             </View>
           </View>
 
           {/* Contact & Social */}
-          <Text style={styles.sectionLabel}>Contact & Social</Text>
-          <View style={styles.card}>
-            <Text style={styles.fieldLabel}>Contact Email</Text>
-            <TextInput style={styles.input} value={contactEmail} onChangeText={setContactEmail} keyboardType="email-address" autoCapitalize="none" placeholder="hello@yourcafe.com" />
-            <Text style={styles.fieldLabel}>Contact Phone</Text>
-            <TextInput style={styles.input} value={contactPhone} onChangeText={setContactPhone} keyboardType="phone-pad" placeholder="+1 (555) 000-0000" />
-            <Text style={styles.fieldLabel}>Website</Text>
-            <TextInput style={styles.input} value={websiteUrl} onChangeText={setWebsiteUrl} autoCapitalize="none" keyboardType="url" placeholder="www.yourcafe.com" />
-            <Text style={styles.fieldLabel}>Instagram</Text>
-            <TextInput style={styles.input} value={instagramUrl} onChangeText={setInstagramUrl} autoCapitalize="none" placeholder="@yourcafe" />
-            <Text style={styles.fieldLabel}>Facebook</Text>
-            <TextInput style={styles.input} value={facebookUrl} onChangeText={setFacebookUrl} autoCapitalize="none" placeholder="facebook.com/yourcafe" />
+          <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>Contact & Social</Text>
+          <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+            <Text style={[styles.fieldLabel, { color: themeColors.textMuted }]}>Contact Email</Text>
+            <TextInput style={[styles.input, { backgroundColor: themeColors.card, borderColor: themeColors.border, color: themeColors.text }]} value={contactEmail} onChangeText={setContactEmail} keyboardType="email-address" autoCapitalize="none" placeholder="hello@yourcafe.com" />
+            <Text style={[styles.fieldLabel, { color: themeColors.textMuted }]}>Contact Phone</Text>
+            <TextInput style={[styles.input, { backgroundColor: themeColors.card, borderColor: themeColors.border, color: themeColors.text }]} value={contactPhone} onChangeText={setContactPhone} keyboardType="phone-pad" placeholder="+1 (555) 000-0000" />
+            <Text style={[styles.fieldLabel, { color: themeColors.textMuted }]}>Website</Text>
+            <TextInput style={[styles.input, { backgroundColor: themeColors.card, borderColor: themeColors.border, color: themeColors.text }]} value={websiteUrl} onChangeText={setWebsiteUrl} autoCapitalize="none" keyboardType="url" placeholder="www.yourcafe.com" />
+            <Text style={[styles.fieldLabel, { color: themeColors.textMuted }]}>Instagram</Text>
+            <TextInput style={[styles.input, { backgroundColor: themeColors.card, borderColor: themeColors.border, color: themeColors.text }]} value={instagramUrl} onChangeText={setInstagramUrl} autoCapitalize="none" placeholder="@yourcafe" />
+            <Text style={[styles.fieldLabel, { color: themeColors.textMuted }]}>Facebook</Text>
+            <TextInput style={[styles.input, { backgroundColor: themeColors.card, borderColor: themeColors.border, color: themeColors.text }]} value={facebookUrl} onChangeText={setFacebookUrl} autoCapitalize="none" placeholder="facebook.com/yourcafe" />
           </View>
 
           {/* Price Level */}
-          <Text style={styles.sectionLabel}>Price Range</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>Price Range</Text>
+          <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
             <View style={{ flexDirection: "row", gap: scale(8) }}>
               {[["$", 1], ["$$", 2], ["$$$", 3]].map(([label, val]) => (
                 <Pressable
@@ -597,10 +599,11 @@ export default function CafeEditScreen() {
                   onPress={() => setPriceLevel(val as number)}
                   style={[
                     styles.priceChip,
+                    { backgroundColor: themeColors.iconBg, borderColor: themeColors.border },
                     priceLevel === val && styles.priceChipActive,
                   ]}
                 >
-                  <Text style={[styles.priceChipText, priceLevel === val && styles.priceChipTextActive]}>
+                  <Text style={[styles.priceChipText, { color: themeColors.textMuted }, priceLevel === val && styles.priceChipTextActive]}>
                     {label}
                   </Text>
                 </Pressable>
@@ -609,18 +612,18 @@ export default function CafeEditScreen() {
           </View>
 
           {/* Amenities */}
-          <Text style={styles.sectionLabel}>Amenities</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>Amenities</Text>
+          <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
             <View style={styles.chipsContainer}>
               {ATTRIBUTE_OPTIONS.map((attr) => {
                 const selected = attributes.includes(attr);
                 return (
                   <Pressable
                     key={attr}
-                    style={[styles.chip, selected && styles.chipSelected]}
+                    style={[styles.chip, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border }, selected && styles.chipSelected]}
                     onPress={() => toggleAttribute(attr)}
                   >
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{attr}</Text>
+                    <Text style={[styles.chipText, { color: themeColors.textMuted }, selected && styles.chipTextSelected]}>{attr}</Text>
                   </Pressable>
                 );
               })}
@@ -628,17 +631,17 @@ export default function CafeEditScreen() {
           </View>
 
           {/* Operating Hours */}
-          <Text style={styles.sectionLabel}>Operating Hours</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>Operating Hours</Text>
+          <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
             {DAYS.map((day, idx) => (
-              <View key={day} style={[styles.dayRow, idx < DAYS.length - 1 && styles.dayRowBorder]}>
+              <View key={day} style={[styles.dayRow, idx < DAYS.length - 1 && [styles.dayRowBorder, { borderBottomColor: themeColors.border }]]}>
                 <View style={styles.dayHeader}>
-                  <Text style={styles.dayName}>{day}</Text>
+                  <Text style={[styles.dayName, { color: themeColors.text }]}>{day}</Text>
                   <Pressable
-                    style={[styles.togglePill, hours[day].open && styles.togglePillActive]}
+                    style={[styles.togglePill, { borderColor: themeColors.border, backgroundColor: themeColors.iconBg }, hours[day].open && styles.togglePillActive]}
                     onPress={() => updateHours(day, "open", !hours[day].open)}
                   >
-                    <Text style={[styles.togglePillText, hours[day].open && styles.togglePillTextActive]}>
+                    <Text style={[styles.togglePillText, { color: themeColors.textMuted }, hours[day].open && styles.togglePillTextActive]}>
                       {hours[day].open ? "Open" : "Closed"}
                     </Text>
                   </Pressable>
@@ -646,13 +649,13 @@ export default function CafeEditScreen() {
                 {hours[day].open && (
                   <View style={styles.timeRow}>
                     <View style={styles.timeField}>
-                      <Text style={styles.timeLabel}>Opens</Text>
-                      <TextInput style={styles.timeInput} value={hours[day].start} onChangeText={(v) => updateHours(day, "start", v)} placeholder="09:00" />
+                      <Text style={[styles.timeLabel, { color: themeColors.textMuted }]}>Opens</Text>
+                      <TextInput style={[styles.timeInput, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border, color: themeColors.text }]} value={hours[day].start} onChangeText={(v) => updateHours(day, "start", v)} placeholder="09:00" placeholderTextColor={themeColors.textMuted} />
                     </View>
-                    <Text style={styles.timeSep}>—</Text>
+                    <Text style={[styles.timeSep, { color: themeColors.border }]}>—</Text>
                     <View style={styles.timeField}>
-                      <Text style={styles.timeLabel}>Closes</Text>
-                      <TextInput style={styles.timeInput} value={hours[day].end} onChangeText={(v) => updateHours(day, "end", v)} placeholder="21:00" />
+                      <Text style={[styles.timeLabel, { color: themeColors.textMuted }]}>Closes</Text>
+                      <TextInput style={[styles.timeInput, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border, color: themeColors.text }]} value={hours[day].end} onChangeText={(v) => updateHours(day, "end", v)} placeholder="21:00" placeholderTextColor={themeColors.textMuted} />
                     </View>
                   </View>
                 )}
@@ -684,7 +687,7 @@ export default function CafeEditScreen() {
             onPress={handleSave}
             disabled={saving}
           />
-          <Text style={styles.footer}>CafeHop v1.0.0</Text>
+          <Text style={[styles.footer, { color: themeColors.textMuted }]}>CafeHop v1.0.0</Text>
         </View>
       </ScrollView>
 

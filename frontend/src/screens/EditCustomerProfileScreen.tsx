@@ -100,14 +100,14 @@ export default function EditCustomerProfileScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+      <View style={[styles.container, { backgroundColor: themeColors.bg, justifyContent: "center", alignItems: "center" }]}>
         <ActivityIndicator size="small" color="#D4A373" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}> 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Pressable
@@ -115,26 +115,26 @@ export default function EditCustomerProfileScreen() {
             style={styles.backButton}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <ArrowLeft size={24} color="#333" />
+            <ArrowLeft size={24} color={themeColors.text} />
           </Pressable>
-          <Text style={styles.headerTitle}>Edit Profile</Text>
+          <Text style={[styles.headerTitle, { color: themeColors.text }]}>Edit Profile</Text>
         </View>
 
-        <View style={[styles.content, { width: contentWidth }]}>
-          <Text style={styles.fieldLabel}>First Name</Text>
+        <View style={[styles.content, { width: contentWidth }]}> 
+          <Text style={[styles.fieldLabel, { color: themeColors.textMuted }]}>First Name</Text>
           <TextInput
             placeholder="First name"
             value={firstName}
             onChangeText={(t) => { setFirstName(t); if (errors.firstName) setErrors((p) => ({ ...p, firstName: false })); }}
-            style={[styles.input, errors.firstName && { borderColor: "#D9534F" }]}
+            style={[styles.input, { backgroundColor: themeColors.card, borderColor: themeColors.border, color: themeColors.text }, errors.firstName && { borderColor: "#D9534F" }]}
           />
 
-          <Text style={styles.fieldLabel}>Last Name</Text>
+          <Text style={[styles.fieldLabel, { color: themeColors.textMuted }]}>Last Name</Text>
           <TextInput
             placeholder="Last name"
             value={lastName}
             onChangeText={(t) => { setLastName(t); if (errors.lastName) setErrors((p) => ({ ...p, lastName: false })); }}
-            style={[styles.input, errors.lastName && { borderColor: "#D9534F" }]}
+            style={[styles.input, { backgroundColor: themeColors.card, borderColor: themeColors.border, color: themeColors.text }, errors.lastName && { borderColor: "#D9534F" }]}
           />
 
           {(errors.firstName || errors.lastName) && (
@@ -142,7 +142,7 @@ export default function EditCustomerProfileScreen() {
           )}
 
           {message && (
-            <Text style={[styles.message, messageType === "success" ? styles.messageSuccess : styles.messageError]}>
+            <Text style={[styles.message, messageType === "success" ? styles.messageSuccess : styles.messageError, { color: messageType === "success" ? "#2E7D32" : "#D9534F" }]}>
               {message}
             </Text>
           )}

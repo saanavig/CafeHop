@@ -15,6 +15,7 @@ import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/nativ
 import BottomNav from "../components/ui/BottomNav";
 import { supabase } from "../api/supabaseClient";
 import { useEffect } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -254,7 +255,7 @@ const PreferencesScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.bg }]}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { alignItems: "flex-start" }]}
         showsVerticalScrollIndicator={false}
@@ -268,10 +269,10 @@ const PreferencesScreen = () => {
 
         <View style={[styles.content, { width: contentWidth }]}>
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>General</Text>
+            <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>General</Text>
 
-            <View style={[styles.settingsContainer, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
-              <View style={styles.settingRow}>
+            <View style={[styles.settingsContainer, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}> 
+              <View style={[styles.settingRow, { borderBottomColor: themeColors.border }]}> 
                 <View style={styles.settingLeft}>
                   <View style={[styles.iconBg, { backgroundColor: themeColors.iconBg }]}>
                     <Bell size={18} color="#D4A373" />
@@ -312,11 +313,11 @@ const PreferencesScreen = () => {
           {role === "user" ? (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Cafe Preferences</Text>
+                <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>Cafe Preferences</Text>
 
                 {preferenceCategories.map((category) => (
-                  <View key={category.key} style={styles.preferenceGroup}>
-                    <Text style={styles.preferenceTitle}>{category.title}</Text>
+                  <View key={category.key} style={[styles.preferenceGroup, { backgroundColor: themeColors.card, borderColor: themeColors.border }] }>
+                    <Text style={[styles.preferenceTitle, { color: themeColors.text }]}>{category.title}</Text>
 
                     <View style={styles.chipWrap}>
                       {category.items.map((item) => {
@@ -326,11 +327,12 @@ const PreferencesScreen = () => {
                           <Pressable
                             key={item}
                             onPress={() => togglePref(category.key, item)}
-                            style={[styles.chip, selected && styles.chipSelected]}
+                            style={[styles.chip, { backgroundColor: selected ? themeColors.accent : themeColors.card, borderColor: selected ? themeColors.accent : themeColors.border }, selected && styles.chipSelected]}
                           >
                             <Text
                               style={[
                                 styles.chipText,
+                                { color: selected ? "#FFF" : themeColors.text },
                                 selected && styles.chipTextSelected,
                               ]}
                             >
@@ -345,9 +347,9 @@ const PreferencesScreen = () => {
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Budget</Text>
+                <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>Budget</Text>
 
-                <View style={styles.chipWrap}>
+                <View style={styles.chipWrap}> 
                   {priceOptions.map((option) => {
                     const selected = preferredPriceLevel === option.value;
 
@@ -355,11 +357,12 @@ const PreferencesScreen = () => {
                       <Pressable
                         key={option.value}
                         onPress={() => selectPriceLevel(option.value)}
-                        style={[styles.chip, selected && styles.chipSelected]}
+                        style={[styles.chip, { backgroundColor: selected ? themeColors.accent : themeColors.card, borderColor: selected ? themeColors.accent : themeColors.border }, selected && styles.chipSelected]}
                       >
                         <Text
                           style={[
                             styles.chipText,
+                            { color: selected ? "#FFF" : themeColors.text },
                             selected && styles.chipTextSelected,
                           ]}
                         >
@@ -372,9 +375,9 @@ const PreferencesScreen = () => {
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Max Distance</Text>
+                <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>Max Distance</Text>
 
-                <View style={styles.chipWrap}>
+                <View style={styles.chipWrap}> 
                   {[1, 2, 3, 5, 10].map((distance) => {
                     const selected = maxDistance === distance;
 
@@ -382,11 +385,12 @@ const PreferencesScreen = () => {
                       <Pressable
                         key={distance}
                         onPress={() => selectDistance(distance)}
-                        style={[styles.chip, selected && styles.chipSelected]}
+                        style={[styles.chip, { backgroundColor: selected ? themeColors.accent : themeColors.card, borderColor: selected ? themeColors.accent : themeColors.border }, selected && styles.chipSelected]}
                       >
                         <Text
                           style={[
                             styles.chipText,
+                            { color: selected ? "#FFF" : themeColors.text },
                             selected && styles.chipTextSelected,
                           ]}
                         >
@@ -401,10 +405,10 @@ const PreferencesScreen = () => {
           ) : null}
 
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Privacy & Security</Text>
+            <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>Privacy & Security</Text>
 
-            <View style={[styles.settingsContainer, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
-              <View style={styles.settingRow}>
+            <View style={[styles.settingsContainer, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}> 
+              <View style={[styles.settingRow, { borderBottomColor: themeColors.border }]}> 
                 <View style={styles.settingLeft}>
                   <View style={[styles.iconBg, { backgroundColor: themeColors.iconBg }]}>
                     <Lock size={18} color="#D4A373" />
@@ -460,12 +464,12 @@ const PreferencesScreen = () => {
             </View>
           </View>
 
-          <Text style={styles.footer}>CafeHop v1.0.0</Text>
+          <Text style={[styles.footer, { color: themeColors.textMuted }]}>CafeHop v1.0.0</Text>
         </View>
       </ScrollView>
 
       <BottomNav />
-    </View>
+    </SafeAreaView>
   );
 };
 

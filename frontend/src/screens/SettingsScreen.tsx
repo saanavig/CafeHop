@@ -88,8 +88,8 @@ const SettingsScreen = () => {
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
       >
         {/* Hero / Profile Section */}
-        <View style={[styles.header, { width: contentWidth }]}>
-          <View style={styles.avatarContainer}>
+          <View style={[styles.header, { width: contentWidth }]}> 
+          <View style={[styles.avatarContainer, { backgroundColor: themeColors.iconBg }]}> 
             {role === "customer" ? (
               <User size={36} color="#D4A373" />
             ) : (
@@ -102,17 +102,17 @@ const SettingsScreen = () => {
           <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>
             {user?.email ?? "No email"}
           </Text>
-          <View style={styles.infoBadge}>
+          <View style={[styles.infoBadge, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}> 
             {role === "customer" ? (
               <>
                 <Coffee size={14} color="#D4A373" />
-                <Text style={styles.infoText}>Explorer Status</Text>
+                <Text style={[styles.infoText, { color: themeColors.text }]}>Explorer Status</Text>
                 <Text style={styles.infoValue}>1,250 pts</Text>
               </>
             ) : (
               <>
                 <Store size={14} color="#D4A373" />
-                <Text style={styles.infoText}>Gold Partner</Text>
+                <Text style={[styles.infoText, { color: themeColors.text }]}>Gold Partner</Text>
                 <Text style={styles.infoValue}>5,420 visits</Text>
               </>
             )}
@@ -129,18 +129,18 @@ const SettingsScreen = () => {
                   key={item.label}
                   style={[
                     styles.menuItem,
-                    index !== menuItems.length - 1 && styles.menuItemBorder,
+                    index !== menuItems.length - 1 && [styles.menuItemBorder, { borderBottomColor: themeColors.border }],
                   ]}
                   onPress={() => navigation.navigate(item.route)}
                 >
-                  <View style={styles.menuIconBackground}>
+                  <View style={[styles.menuIconBackground, { backgroundColor: themeColors.iconBg }]}> 
                     <Icon size={20} color="#D4A373" />
                   </View>
                   <View style={styles.menuTextContainer}>
                     <Text style={[styles.menuLabel, { color: themeColors.text }]}>{item.label}</Text>
                     <Text style={[styles.menuDesc, { color: themeColors.textMuted }]}>{item.desc}</Text>
                   </View>
-                  <ChevronRight size={20} color="#CCC" />
+                  <ChevronRight size={20} color={themeColors.textMuted} />
                 </TouchableOpacity>
               );
             })}
@@ -152,7 +152,7 @@ const SettingsScreen = () => {
               <Button
                 variant="outline"
                 onPress={handleSignOut}
-                style={styles.signOutButton}
+                style={Object.assign({}, styles.signOutButton, { backgroundColor: themeColors.card, borderColor: themeColors.border })}
               >
                 <LogOut size={16} color="#D32F2F" style={{ marginRight: 8 }} />
                 <Text style={styles.signOutText}>Sign Out</Text>
@@ -161,7 +161,7 @@ const SettingsScreen = () => {
               <Button
                 variant="outline"
                 onPress={() => navigation.navigate("Splash")}
-                style={styles.signOutButton}
+                style={Object.assign({}, styles.signOutButton, { backgroundColor: themeColors.card, borderColor: themeColors.border })}
               >
                 <User size={16} color="#D4A373" style={{ marginRight: 8 }} />
                 <Text style={{ color: "#D4A373", fontWeight: "600" }}>
@@ -290,6 +290,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   signOutText: {
     color: "#D32F2F",
     fontWeight: "600",

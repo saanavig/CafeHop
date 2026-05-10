@@ -5,6 +5,7 @@ import { moderateScale, scale } from "../utils/responsive";
 
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 
 type FavoriteCafe = {
@@ -48,38 +49,39 @@ export default function FavoritesScreen() {
   }, []);
 
   return (
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: themeColors.bg }}>
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: themeColors.bg }]}>
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <ArrowLeft size={20} color="#555" />
+          <ArrowLeft size={20} color={themeColors.text} />
         </Pressable>
-        <Text style={styles.h1}>Favorites</Text>
+        <Text style={[styles.h1, { color: themeColors.text }]}>Favorites</Text>
       </View>
 
       {loading ? (
         <ActivityIndicator color="#D4A373" style={{ marginTop: scale(40) }} />
       ) : (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Your Saved Cafes</Text>
+          <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}> 
+            <Text style={[styles.sectionTitle, { color: themeColors.textMuted }]}>Your Saved Cafes</Text>
           {favorites.length === 0 ? (
             <View style={styles.emptyState}>
               <Star size={scale(28)} color="#D4A373" />
-              <Text style={styles.emptyTitle}>No favorites yet</Text>
-              <Text style={styles.emptySub}>Save cafes from the Explore tab to see them here.</Text>
+              <Text style={[styles.emptyTitle, { color: themeColors.text }]}>No favorites yet</Text>
+              <Text style={[styles.emptySub, { color: themeColors.textMuted }]}>Save cafes from the Explore tab to see them here.</Text>
             </View>
           ) : (
             favorites.map((cafe) => (
-              <View key={cafe.id} style={styles.row}>
+              <View key={cafe.id} style={[styles.row, { borderTopColor: themeColors.border }]}>
                 <View style={styles.rowLeft}>
-                  <View style={styles.iconBg}>
+                    <View style={[styles.iconBg, { backgroundColor: themeColors.iconBg }]}> 
                     <Star size={scale(18)} color="#D4A373" fill="#D4A373" />
                   </View>
                   <View style={styles.cafeInfo}>
-                    <Text style={styles.cafeName}>{cafe.name}</Text>
+                    <Text style={[styles.cafeName, { color: themeColors.text }]}>{cafe.name}</Text>
                     {cafe.address ? (
                       <View style={styles.addressRow}>
-                        <MapPin size={scale(11)} color="#AAA" />
-                        <Text style={styles.cafeLoc}>{cafe.address}</Text>
+                        <MapPin size={scale(11)} color={themeColors.textMuted} />
+                        <Text style={[styles.cafeLoc, { color: themeColors.textMuted }]}>{cafe.address}</Text>
                       </View>
                     ) : null}
                   </View>
@@ -90,8 +92,9 @@ export default function FavoritesScreen() {
         </View>
       )}
 
-      <Text style={styles.footer}>CafeHop v1.0.0</Text>
+      <Text style={[styles.footer, { color: themeColors.textMuted }]}>CafeHop v1.0.0</Text>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
