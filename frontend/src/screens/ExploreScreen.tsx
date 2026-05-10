@@ -40,6 +40,7 @@ import { Platform } from "react-native";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
+import { useTheme } from "../context/ThemeContext";
 
 const { width: RAW_WIDTH, height: RAW_HEIGHT } = Dimensions.get("window");
 const width  = Math.min(RAW_WIDTH,  430);
@@ -75,6 +76,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL;
 export default function ExploreScreen() {
   const { role } = useRole();
   const navigation = useNavigation<any>();
+  const { colors: themeColors } = useTheme();
 
   const [search, setSearch]               = useState("");
   const [inputText, setInputText]         = useState("");
@@ -574,7 +576,7 @@ export default function ExploreScreen() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: themeColors.bg }]}>
       <StatusBar barStyle="dark-content" />
 
       {/* ── PANNABLE MAP ────────────────────────────────────── */}

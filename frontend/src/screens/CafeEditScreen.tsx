@@ -91,7 +91,9 @@ export default function CafeEditScreen() {
         setWebsiteUrl(data.website_url || "");
         setInstagramUrl(data.instagram_url || "");
         setFacebookUrl(data.facebook_url || "");
-        if (data.image_url) {
+        if (Array.isArray(data.image_urls) && data.image_urls.length > 0) {
+          setImages(data.image_urls.filter(Boolean));
+        } else if (data.image_url) {
           setImages([data.image_url]);
         }
         if (data.price_level) {
@@ -320,7 +322,10 @@ export default function CafeEditScreen() {
 
       const { error: imageUpdateError } = await supabase
         .from("cafes")
-        .update({ image_url: uploadedUrls[0] || null })
+        .update({
+          image_url: uploadedUrls[0] || null,
+          image_urls: uploadedUrls,
+        })
         .eq("id", cafeId);
 
       if (imageUpdateError) {
@@ -505,7 +510,10 @@ export default function CafeEditScreen() {
 
                       await supabase
                         .from("cafes")
-                        .update({ image_url: updatedImages[0] || null })
+                        .update({
+                          image_url: updatedImages[0] || null,
+                          image_urls: updatedImages,
+                        })
                         .eq("id", cafeId);
                     }}
                     style={{

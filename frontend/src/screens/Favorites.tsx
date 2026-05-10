@@ -5,6 +5,7 @@ import { moderateScale, scale } from "../utils/responsive";
 
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
+import { useTheme } from "../context/ThemeContext";
 
 type FavoriteCafe = {
   id: string;
@@ -15,6 +16,7 @@ type FavoriteCafe = {
 
 export default function FavoritesScreen() {
   const navigation = useNavigation<any>();
+  const { colors: themeColors } = useTheme();
   const [favorites, setFavorites] = useState<FavoriteCafe[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +48,7 @@ export default function FavoritesScreen() {
   }, []);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: themeColors.bg }]}>
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
           <ArrowLeft size={20} color="#555" />

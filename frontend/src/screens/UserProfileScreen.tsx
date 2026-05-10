@@ -24,6 +24,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../api/supabaseClient";
 import { useRole } from "../context/RoleContext";
 import { useRoute } from "@react-navigation/native";
+import { useTheme } from "../context/ThemeContext";
 
 const SCREEN_WIDTH = deviceWidth;
 
@@ -42,6 +43,7 @@ type Post = {
 
 export default function UserProfileScreen() {
   const { role } = useRole();
+  const { colors: themeColors } = useTheme();
   // const isCafe = role === "cafe";
 
   const [profileName, setProfileName] = useState("");
@@ -298,7 +300,7 @@ export default function UserProfileScreen() {
       }
 
   const uploadResults = await Promise.all(
-    selectedMedia.map((m) =>
+    selectedMedia.map((m: any) =>
       uploadImageToSupabase(m.uri, m.type)
     )
   );
@@ -342,7 +344,7 @@ export default function UserProfileScreen() {
       setPosts((prev) => [
       {
         id: data.post.id || Date.now(),
-        images: data.media.map((m) => m.file_url),
+        images: data.media.map((m: any) => m.file_url),
         likes: 0,
         liked: false,
         caption,
@@ -595,7 +597,7 @@ export default function UserProfileScreen() {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView edges={["top"]} style={styles.container}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
       <Animated.ScrollView
         contentContainerStyle={{ paddingTop: scale(8), paddingBottom: scale(100) }}
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}

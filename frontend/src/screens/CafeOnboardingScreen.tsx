@@ -127,7 +127,15 @@ export default function CafeOnboarding({ navigation }: any) {
     setHours((prev) => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
   };
 
-  const maxWidth = scale(480);
+  const formatTimeInput = (raw: string): string => {
+    const digits = raw.replace(/\D/g, "").slice(0, 4);
+    if (digits.length <= 2) return digits;
+    return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+  };
+  const isValidTime = (s: string): boolean => /^([01]\d|2[0-3]):([0-5]\d)$/.test(s);
+  const hoursValid = DAYS.every((d) => !hours[d].open || (isValidTime(hours[d].start) && isValidTime(hours[d].end)));
+
+  const maxWidth = 420;
 
   const handleFinishSetup = async () => {
     let imageUrls: string[] = [];
@@ -229,7 +237,11 @@ export default function CafeOnboarding({ navigation }: any) {
           </View>
 
           {/* Back */}
-          <Pressable onPress={step === 1 ? () => navigation.goBack() : back}>
+          <Pressable
+            onPress={step === 1 ? () => navigation.navigate("Onboarding") : back}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={styles.backPressable}
+          >
             <Text style={styles.backText}>← Back</Text>
           </Pressable>
 
@@ -398,18 +410,43 @@ export default function CafeOnboarding({ navigation }: any) {
                     <View style={styles.timeRow}>
                       <View style={styles.timeField}>
                         <Text style={styles.timeLabel}>Opens</Text>
-                        <TextInput style={styles.timeInput} value={hours[day].start} onChangeText={(v) => updateHours(day, "start", v)} placeholder="09:00" />
+                        <TextInput
+                          style={[
+                            styles.timeInput,
+                            hours[day].start.length > 0 && !isValidTime(hours[day].start) && { borderColor: "#D9534F" },
+                          ]}
+                          value={hours[day].start}
+                          onChangeText={(v) => updateHours(day, "start", formatTimeInput(v))}
+                          placeholder="09:00"
+                          keyboardType="number-pad"
+                          maxLength={5}
+                        />
                       </View>
                       <Text style={styles.timeSep}>—</Text>
                       <View style={styles.timeField}>
                         <Text style={styles.timeLabel}>Closes</Text>
-                        <TextInput style={styles.timeInput} value={hours[day].end} onChangeText={(v) => updateHours(day, "end", v)} placeholder="21:00" />
+                        <TextInput
+                          style={[
+                            styles.timeInput,
+                            hours[day].end.length > 0 && !isValidTime(hours[day].end) && { borderColor: "#D9534F" },
+                          ]}
+                          value={hours[day].end}
+                          onChangeText={(v) => updateHours(day, "end", formatTimeInput(v))}
+                          placeholder="21:00"
+                          keyboardType="number-pad"
+                          maxLength={5}
+                        />
                       </View>
                     </View>
                   )}
                 </View>
               ))}
-              <Button title="Continue" variant="caramel" onPress={next} />
+              {!hoursValid && (
+                <Text style={{ color: "#D9534F", fontSize: moderateScale(12), marginTop: verticalScale(4), textAlign: "center" }}>
+                  Please enter valid times in HH:MM format (00:00 – 23:59).
+                </Text>
+              )}
+              <Button title="Continue" variant="caramel" onPress={next} disabled={!hoursValid} />
             </View>
           )}
 
@@ -559,7 +596,8 @@ const styles = StyleSheet.create({
     borderRadius: scale(3), marginBottom: verticalScale(16),
   },
   progressForeground: { height: verticalScale(6), backgroundColor: "#D4A373", borderRadius: scale(3) },
-  backText: { color: "#555", marginBottom: verticalScale(8), alignSelf: "flex-start", fontSize: moderateScale(14) },
+  backPressable: { alignSelf: "flex-start", paddingVertical: scale(4), paddingRight: scale(8) },
+  backText: { color: "#555", marginBottom: verticalScale(8), fontSize: moderateScale(14) },
   stepSection: { width: "100%", marginBottom: verticalScale(24) },
   stepTitle: {
     fontSize: moderateScale(20), fontWeight: "bold", textAlign: "center",

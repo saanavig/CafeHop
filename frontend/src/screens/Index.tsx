@@ -17,6 +17,7 @@ import BottomNav from "../components/ui/BottomNav";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
+import { useTheme } from "../context/ThemeContext";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -92,6 +93,7 @@ let sessionFeedCache: FeedPost[] | null = null;
 
 const Index = () => {
   const navigation = useNavigation<any>();
+  const { colors: themeColors } = useTheme();
 
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [search, setSearch] = useState("");
@@ -599,7 +601,7 @@ const Index = () => {
   });
 
   return (
-    <SafeAreaView edges={["top"]} style={styles.container}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
       <Animated.View
         style={[
           styles.header,

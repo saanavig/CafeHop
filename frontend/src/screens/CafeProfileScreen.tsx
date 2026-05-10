@@ -3,8 +3,10 @@ import * as ImagePicker from "expo-image-picker";
 import {
   ActivityIndicator,
   Animated,
+  FlatList,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -13,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { BookOpen, Grid3X3, Pencil, Star, Store } from "lucide-react-native";
+import { BookOpen, Globe, Grid3X3, MapPin, Pencil, Plus, Star, Store, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   deviceWidth,
@@ -24,7 +26,7 @@ import {
 
 import BottomNav from "../components/ui/BottomNav";
 import { TextInput } from "react-native";
-import { Video } from "expo-av";
+import { ResizeMode, Video } from "expo-av";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { useRoute } from "@react-navigation/native";
@@ -53,11 +55,16 @@ type Cafe = {
   name?: string;
   address?: string;
   image_url?: string;
+  image_urls?: string[];
   description?: string;
   price_level?: number;
   rating?: number;
   visits?: number;
   isOpen?: boolean;
+  instagram_url?: string | null;
+  facebook_url?: string | null;
+  website_url?: string | null;
+  attributes?: string[] | null;
 };
   const TAG_OPTIONS = [
     "Cozy", "Quiet", "Lively", "Outdoor Seating", "Pet Friendly", "WiFi", "Power Outlets",
@@ -118,8 +125,11 @@ export default function CafeProfileScreen() {
     const [reviewText, setReviewText] = useState("");
     const [reviewsLoading, setReviewsLoading] = useState(false);
     const [reviewError, setReviewError] = useState("");
+    const [reviewFormOpen, setReviewFormOpen] = useState(false);
     const [authLoading, setAuthLoading] = useState(true);
     const [hours, setHours] = useState<any[]>([]);
+    const [heroIndex, setHeroIndex] = useState(0);
+    const [previewIndex, setPreviewIndex] = useState(0);
     const [showHoursModal, setShowHoursModal] = useState(false);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
@@ -770,9 +780,8 @@ export default function CafeProfileScreen() {
     }
     await fetchReviews();
 
-    setReviewText("");
-    setReviewRating(null);
     setReviewError("");
+    setReviewFormOpen(false);
     };
 
   useEffect(() => {
@@ -834,6 +843,16 @@ export default function CafeProfileScreen() {
     );
   }
 
+  const heroImages: string[] = (() => {
+    const arr: string[] = [];
+    if (Array.isArray(cafe.image_urls)) {
+      for (const u of cafe.image_urls) if (u && !arr.includes(u)) arr.push(u);
+    }
+    if (cafe.image_url && !arr.includes(cafe.image_url)) arr.push(cafe.image_url);
+    if (arr.length === 0) arr.push("https://picsum.photos/800");
+    return arr;
+  })();
+
   return (
     <View style={styles.container}>
       <Animated.ScrollView
@@ -844,10 +863,34 @@ export default function CafeProfileScreen() {
         }}
       >
         <View style={styles.hero}>
-          <Image
-            source={{ uri: cafe.image_url || "https://picsum.photos/800" }}
-            style={styles.heroImage}
-          />
+          {heroImages.length > 1 ? (
+            <FlatList
+              data={heroImages}
+              keyExtractor={(_, i) => `hero-${i}`}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(e) => {
+                const i = Math.round(e.nativeEvent.contentOffset.x / deviceWidth);
+                setHeroIndex(i);
+              }}
+              renderItem={({ item }) => (
+                <Image source={{ uri: item }} style={[styles.heroImage, { width: deviceWidth }]} />
+              )}
+            />
+          ) : (
+            <Image source={{ uri: heroImages[0] }} style={styles.heroImage} />
+          )}
+          {heroImages.length > 1 && (
+            <View style={styles.heroDots} pointerEvents="none">
+              {heroImages.map((_, i) => (
+                <View
+                  key={`hero-dot-${i}`}
+                  style={[styles.heroDot, i === heroIndex && styles.heroDotActive]}
+                />
+              ))}
+            </View>
+          )}
           <View style={styles.heroOverlay}>
             <Text style={styles.heroTitle}>{cafe.name || "Cafe"}</Text>
             <Text style={styles.heroSubtitle}>
@@ -899,22 +942,68 @@ export default function CafeProfileScreen() {
                 <Text style={styles.statLabel}>Price</Text>
               </View>
             </View>
+
+            {(cafe.instagram_url || cafe.facebook_url || cafe.website_url) && (
+              <View style={styles.socialsRow}>
+                {cafe.instagram_url ? (
+                  <TouchableOpacity
+                    style={styles.socialChip}
+                    onPress={() => Linking.openURL(cafe.instagram_url!).catch(() => {})}
+                  >
+                    <Globe size={scale(13)} color="#D4A373" />
+                    <Text style={styles.socialChipText}>Instagram</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {cafe.facebook_url ? (
+                  <TouchableOpacity
+                    style={styles.socialChip}
+                    onPress={() => Linking.openURL(cafe.facebook_url!).catch(() => {})}
+                  >
+                    <Globe size={scale(13)} color="#D4A373" />
+                    <Text style={styles.socialChipText}>Facebook</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {cafe.website_url ? (
+                  <TouchableOpacity
+                    style={styles.socialChip}
+                    onPress={() => Linking.openURL(cafe.website_url!).catch(() => {})}
+                  >
+                    <Globe size={scale(13)} color="#D4A373" />
+                    <Text style={styles.socialChipText}>Website</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            )}
+
+            {Array.isArray(cafe.attributes) && cafe.attributes.length > 0 && (
+              <View style={styles.tagChipsRow}>
+                {cafe.attributes.map((tag) => (
+                  <View key={tag} style={styles.attributeChip}>
+                    <Text style={styles.attributeChipText}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
 
         {isOwner && (
           <View style={styles.actionRow}>
             <TouchableOpacity
-              onPress={() =>navigation.navigate("CafeEdit")}
-              style={styles.editButton}
+              onPress={() => navigation.navigate("CafeEdit")}
+              style={styles.editProfileButton}
+              activeOpacity={0.85}
             >
-              <Text style={styles.editButtonText}>Edit Profile</Text>
+              <Pencil size={scale(15)} color="#D4A373" />
+              <Text style={styles.editProfileButtonText}>Edit Profile</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => setShowAddPostModal(true)}
               style={styles.addPostButton}
+              activeOpacity={0.85}
             >
-              <Text style={styles.primaryButtonText}>+ Add Post</Text>
+              <Plus size={scale(16)} color="#FFF" />
+              <Text style={styles.addPostButtonText}>Add Post</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -987,7 +1076,7 @@ export default function CafeProfileScreen() {
                                 margin: 1,
                                 borderRadius: scale(4),
                               }}
-                              resizeMode="cover"
+                              resizeMode={ResizeMode.COVER}
                               shouldPlay={false} // grid = no autoplay
                               isLooping
                             />
@@ -1559,10 +1648,26 @@ export default function CafeProfileScreen() {
 
             {activeTab === "reviews" && (
             <View style={styles.section}>
-                {canReview && (
+                {canReview && !reviewFormOpen && !myReview && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setReviewRating(null);
+                    setReviewText("");
+                    setReviewError("");
+                    setReviewFormOpen(true);
+                  }}
+                  style={styles.addPostButton}
+                  activeOpacity={0.85}
+                >
+                  <Plus size={scale(16)} color="#FFF" />
+                  <Text style={styles.addPostButtonText}>Leave a review</Text>
+                </TouchableOpacity>
+                )}
+
+                {canReview && reviewFormOpen && (
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>
-                    {myReview ? "Update your review" : "Leave a review"}
+                    {myReview ? "Edit your review" : "Leave a review"}
                     </Text>
 
                     <View style={{ flexDirection: "row", marginVertical: verticalScale(10) }}>
@@ -1570,8 +1675,8 @@ export default function CafeProfileScreen() {
                         <TouchableOpacity key={star} onPress={() => setReviewRating(star)}>
                         <Star
                             size={scale(24)}
-                            color={star <= reviewRating ? "#D4A373" : "#ddd"}
-                            fill={star <= reviewRating ? "#D4A373" : "transparent"}
+                            color={star <= (reviewRating ?? 0) ? "#D4A373" : "#ddd"}
+                            fill={star <= (reviewRating ?? 0) ? "#D4A373" : "transparent"}
                         />
                         </TouchableOpacity>
                     ))}
@@ -1595,11 +1700,30 @@ export default function CafeProfileScreen() {
                     <Text style={styles.errorText}>{reviewError}</Text>
                     ) : null}
 
-                    <TouchableOpacity onPress={submitReview} style={styles.primaryButton}>
-                    <Text style={styles.primaryButtonText}>
-                        {myReview ? "Update Review" : "Submit Review"}
-                    </Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: "row", gap: scale(10), marginTop: verticalScale(8) }}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setReviewError("");
+                          setReviewFormOpen(false);
+                          if (myReview) {
+                            setReviewRating(myReview.rating);
+                            setReviewText(myReview.review_text || "");
+                          } else {
+                            setReviewRating(null);
+                            setReviewText("");
+                          }
+                        }}
+                        style={[styles.editProfileButton, { flex: 0, paddingHorizontal: scale(18) }]}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={styles.editProfileButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={submitReview} style={[styles.addPostButton, { flex: 1 }]} activeOpacity={0.85}>
+                        <Text style={styles.addPostButtonText}>
+                          {myReview ? "Update Review" : "Submit Review"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                 </View>
                 )}
 
@@ -1616,24 +1740,47 @@ export default function CafeProfileScreen() {
                     </Text>
                 </View>
                 ) : (
-                reviews.map((review) => (
+                reviews.map((review) => {
+                  const isMine = !!userId && review.user_id === userId;
+                  return (
                     <View key={review.id} style={styles.card}>
-                    <View style={{ flexDirection: "row", marginBottom: verticalScale(6) }}>
-                        {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                            key={star}
-                            size={scale(14)}
-                            color={star <= review.rating ? "#D4A373" : "#ddd"}
-                            fill={star <= review.rating ? "#D4A373" : "transparent"}
-                        />
-                        ))}
-                    </View>
+                      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: verticalScale(6) }}>
+                        <View style={{ flexDirection: "row", flex: 1 }}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              size={scale(14)}
+                              color={star <= review.rating ? "#D4A373" : "#ddd"}
+                              fill={star <= review.rating ? "#D4A373" : "transparent"}
+                            />
+                          ))}
+                        </View>
+                        {isMine && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setReviewRating(review.rating);
+                              setReviewText(review.review_text || "");
+                              setReviewError("");
+                              setReviewFormOpen(true);
+                            }}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={styles.reviewEditBtn}
+                            accessibilityLabel="Edit your review"
+                          >
+                            <Pencil size={scale(14)} color="#D4A373" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
 
-                    <Text style={styles.cardTitle}>
+                      <Text style={styles.cardTitle}>
                         {review.review_text || "No written review"}
-                    </Text>
+                      </Text>
+                      {isMine && (
+                        <Text style={styles.reviewMineLabel}>Your review</Text>
+                      )}
                     </View>
-                ))
+                  );
+                })
                 )}
             </View>
             )}
@@ -1838,44 +1985,86 @@ export default function CafeProfileScreen() {
       </Modal>
     )}
 
-    {selectedPost && (
-      <Modal visible transparent animationType="fade">
-        <TouchableOpacity
-          style={styles.previewOverlay}
-          activeOpacity={1}
-          onPress={() => setSelectedPost(null)}
-        >
-          <View style={styles.postPreviewContainer}>
-            <ScrollView horizontal pagingEnabled>
-              {selectedPost.media?.map((m, i) =>
-                m.file_type === "video" ? (
-                  <Video
-                    key={i}
-                    source={{ uri: m.file_url }}
-                    style={styles.postPreviewMedia}
-                    resizeMode="contain"
-                    useNativeControls
-                  />
-                ) : (
-                  <Image
-                    key={i}
-                    source={{ uri: m.file_url }}
-                    style={styles.postPreviewMedia}
-                    resizeMode="contain"
-                  />
-                )
+    <Modal
+      visible={!!selectedPost}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={() => { setSelectedPost(null); setPreviewIndex(0); }}
+    >
+      {selectedPost && (
+        <View style={styles.previewSheet}>
+          <TouchableOpacity
+            style={styles.previewCloseBtn}
+            onPress={() => { setSelectedPost(null); setPreviewIndex(0); }}
+            accessibilityLabel="Close"
+          >
+            <X size={scale(18)} color="#333" />
+          </TouchableOpacity>
+
+          <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+            <View style={{ width: deviceWidth }}>
+              <FlatList
+                data={selectedPost.media ?? []}
+                keyExtractor={(_, i) => `pv-${i}`}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(e) => {
+                  setPreviewIndex(Math.round(e.nativeEvent.contentOffset.x / deviceWidth));
+                }}
+                renderItem={({ item }) =>
+                  item.file_type === "video" ? (
+                    <Video
+                      source={{ uri: item.file_url }}
+                      style={{ width: deviceWidth, height: deviceWidth }}
+                      resizeMode={ResizeMode.COVER}
+                      useNativeControls
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: item.file_url }}
+                      style={{ width: deviceWidth, height: deviceWidth }}
+                      resizeMode="cover"
+                    />
+                  )
+                }
+              />
+              {(selectedPost.media?.length ?? 0) > 1 && (
+                <View style={styles.previewDots} pointerEvents="none">
+                  {selectedPost.media!.map((_, i) => (
+                    <View
+                      key={`pv-dot-${i}`}
+                      style={[styles.previewDot, i === previewIndex && styles.previewDotActive]}
+                    />
+                  ))}
+                </View>
               )}
-            </ScrollView>
+            </View>
+
+            {selectedPost.location ? (
+              <View style={styles.previewLocationRow}>
+                <MapPin size={scale(13)} color="#D4A373" />
+                <Text style={styles.previewLocationText}>{selectedPost.location}</Text>
+              </View>
+            ) : null}
 
             {selectedPost.caption ? (
-              <Text style={styles.postPreviewCaption}>
-                {selectedPost.caption}
-              </Text>
+              <Text style={styles.previewCaption}>{selectedPost.caption}</Text>
             ) : null}
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    )}
+
+            {selectedPost.tags && selectedPost.tags.length > 0 && (
+              <View style={styles.previewTagsRow}>
+                {selectedPost.tags.map((tag, i) => (
+                  <View key={`pv-tag-${i}`} style={styles.previewTagChip}>
+                    <Text style={styles.previewTagChipText}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      )}
+    </Modal>
 
       <BottomNav />
     </View>
@@ -1893,6 +2082,27 @@ const styles = StyleSheet.create({
 
   hero: { position: "relative" },
   heroImage: { width: "100%", height: scale(200) },
+  heroDots: {
+    position: "absolute",
+    top: scale(10),
+    right: scale(12),
+    flexDirection: "row",
+    gap: scale(5),
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(10),
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  heroDot: {
+    width: scale(6),
+    height: scale(6),
+    borderRadius: scale(3),
+    backgroundColor: "rgba(255,255,255,0.55)",
+  },
+  heroDotActive: {
+    backgroundColor: "#FFF",
+    width: scale(10),
+  },
   heroOverlay: {
     position: "absolute",
     bottom: scale(12),
@@ -2018,10 +2228,100 @@ const styles = StyleSheet.create({
   // },
   addPostButton: {
     flex: 1,
+    flexDirection: "row",
     backgroundColor: "#D4A373",
-    paddingVertical: scale(12),
-    borderRadius: scale(12),
+    paddingVertical: scale(11),
+    borderRadius: scale(10),
     alignItems: "center",
+    justifyContent: "center",
+    gap: scale(6),
+    shadowColor: "#D4A373",
+    shadowOpacity: 0.25,
+    shadowRadius: scale(6),
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  addPostButtonText: {
+    color: "#FFF",
+    fontWeight: "600",
+    fontSize: moderateScale(14),
+  },
+  reviewEditBtn: {
+    width: scale(28),
+    height: scale(28),
+    borderRadius: scale(14),
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF7EE",
+    borderWidth: 1,
+    borderColor: "#F1E4D2",
+  },
+  reviewMineLabel: {
+    fontSize: moderateScale(11),
+    color: "#D4A373",
+    fontWeight: "600",
+    marginTop: verticalScale(4),
+  },
+  editProfileButton: {
+    flex: 1,
+    flexDirection: "row",
+    backgroundColor: "#FFF",
+    paddingVertical: scale(11),
+    borderRadius: scale(10),
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(6),
+    borderWidth: 1,
+    borderColor: "#D4A373",
+  },
+  editProfileButtonText: {
+    color: "#D4A373",
+    fontWeight: "600",
+    fontSize: moderateScale(14),
+  },
+  socialsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: scale(8),
+    marginTop: verticalScale(14),
+  },
+  socialChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(5),
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(6),
+    borderRadius: scale(14),
+    backgroundColor: "#FFF7EE",
+    borderWidth: 1,
+    borderColor: "#F1E4D2",
+  },
+  socialChipText: {
+    color: "#8B6F47",
+    fontSize: moderateScale(12),
+    fontWeight: "500",
+  },
+  tagChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: scale(6),
+    marginTop: verticalScale(12),
+    paddingHorizontal: scale(8),
+  },
+  attributeChip: {
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(5),
+    borderRadius: scale(14),
+    backgroundColor: "#FFF7EE",
+    borderWidth: 1,
+    borderColor: "#F1E4D2",
+  },
+  attributeChipText: {
+    color: "#8B6F47",
+    fontSize: moderateScale(11),
+    fontWeight: "500",
   },
   doneText: {
     color: "#D4A373",
@@ -2466,5 +2766,87 @@ shareButtonText: {
     color: "#FFF",
     fontSize: moderateScale(14),
     textAlign: "center",
+  },
+  previewSheet: {
+    flex: 1,
+    backgroundColor: "#FFF",
+  },
+  previewCloseBtn: {
+    position: "absolute",
+    top: scale(12),
+    right: scale(12),
+    zIndex: 10,
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    backgroundColor: "rgba(255,255,255,0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: scale(4),
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  previewDots: {
+    position: "absolute",
+    bottom: scale(10),
+    alignSelf: "center",
+    flexDirection: "row",
+    gap: scale(5),
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(10),
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  previewDot: {
+    width: scale(6),
+    height: scale(6),
+    borderRadius: scale(3),
+    backgroundColor: "rgba(255,255,255,0.55)",
+  },
+  previewDotActive: {
+    backgroundColor: "#FFF",
+    width: scale(10),
+  },
+  previewLocationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(5),
+    paddingHorizontal: scale(16),
+    paddingTop: scale(12),
+  },
+  previewLocationText: {
+    color: "#8B6F47",
+    fontSize: moderateScale(12),
+    fontWeight: "500",
+  },
+  previewCaption: {
+    paddingHorizontal: scale(16),
+    paddingTop: scale(12),
+    color: "#1A1A1A",
+    fontSize: moderateScale(14),
+    lineHeight: moderateScale(20),
+  },
+  previewTagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: scale(6),
+    paddingHorizontal: scale(16),
+    paddingTop: scale(12),
+    paddingBottom: scale(24),
+  },
+  previewTagChip: {
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(5),
+    borderRadius: scale(14),
+    backgroundColor: "#FFF7EE",
+    borderWidth: 1,
+    borderColor: "#F1E4D2",
+  },
+  previewTagChipText: {
+    color: "#8B6F47",
+    fontSize: moderateScale(11),
+    fontWeight: "500",
   },
 });

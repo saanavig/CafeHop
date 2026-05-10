@@ -29,6 +29,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
+import { useTheme } from "../context/ThemeContext";
 
 type MenuItem = {
   icon: React.ElementType;
@@ -42,6 +43,7 @@ const SettingsScreen = () => {
   const navigation = useNavigation<any>();
   const { role } = useRole();
   const { user, signOut } = useAuth();
+  const { colors: themeColors } = useTheme();
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
 
@@ -56,9 +58,10 @@ const SettingsScreen = () => {
   }, []);
 
   const customerMenu: MenuItem[] = [
+    { icon: User, label: "Edit Profile", desc: "Update your name", route: "EditCustomerProfile" },
     { icon: Bell, label: "Notifications", desc: "Manage alerts", route: "Notifications" },
     { icon: History, label: "Visit History", desc: "Your past cafe visits", route: "History" },
-    { icon: Settings, label: "Account Settings", desc: "App preferences", route: "Preferences" },
+    { icon: Settings, label: "Account Settings", desc: "Cafe preferences & app settings", route: "Preferences" },
     { icon: HelpCircle, label: "Help & Support", desc: "FAQs & contact", route: "Help" },
   ];
 
@@ -78,7 +81,7 @@ const SettingsScreen = () => {
   };
 
   return (
-    <SafeAreaView edges={["top"]} style={styles.container}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
       <Animated.ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingTop: scale(16) }]}
         showsVerticalScrollIndicator={false}
@@ -93,10 +96,10 @@ const SettingsScreen = () => {
               <Store size={36} color="#D4A373" />
             )}
           </View>
-          <Text style={styles.title}>
+          <Text style={[styles.title, { color: themeColors.text }]}>
             {role === "customer" ? "Welcome back!" : "Cafe Dashboard"}
           </Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>
             {user?.email ?? "No email"}
           </Text>
           <View style={styles.infoBadge}>
@@ -118,7 +121,7 @@ const SettingsScreen = () => {
 
         {/* Menu Items */}
         <View style={[styles.content, { width: contentWidth }]}>
-          <View style={styles.menuContainer}>
+          <View style={[styles.menuContainer, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
             {menuItems.map((item, index) => {
               const Icon = item.icon;
               return (
@@ -134,8 +137,8 @@ const SettingsScreen = () => {
                     <Icon size={20} color="#D4A373" />
                   </View>
                   <View style={styles.menuTextContainer}>
-                    <Text style={styles.menuLabel}>{item.label}</Text>
-                    <Text style={styles.menuDesc}>{item.desc}</Text>
+                    <Text style={[styles.menuLabel, { color: themeColors.text }]}>{item.label}</Text>
+                    <Text style={[styles.menuDesc, { color: themeColors.textMuted }]}>{item.desc}</Text>
                   </View>
                   <ChevronRight size={20} color="#CCC" />
                 </TouchableOpacity>
