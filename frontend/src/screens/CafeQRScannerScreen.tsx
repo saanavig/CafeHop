@@ -3,10 +3,12 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import React, { useState } from "react";
 
 import { supabase } from "../api/supabaseClient";
+import { useTheme } from "../context/ThemeContext";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default function CafeQRScannerScreen({ navigation }: any) {
+  const { colors: themeColors } = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
 
@@ -72,8 +74,8 @@ export default function CafeQRScannerScreen({ navigation }: any) {
 
   if (!permission.granted) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.title}>Camera permission needed</Text>
+      <View style={[styles.center, { backgroundColor: themeColors.bg }]}>
+        <Text style={[styles.title, { color: themeColors.text }]}>Camera permission needed</Text>
 
         <TouchableOpacity onPress={requestPermission} style={styles.button}>
           <Text style={styles.buttonText}>Allow Camera</Text>
@@ -83,7 +85,7 @@ export default function CafeQRScannerScreen({ navigation }: any) {
           onPress={() => navigation.goBack()}
           style={styles.permissionBackButton}
         >
-          <Text style={styles.permissionBackText}>Go Back</Text>
+          <Text style={[styles.permissionBackText, { color: themeColors.textMuted }]}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );

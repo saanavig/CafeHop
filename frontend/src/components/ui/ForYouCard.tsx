@@ -30,6 +30,7 @@ import {
 import Button from "./Button";
 import { apiFetch } from "../../api/client";
 import { useNavigation } from "@react-navigation/native";
+import { useTheme } from "../../context/ThemeContext";
 
 const CARD_WIDTH = deviceWidth * 0.88;
 
@@ -72,6 +73,7 @@ const ForYouCard = ({
   const wrapperH = listHeight ?? deviceHeight - 180;
   const cardH = wrapperH * 0.97;
 
+  const { colors: themeColors } = useTheme();
   const [liked, setLiked] = useState(post.liked_by_user ?? false);
   const [saved, setSaved] = useState(post.saved_by_user ?? false);
   const [likesState, setLikesState] = useState(post.likes);
@@ -377,15 +379,15 @@ const ForYouCard = ({
           </TouchableOpacity>
 
           <Animated.View
-            style={[styles.modalContent, { top: slideAnim }]}
+            style={[styles.modalContent, { top: slideAnim, backgroundColor: themeColors.card }]}
           >
-            <View style={styles.dragBar} />
+            <View style={[styles.dragBar, { backgroundColor: themeColors.border }]} />
 
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Comments</Text>
+            <View style={[styles.modalHeader, { borderBottomColor: themeColors.border }]}>
+              <Text style={[styles.modalTitle, { color: themeColors.text }]}>Comments</Text>
 
               <TouchableOpacity onPress={closeComments}>
-                <X size={scale(20)} color="#555" />
+                <X size={scale(20)} color={themeColors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -395,7 +397,7 @@ const ForYouCard = ({
                 item.id || index.toString()
               }
               renderItem={({ item }) => (
-                <Text style={styles.commentText}>
+                <Text style={[styles.commentText, { color: themeColors.text }]}>
                   <Text style={{ fontWeight: "bold" }}>
                     {(item.username ?? "User") + ": "}
                   </Text>
@@ -417,7 +419,8 @@ const ForYouCard = ({
               <View style={styles.commentRow}>
                 <TextInput
                   placeholder="Add a comment..."
-                  style={styles.commentInput}
+                  placeholderTextColor={themeColors.textMuted}
+                  style={[styles.commentInput, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border, color: themeColors.text }]}
                   value={newComment}
                   onChangeText={setNewComment}
                 />

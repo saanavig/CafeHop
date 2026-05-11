@@ -25,6 +25,8 @@ import BottomNav from "../components/ui/BottomNav";
 import { supabase } from "../api/supabaseClient";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "../context/ThemeContext";
 
 type CustomerVisit = {
   id: string;
@@ -70,6 +72,7 @@ function timeAgo(iso: string): string {
 const HistoryScreen = () => {
   const navigation = useNavigation<any>();
   const { role } = useRole();
+  const { colors: themeColors } = useTheme();
   const [showAllVisits, setShowAllVisits] = useState(false);
   const [showAllRewards, setShowAllRewards] = useState(false);
   const [search, setSearch] = useState("");
@@ -86,6 +89,193 @@ const HistoryScreen = () => {
 
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
+
+  const styles = {
+    container: { flex: 1, backgroundColor: themeColors.bg },
+    scrollContent: { paddingTop: scale(16), paddingBottom: scale(100), alignItems: "center" },
+    loadingState: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: scale(80) },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: scale(16),
+      marginBottom: scale(24),
+    },
+    backButton: { padding: scale(8), marginRight: scale(12) },
+    headerTitle: {
+      fontSize: moderateScale(20),
+      fontWeight: "600",
+      fontFamily: "PlayfairDisplay_700Bold",
+      marginLeft: scale(8),
+      color: themeColors.text,
+    },
+    content: { alignSelf: "center", paddingHorizontal: scale(16) },
+    statsContainer: {
+      flexDirection: "row",
+      justifyContent: "space-around",
+      alignItems: "center",
+      paddingVertical: scale(16),
+      marginBottom: scale(24),
+      borderBottomWidth: 1,
+      borderBottomColor: themeColors.border,
+    },
+    statItem: { alignItems: "center" },
+    statValue: { fontSize: moderateScale(22), fontWeight: "700", color: themeColors.text },
+    statLabel: { fontSize: moderateScale(10), color: themeColors.textMuted, marginTop: scale(4) },
+    statDivider: { width: 1, height: scale(32), backgroundColor: themeColors.border },
+    searchInput: {
+      width: "100%",
+      paddingHorizontal: scale(12),
+      paddingVertical: scale(10),
+      marginBottom: scale(16),
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      borderRadius: scale(12),
+      fontSize: moderateScale(14),
+      color: themeColors.text,
+    },
+    section: { marginBottom: scale(24) },
+    sectionTitle: {
+      fontSize: moderateScale(16),
+      fontWeight: "600",
+      color: themeColors.text,
+      marginBottom: scale(12),
+    },
+    emptySection: {
+      backgroundColor: themeColors.card,
+      borderRadius: scale(12),
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      padding: scale(20),
+      alignItems: "center",
+    },
+    emptyText: { fontSize: moderateScale(13), color: themeColors.textMuted },
+    itemsList: { gap: scale(12) },
+    item: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: themeColors.card,
+      borderRadius: scale(12),
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      padding: scale(12),
+      gap: scale(12),
+    },
+    itemIconBg: {
+      width: scale(40),
+      height: scale(40),
+      borderRadius: scale(10),
+      backgroundColor: themeColors.bg,
+      justifyContent: "center",
+      alignItems: "center",
+      flexShrink: 0,
+    },
+    itemContent: { flex: 1 },
+    itemTitle: { fontSize: moderateScale(14), fontWeight: "600", color: themeColors.text, marginBottom: scale(2) },
+    itemSubtext: { fontSize: moderateScale(12), color: themeColors.textMuted, marginBottom: scale(4) },
+    itemSpent: { fontSize: moderateScale(12), color: themeColors.textMuted, marginBottom: scale(6) },
+    pointsBadge: {
+      alignSelf: "flex-start",
+      backgroundColor: "rgba(212, 163, 115, 0.15)",
+      paddingHorizontal: scale(8),
+      paddingVertical: scale(4),
+      borderRadius: scale(8),
+    },
+    pointsText: { fontSize: moderateScale(12), fontWeight: "600", color: themeColors.accent },
+    receiptHint: { fontSize: moderateScale(11), color: themeColors.accent, fontWeight: "500", flexShrink: 0 },
+    seeMoreButton: {
+      marginTop: scale(16),
+      paddingVertical: scale(12),
+      paddingHorizontal: scale(16),
+      backgroundColor: themeColors.accent,
+      borderRadius: scale(12),
+      alignItems: "center",
+    },
+    seeMoreText: { fontSize: moderateScale(14), fontWeight: "600", color: themeColors.card },
+
+    // Modals
+    modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+    modalSheet: {
+      backgroundColor: themeColors.card,
+      borderTopLeftRadius: scale(24),
+      borderTopRightRadius: scale(24),
+      overflow: "hidden",
+      maxHeight: "70%",
+    },
+    closeBtn: {
+      position: "absolute",
+      top: scale(12),
+      right: scale(12),
+      width: scale(36),
+      height: scale(36),
+      borderRadius: scale(18),
+      backgroundColor: themeColors.card,
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 10,
+    },
+    receiptBody: { padding: scale(24) },
+    receiptIconRow: { alignItems: "center", marginBottom: scale(12) },
+    receiptCafe: {
+      fontSize: moderateScale(20),
+      fontWeight: "700",
+      color: themeColors.text,
+      textAlign: "center",
+      marginBottom: scale(4),
+    },
+    receiptDate: {
+      fontSize: moderateScale(13),
+      color: themeColors.textMuted,
+      textAlign: "center",
+      marginBottom: scale(16),
+    },
+    receiptDivider: {
+      height: 1,
+      backgroundColor: themeColors.border,
+      marginVertical: scale(12),
+      borderStyle: "dashed",
+      borderWidth: 1,
+      borderColor: themeColors.border,
+    },
+    receiptRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: scale(8),
+    },
+    receiptTotalLabel: { fontSize: moderateScale(15), fontWeight: "700", color: themeColors.text },
+    receiptTotalValue: { fontSize: moderateScale(15), fontWeight: "700", color: themeColors.text },
+    pointsEarnedBadge: {
+      marginTop: scale(16),
+      alignSelf: "center",
+      backgroundColor: "rgba(212, 163, 115, 0.15)",
+      paddingHorizontal: scale(16),
+      paddingVertical: scale(8),
+      borderRadius: scale(20),
+    },
+    pointsEarnedText: { fontSize: moderateScale(14), fontWeight: "700", color: themeColors.accent },
+
+    rewardConfirmBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: scale(6),
+      alignSelf: "center",
+      backgroundColor: themeColors.card,
+      paddingHorizontal: scale(14),
+      paddingVertical: scale(6),
+      borderRadius: scale(20),
+      marginBottom: scale(16),
+    },
+    rewardConfirmText: { fontSize: moderateScale(13), fontWeight: "600", color: themeColors.text },
+    rewardDetailRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingVertical: scale(12),
+      borderBottomWidth: 1,
+      borderBottomColor: themeColors.border,
+    },
+    rewardDetailLabel: { fontSize: moderateScale(13), color: themeColors.textMuted },
+    rewardDetailValue: { fontSize: moderateScale(13), color: themeColors.text, fontWeight: "500" },
+  } as any;
 
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -229,18 +419,18 @@ const HistoryScreen = () => {
         };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={styles.container}>
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { alignItems: "flex-start" }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#D4A373" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={themeColors.accent} />
         }
       >
         {/* Header */}
         <View style={styles.header}>
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <ArrowLeft size={24} color="#333" />
+            <ArrowLeft size={24} color={themeColors.text} />
           </Pressable>
           <Text style={styles.headerTitle}>
             {role === "customer" ? "History" : "Customer Visits"}
@@ -249,7 +439,7 @@ const HistoryScreen = () => {
 
         {loading ? (
           <View style={styles.loadingState}>
-            <ActivityIndicator color="#D4A373" />
+            <ActivityIndicator color={themeColors.accent} />
           </View>
         ) : (
           <View style={[styles.content, { width: contentWidth }]}>
@@ -303,7 +493,7 @@ const HistoryScreen = () => {
                 }
                 value={search}
                 onChangeText={setSearch}
-                placeholderTextColor="#999"
+                placeholderTextColor={themeColors.textMuted}
               />
             )}
 
@@ -329,9 +519,9 @@ const HistoryScreen = () => {
                       >
                         <View style={styles.itemIconBg}>
                           {role === "cafe" ? (
-                            <User size={16} color="#D4A373" />
+                            <User size={16} color={themeColors.accent} />
                           ) : (
-                            <Coffee size={16} color="#D4A373" />
+                            <Coffee size={16} color={themeColors.accent} />
                           )}
                         </View>
                         <View style={styles.itemContent}>
@@ -390,9 +580,9 @@ const HistoryScreen = () => {
                       >
                         <View style={styles.itemIconBg}>
                           {role === "cafe" ? (
-                            <Coffee size={16} color="#D4A373" />
+                            <Coffee size={16} color={themeColors.accent} />
                           ) : (
-                            <Clock size={16} color="#D4A373" />
+                            <Clock size={16} color={themeColors.accent} />
                           )}
                         </View>
                         <View style={styles.itemContent}>
@@ -441,12 +631,12 @@ const HistoryScreen = () => {
             {selectedVisit && (
               <>
                 <Pressable style={styles.closeBtn} onPress={() => setSelectedVisit(null)}>
-                  <X size={20} color="#555" />
+                  <X size={20} color={themeColors.textMuted} />
                 </Pressable>
 
                 <View style={styles.receiptBody}>
                   <View style={styles.receiptIconRow}>
-                    <Coffee size={scale(28)} color="#D4A373" />
+                    <Coffee size={scale(28)} color={themeColors.accent} />
                   </View>
                   <Text style={styles.receiptCafe}>{selectedVisit.cafe}</Text>
                   <Text style={styles.receiptDate}>{selectedVisit.date}</Text>
@@ -475,7 +665,7 @@ const HistoryScreen = () => {
             {selectedReward && (
               <>
                 <Pressable style={styles.closeBtn} onPress={() => setSelectedReward(null)}>
-                  <X size={20} color="#555" />
+                  <X size={20} color={themeColors.textMuted} />
                 </Pressable>
 
                 <View style={styles.receiptBody}>
@@ -496,7 +686,7 @@ const HistoryScreen = () => {
                   </View>
                   <View style={styles.rewardDetailRow}>
                     <Text style={styles.rewardDetailLabel}>Points Used</Text>
-                    <Text style={[styles.rewardDetailValue, { color: "#D4A373", fontWeight: "700" }]}>
+                    <Text style={[styles.rewardDetailValue, { color: themeColors.accent, fontWeight: "700" }]}>
                       {selectedReward.points} pts
                     </Text>
                   </View>
@@ -506,195 +696,8 @@ const HistoryScreen = () => {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F7F3F0" },
-  scrollContent: { paddingTop: scale(16), paddingBottom: scale(100), alignItems: "center" },
-  loadingState: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: scale(80) },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: scale(16),
-    marginBottom: scale(24),
-  },
-  backButton: { padding: scale(8), marginRight: scale(12) },
-  headerTitle: {
-    fontSize: moderateScale(20),
-    fontWeight: "600",
-    fontFamily: "PlayfairDisplay_700Bold",
-    marginLeft: scale(8),
-    color: "#1A1A1A",
-  },
-  content: { alignSelf: "center", paddingHorizontal: scale(16) },
-  statsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingVertical: scale(16),
-    marginBottom: scale(24),
-    borderBottomWidth: 1,
-    borderBottomColor: "#E8DFD5",
-  },
-  statItem: { alignItems: "center" },
-  statValue: { fontSize: moderateScale(22), fontWeight: "700", color: "#1A1A1A" },
-  statLabel: { fontSize: moderateScale(10), color: "#888", marginTop: scale(4) },
-  statDivider: { width: 1, height: scale(32), backgroundColor: "#E8DFD5" },
-  searchInput: {
-    width: "100%",
-    paddingHorizontal: scale(12),
-    paddingVertical: scale(10),
-    marginBottom: scale(16),
-    borderWidth: 1,
-    borderColor: "#E8DFD5",
-    borderRadius: scale(12),
-    fontSize: moderateScale(14),
-    color: "#333",
-  },
-  section: { marginBottom: scale(24) },
-  sectionTitle: {
-    fontSize: moderateScale(16),
-    fontWeight: "600",
-    color: "#1A1A1A",
-    marginBottom: scale(12),
-  },
-  emptySection: {
-    backgroundColor: "#FFF",
-    borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: "#E8DFD5",
-    padding: scale(20),
-    alignItems: "center",
-  },
-  emptyText: { fontSize: moderateScale(13), color: "#AAA" },
-  itemsList: { gap: scale(12) },
-  item: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: "#E8DFD5",
-    padding: scale(12),
-    gap: scale(12),
-  },
-  itemIconBg: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: scale(10),
-    backgroundColor: "#F7F3F0",
-    justifyContent: "center",
-    alignItems: "center",
-    flexShrink: 0,
-  },
-  itemContent: { flex: 1 },
-  itemTitle: { fontSize: moderateScale(14), fontWeight: "600", color: "#1A1A1A", marginBottom: scale(2) },
-  itemSubtext: { fontSize: moderateScale(12), color: "#888", marginBottom: scale(4) },
-  itemSpent: { fontSize: moderateScale(12), color: "#888", marginBottom: scale(6) },
-  pointsBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(212, 163, 115, 0.15)",
-    paddingHorizontal: scale(8),
-    paddingVertical: scale(4),
-    borderRadius: scale(8),
-  },
-  pointsText: { fontSize: moderateScale(12), fontWeight: "600", color: "#D4A373" },
-  receiptHint: { fontSize: moderateScale(11), color: "#D4A373", fontWeight: "500", flexShrink: 0 },
-  seeMoreButton: {
-    marginTop: scale(16),
-    paddingVertical: scale(12),
-    paddingHorizontal: scale(16),
-    backgroundColor: "#D4A373",
-    borderRadius: scale(12),
-    alignItems: "center",
-  },
-  seeMoreText: { fontSize: moderateScale(14), fontWeight: "600", color: "#FFFFFF" },
-
-  // Modals
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
-  modalSheet: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: scale(24),
-    borderTopRightRadius: scale(24),
-    overflow: "hidden",
-    maxHeight: "70%",
-  },
-  closeBtn: {
-    position: "absolute",
-    top: scale(12),
-    right: scale(12),
-    width: scale(36),
-    height: scale(36),
-    borderRadius: scale(18),
-    backgroundColor: "rgba(255,255,255,0.9)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10,
-  },
-  receiptBody: { padding: scale(24) },
-  receiptIconRow: { alignItems: "center", marginBottom: scale(12) },
-  receiptCafe: {
-    fontSize: moderateScale(20),
-    fontWeight: "700",
-    color: "#1A1A1A",
-    textAlign: "center",
-    marginBottom: scale(4),
-  },
-  receiptDate: {
-    fontSize: moderateScale(13),
-    color: "#888",
-    textAlign: "center",
-    marginBottom: scale(16),
-  },
-  receiptDivider: {
-    height: 1,
-    backgroundColor: "#F0EAE4",
-    marginVertical: scale(12),
-    borderStyle: "dashed",
-    borderWidth: 1,
-    borderColor: "#E8DFD5",
-  },
-  receiptRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: scale(8),
-  },
-  receiptTotalLabel: { fontSize: moderateScale(15), fontWeight: "700", color: "#1A1A1A" },
-  receiptTotalValue: { fontSize: moderateScale(15), fontWeight: "700", color: "#1A1A1A" },
-  pointsEarnedBadge: {
-    marginTop: scale(16),
-    alignSelf: "center",
-    backgroundColor: "rgba(212, 163, 115, 0.15)",
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(8),
-    borderRadius: scale(20),
-  },
-  pointsEarnedText: { fontSize: moderateScale(14), fontWeight: "700", color: "#D4A373" },
-
-  rewardConfirmBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(6),
-    alignSelf: "center",
-    backgroundColor: "#E8F5E9",
-    paddingHorizontal: scale(14),
-    paddingVertical: scale(6),
-    borderRadius: scale(20),
-    marginBottom: scale(16),
-  },
-  rewardConfirmText: { fontSize: moderateScale(13), fontWeight: "600", color: "#2E7D32" },
-  rewardDetailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: scale(12),
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0EAE4",
-  },
-  rewardDetailLabel: { fontSize: moderateScale(13), color: "#888" },
-  rewardDetailValue: { fontSize: moderateScale(13), color: "#1A1A1A", fontWeight: "500" },
-});
 
 export default HistoryScreen;

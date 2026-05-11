@@ -3,8 +3,10 @@ import * as ImagePicker from "expo-image-picker";
 import {
   ActivityIndicator,
   Animated,
+  FlatList,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -13,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { BookOpen, Grid3X3, Pencil, Star, Store } from "lucide-react-native";
+import { BookOpen, Globe, Grid3X3, MapPin, Pencil, Plus, Star, Store, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   deviceWidth,
@@ -24,10 +26,12 @@ import {
 
 import BottomNav from "../components/ui/BottomNav";
 import { TextInput } from "react-native";
-import { Video } from "expo-av";
+import { ResizeMode, Video } from "expo-av";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { useRoute } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "../context/ThemeContext";
 
 type Comment = { text: string };
 
@@ -53,11 +57,16 @@ type Cafe = {
   name?: string;
   address?: string;
   image_url?: string;
+  image_urls?: string[];
   description?: string;
   price_level?: number;
   rating?: number;
   visits?: number;
   isOpen?: boolean;
+  instagram_url?: string | null;
+  facebook_url?: string | null;
+  website_url?: string | null;
+  attributes?: string[] | null;
 };
   const TAG_OPTIONS = [
     "Cozy", "Quiet", "Lively", "Outdoor Seating", "Pet Friendly", "WiFi", "Power Outlets",
@@ -118,8 +127,11 @@ export default function CafeProfileScreen() {
     const [reviewText, setReviewText] = useState("");
     const [reviewsLoading, setReviewsLoading] = useState(false);
     const [reviewError, setReviewError] = useState("");
+    const [reviewFormOpen, setReviewFormOpen] = useState(false);
     const [authLoading, setAuthLoading] = useState(true);
     const [hours, setHours] = useState<any[]>([]);
+    const [heroIndex, setHeroIndex] = useState(0);
+    const [previewIndex, setPreviewIndex] = useState(0);
     const [showHoursModal, setShowHoursModal] = useState(false);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
@@ -133,6 +145,8 @@ export default function CafeProfileScreen() {
 
   const isOwner = !!userId && !!ownerId && userId === ownerId;
   const canReview = userRole === "user";
+
+  const { colors: themeColors } = useTheme();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(scale(18))).current;
@@ -675,10 +689,12 @@ export default function CafeProfileScreen() {
 
   const inputStyle = {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: themeColors.border,
     borderRadius: scale(8),
     padding: scale(10),
     marginBottom: verticalScale(10),
+    color: themeColors.text,
+    backgroundColor: themeColors.card,
   };
 
 
@@ -770,9 +786,8 @@ export default function CafeProfileScreen() {
     }
     await fetchReviews();
 
-    setReviewText("");
-    setReviewRating(null);
     setReviewError("");
+    setReviewFormOpen(false);
     };
 
   useEffect(() => {
@@ -819,7 +834,7 @@ export default function CafeProfileScreen() {
 
     if (cafeLoading) {
     return (
-      <View style={styles.centered}>
+      <View style={[styles.centered, { backgroundColor: themeColors.bg }]}>
         <ActivityIndicator size="small" color="#D4A373" />
       </View>
     );
@@ -827,15 +842,25 @@ export default function CafeProfileScreen() {
 
   if (!cafe) {
     return (
-      <View style={styles.centered}>
-        <Text>Cafe not found.</Text>
+      <View style={[styles.centered, { backgroundColor: themeColors.bg }]}>
+        <Text style={{ color: themeColors.text }}>Cafe not found.</Text>
         <BottomNav />
       </View>
     );
   }
 
+  const heroImages: string[] = (() => {
+    const arr: string[] = [];
+    if (Array.isArray(cafe.image_urls)) {
+      for (const u of cafe.image_urls) if (u && !arr.includes(u)) arr.push(u);
+    }
+    if (cafe.image_url && !arr.includes(cafe.image_url)) arr.push(cafe.image_url);
+    if (arr.length === 0) arr.push("https://picsum.photos/800");
+    return arr;
+  })();
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
       <Animated.ScrollView
         contentContainerStyle={{ paddingBottom: scale(100) }}
         style={{
@@ -844,10 +869,34 @@ export default function CafeProfileScreen() {
         }}
       >
         <View style={styles.hero}>
-          <Image
-            source={{ uri: cafe.image_url || "https://picsum.photos/800" }}
-            style={styles.heroImage}
-          />
+          {heroImages.length > 1 ? (
+            <FlatList
+              data={heroImages}
+              keyExtractor={(_, i) => `hero-${i}`}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(e) => {
+                const i = Math.round(e.nativeEvent.contentOffset.x / deviceWidth);
+                setHeroIndex(i);
+              }}
+              renderItem={({ item }) => (
+                <Image source={{ uri: item }} style={[styles.heroImage, { width: deviceWidth }]} />
+              )}
+            />
+          ) : (
+            <Image source={{ uri: heroImages[0] }} style={styles.heroImage} />
+          )}
+          {heroImages.length > 1 && (
+            <View style={styles.heroDots} pointerEvents="none">
+              {heroImages.map((_, i) => (
+                <View
+                  key={`hero-dot-${i}`}
+                  style={[styles.heroDot, i === heroIndex && styles.heroDotActive]}
+                />
+              ))}
+            </View>
+          )}
           <View style={styles.heroOverlay}>
             <Text style={styles.heroTitle}>{cafe.name || "Cafe"}</Text>
             <Text style={styles.heroSubtitle}>
@@ -858,13 +907,13 @@ export default function CafeProfileScreen() {
 
         <View style={{ width: contentWidth, alignSelf: "center" }}>
           <View style={styles.header}>
-            <View style={styles.avatar}>
-              <Store size={scale(44)} color="#888" />
+            <View style={[styles.avatar, { backgroundColor: themeColors.iconBg }]}>
+              <Store size={scale(44)} color={themeColors.textMuted} />
             </View>
 
-            <Text style={styles.name}>{cafe.name || "Cafe"}</Text>
+            <Text style={[styles.name, { color: themeColors.text }]}>{cafe.name || "Cafe"}</Text>
 
-            <Text style={styles.bio}>
+            <Text style={[styles.bio, { color: themeColors.textMuted }]}>
               {cafe.description || "No description yet"} •{" "}
               <Text
                 style={[styles.statusLink, { color: status.color }]}
@@ -876,50 +925,96 @@ export default function CafeProfileScreen() {
 
             <View style={styles.statsRow}>
               <View style={styles.stat}>
-                <Text style={styles.statNumber}>{posts.length}</Text>
-                <Text style={styles.statLabel}>Posts</Text>
+                <Text style={[styles.statNumber, { color: themeColors.text }]}>{posts.length}</Text>
+                <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Posts</Text>
               </View>
 
               <View style={styles.stat}>
-                <Text style={styles.statNumber}>{visitCount}</Text>
-                <Text style={styles.statLabel}>Visits</Text>
+                <Text style={[styles.statNumber, { color: themeColors.text }]}>{visitCount}</Text>
+                <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Visits</Text>
               </View>
 
               <View style={styles.stat}>
-                <Text style={styles.statNumber}>
+                <Text style={[styles.statNumber, { color: themeColors.text }]}>
                   {averageRating ?? "New"}
                 </Text>
-                <Text style={styles.statLabel}>Rating</Text>
+                <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Rating</Text>
               </View>
 
               <View style={styles.stat}>
-                <Text style={styles.statNumber}>
+                <Text style={[styles.statNumber, { color: themeColors.text }]}>
                   {"$".repeat(cafe.price_level || 1)}
                 </Text>
-                <Text style={styles.statLabel}>Price</Text>
+                <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Price</Text>
               </View>
             </View>
+
+            {(cafe.instagram_url || cafe.facebook_url || cafe.website_url) && (
+              <View style={styles.socialsRow}>
+                {cafe.instagram_url ? (
+                  <TouchableOpacity
+                    style={[styles.socialChip, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border }]}
+                    onPress={() => Linking.openURL(cafe.instagram_url!).catch(() => {})}
+                  >
+                    <Globe size={scale(13)} color="#D4A373" />
+                    <Text style={styles.socialChipText}>Instagram</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {cafe.facebook_url ? (
+                  <TouchableOpacity
+                    style={[styles.socialChip, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border }]}
+                    onPress={() => Linking.openURL(cafe.facebook_url!).catch(() => {})}
+                  >
+                    <Globe size={scale(13)} color="#D4A373" />
+                    <Text style={styles.socialChipText}>Facebook</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {cafe.website_url ? (
+                  <TouchableOpacity
+                    style={[styles.socialChip, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border }]}
+                    onPress={() => Linking.openURL(cafe.website_url!).catch(() => {})}
+                  >
+                    <Globe size={scale(13)} color="#D4A373" />
+                    <Text style={styles.socialChipText}>Website</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            )}
+
+            {Array.isArray(cafe.attributes) && cafe.attributes.length > 0 && (
+              <View style={styles.tagChipsRow}>
+                {cafe.attributes.map((tag) => (
+                  <View key={tag} style={[styles.attributeChip, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border }]}>
+                    <Text style={styles.attributeChipText}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
 
         {isOwner && (
           <View style={styles.actionRow}>
             <TouchableOpacity
-              onPress={() =>navigation.navigate("CafeEdit")}
-              style={styles.editButton}
+              onPress={() => navigation.navigate("CafeEdit")}
+              style={[styles.editProfileButton, { backgroundColor: themeColors.card }]}
+              activeOpacity={0.85}
             >
-              <Text style={styles.editButtonText}>Edit Profile</Text>
+              <Pencil size={scale(15)} color="#D4A373" />
+              <Text style={styles.editProfileButtonText}>Edit Profile</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => setShowAddPostModal(true)}
               style={styles.addPostButton}
+              activeOpacity={0.85}
             >
-              <Text style={styles.primaryButtonText}>+ Add Post</Text>
+              <Plus size={scale(16)} color="#FFF" />
+              <Text style={styles.addPostButtonText}>Add Post</Text>
             </TouchableOpacity>
           </View>
         )}
 
-          <View style={styles.tabs}>
+          <View style={[styles.tabs, { borderBottomColor: themeColors.border }]}>
             <TouchableOpacity onPress={() => switchTab("posts")}>
               <Grid3X3
                 size={scale(22)}
@@ -952,7 +1047,7 @@ export default function CafeProfileScreen() {
                   </View>
                 ) : posts.length === 0 ? (
                   <View style={styles.emptyState}>
-                    <Text style={styles.emptyTitle}>No posts yet</Text>
+                    <Text style={[styles.emptyTitle, { color: themeColors.textMuted }]}>No posts yet</Text>
                     <Text style={styles.emptySubtitle}>
                       {isOwner
                         ? "Share your first photo!"
@@ -987,7 +1082,7 @@ export default function CafeProfileScreen() {
                                 margin: 1,
                                 borderRadius: scale(4),
                               }}
-                              resizeMode="cover"
+                              resizeMode={ResizeMode.COVER}
                               shouldPlay={false} // grid = no autoplay
                               isLooping
                             />
@@ -1032,7 +1127,7 @@ export default function CafeProfileScreen() {
               <View style={styles.section}>
                 {!hasMenu && !isEditing && (
                   <View style={styles.emptyState}>
-                    <Text style={styles.emptyTitle}>No menu yet</Text>
+                    <Text style={[styles.emptyTitle, { color: themeColors.textMuted }]}>No menu yet</Text>
 
                     {isOwner && (
                       <TouchableOpacity
@@ -1074,9 +1169,9 @@ export default function CafeProfileScreen() {
                     )}
 
                     {isEditing && addingItemCategory === "GLOBAL" && (
-                      <View style={styles.formCard}>
+                      <View style={[styles.formCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
                         <View style={styles.formHeader}>
-                          <Text style={styles.formTitle}>Add Item</Text>
+                          <Text style={[styles.formTitle, { color: themeColors.text }]}>Add Item</Text>
 
                           <TouchableOpacity
                             onPress={() => {
@@ -1088,7 +1183,7 @@ export default function CafeProfileScreen() {
                               setNewDescription("");
                               setNewImage(null);
                             }}
-                            style={styles.closeSmallButton}
+                            style={[styles.closeSmallButton, { backgroundColor: themeColors.iconBg }]}
                           >
                             <Text style={styles.closeSmallText}>×</Text>
                           </TouchableOpacity>
@@ -1107,7 +1202,6 @@ export default function CafeProfileScreen() {
                           onChangeText={setNewDescription}
                           style={[inputStyle, { minHeight: verticalScale(60) }]}
                           multiline
-                          textAlignVertical="top"
                         />
 
                         <TextInput
@@ -1128,7 +1222,7 @@ export default function CafeProfileScreen() {
 
                         <TouchableOpacity
                           onPress={pickImage}
-                          style={styles.imageButton}
+                          style={[styles.imageButton, { backgroundColor: themeColors.iconBg }]}
                         >
                           <Text style={{ fontSize: moderateScale(14) }}>
                             {newImage ? "Change Image" : "Add Image"}
@@ -1147,10 +1241,10 @@ export default function CafeProfileScreen() {
                             onPress={() =>
                               setShowCategoryDropdown((prev) => !prev)
                             }
-                            style={styles.dropdownTrigger}
+                            style={[styles.dropdownTrigger, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}
                           >
                             <View style={styles.dropdownRow}>
-                              <Text style={{ color: newCategory ? "#000" : "#888" }}>
+                              <Text style={{ color: newCategory ? themeColors.text : themeColors.textMuted }}>
                                 {newCategory || "Select Category"}
                               </Text>
                               <Text>▼</Text>
@@ -1158,7 +1252,7 @@ export default function CafeProfileScreen() {
                           </TouchableOpacity>
 
                           {showCategoryDropdown && (
-                            <View style={styles.dropdownList}>
+                            <View style={[styles.dropdownList, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
                               {categories.length > 0 ? (
                                 categories.map((cat, index) => (
                                   <TouchableOpacity
@@ -1170,13 +1264,13 @@ export default function CafeProfileScreen() {
                                     }}
                                     style={{ padding: scale(10) }}
                                   >
-                                    <Text style={{ fontSize: moderateScale(14) }}>
+                                    <Text style={{ fontSize: moderateScale(14), color: themeColors.text }}>
                                       {cat}
                                     </Text>
                                   </TouchableOpacity>
                                 ))
                               ) : (
-                                <Text style={{ padding: 10, color: "#888" }}>
+                                <Text style={{ padding: 10, color: themeColors.textMuted }}>
                                   No categories yet
                                 </Text>
                               )}
@@ -1335,7 +1429,7 @@ export default function CafeProfileScreen() {
                               onChangeText={setNewCategoryName}
                               onBlur={() => handleRenameCategory(section.title)}
                               autoFocus
-                              style={styles.categoryEditInput}
+                              style={[styles.categoryEditInput, { backgroundColor: themeColors.iconBg, color: themeColors.text }]}
                             />
                           ) : (
                             <TouchableOpacity
@@ -1344,20 +1438,20 @@ export default function CafeProfileScreen() {
                                 setNewCategoryName(section.title);
                               }}
                             >
-                              <Text style={styles.menuSectionTitle}>
+                              <Text style={[styles.menuSectionTitle, { color: themeColors.text }]}>
                                 {section.title}
                               </Text>
                             </TouchableOpacity>
                           )
                         ) : (
-                          <Text style={styles.menuSectionTitle}>
+                          <Text style={[styles.menuSectionTitle, { color: themeColors.text }]}>
                             {section.title}
                           </Text>
                         )}
 
                         {section.items.map((item: any, j: number) => (
                           <View key={j}>
-                            <View style={styles.menuItem}>
+                            <View style={[styles.menuItem, { borderBottomColor: themeColors.border }]}>
                               {isEditing && isOwner ? (
                                 <>
                                   <Image
@@ -1366,7 +1460,7 @@ export default function CafeProfileScreen() {
                                         ? { uri: item.image_url }
                                         : undefined
                                     }
-                                    style={styles.editItemImage}
+                                    style={[styles.editItemImage, { backgroundColor: themeColors.iconBg }]}
                                   />
 
                                   <TextInput
@@ -1374,7 +1468,7 @@ export default function CafeProfileScreen() {
                                     onChangeText={(text) =>
                                       handleEditItem(item.id, "name", text)
                                     }
-                                    style={styles.editNameInput}
+                                    style={[styles.editNameInput, { backgroundColor: themeColors.iconBg, color: themeColors.text }]}
                                   />
 
                                   <TextInput
@@ -1382,7 +1476,7 @@ export default function CafeProfileScreen() {
                                     onChangeText={(text) =>
                                       handleEditItem(item.id, "price", text)
                                     }
-                                    style={styles.editPriceInput}
+                                    style={[styles.editPriceInput, { backgroundColor: themeColors.iconBg, color: themeColors.text }]}
                                   />
 
                                   <View style={styles.rowActions}>
@@ -1421,24 +1515,24 @@ export default function CafeProfileScreen() {
                                             ? { uri: item.image_url }
                                             : undefined
                                         }
-                                        style={styles.menuDisplayImage}
+                                        style={[styles.menuDisplayImage, { backgroundColor: themeColors.iconBg }]}
                                       />
                                     </TouchableOpacity>
 
                                     <View style={{ flex: 1 }}>
-                                      <Text style={styles.menuItemName}>
+                                      <Text style={[styles.menuItemName, { color: themeColors.text }]}>
                                         {item.name}
                                       </Text>
 
                                       {item.description ? (
-                                        <Text style={styles.menuItemDescription}>
+                                        <Text style={[styles.menuItemDescription, { color: themeColors.textMuted }]}>
                                           {item.description}
                                         </Text>
                                       ) : null}
                                     </View>
                                   </View>
 
-                                  <Text style={styles.menuItemPrice}>
+                                  <Text style={[styles.menuItemPrice, { color: themeColors.textMuted }]}>
                                     ${item.price}
                                   </Text>
                                 </View>
@@ -1446,7 +1540,7 @@ export default function CafeProfileScreen() {
                             </View>
 
                             {editingItemId === item.id && isOwner && (
-                              <View style={styles.formCard}>
+                              <View style={[styles.formCard, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
                                 <TextInput
                                   value={editName}
                                   onChangeText={setEditName}
@@ -1476,7 +1570,7 @@ export default function CafeProfileScreen() {
                                       setEditImage(result.assets[0].uri);
                                     }
                                   }}
-                                  style={styles.imageButton}
+                                  style={[styles.imageButton, { backgroundColor: themeColors.iconBg }]}
                                 >
                                   <Text>
                                     {editImage ? "Change Image" : "Add Image"}
@@ -1559,10 +1653,26 @@ export default function CafeProfileScreen() {
 
             {activeTab === "reviews" && (
             <View style={styles.section}>
-                {canReview && (
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>
-                    {myReview ? "Update your review" : "Leave a review"}
+                {canReview && !reviewFormOpen && !myReview && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setReviewRating(null);
+                    setReviewText("");
+                    setReviewError("");
+                    setReviewFormOpen(true);
+                  }}
+                  style={styles.addPostButton}
+                  activeOpacity={0.85}
+                >
+                  <Plus size={scale(16)} color="#FFF" />
+                  <Text style={styles.addPostButtonText}>Leave a review</Text>
+                </TouchableOpacity>
+                )}
+
+                {canReview && reviewFormOpen && (
+                <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+                    <Text style={[styles.cardTitle, { color: themeColors.text }]}>
+                    {myReview ? "Edit your review" : "Leave a review"}
                     </Text>
 
                     <View style={{ flexDirection: "row", marginVertical: verticalScale(10) }}>
@@ -1570,8 +1680,8 @@ export default function CafeProfileScreen() {
                         <TouchableOpacity key={star} onPress={() => setReviewRating(star)}>
                         <Star
                             size={scale(24)}
-                            color={star <= reviewRating ? "#D4A373" : "#ddd"}
-                            fill={star <= reviewRating ? "#D4A373" : "transparent"}
+                            color={star <= (reviewRating ?? 0) ? "#D4A373" : "#ddd"}
+                            fill={star <= (reviewRating ?? 0) ? "#D4A373" : "transparent"}
                         />
                         </TouchableOpacity>
                     ))}
@@ -1595,11 +1705,30 @@ export default function CafeProfileScreen() {
                     <Text style={styles.errorText}>{reviewError}</Text>
                     ) : null}
 
-                    <TouchableOpacity onPress={submitReview} style={styles.primaryButton}>
-                    <Text style={styles.primaryButtonText}>
-                        {myReview ? "Update Review" : "Submit Review"}
-                    </Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: "row", gap: scale(10), marginTop: verticalScale(8) }}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setReviewError("");
+                          setReviewFormOpen(false);
+                          if (myReview) {
+                            setReviewRating(myReview.rating);
+                            setReviewText(myReview.review_text || "");
+                          } else {
+                            setReviewRating(null);
+                            setReviewText("");
+                          }
+                        }}
+                        style={[styles.editProfileButton, { flex: 0, paddingHorizontal: scale(18), backgroundColor: themeColors.card }]}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={styles.editProfileButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={submitReview} style={[styles.addPostButton, { flex: 1 }]} activeOpacity={0.85}>
+                        <Text style={styles.addPostButtonText}>
+                          {myReview ? "Update Review" : "Submit Review"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                 </View>
                 )}
 
@@ -1608,32 +1737,55 @@ export default function CafeProfileScreen() {
                     <ActivityIndicator size="small" color="#D4A373" />
                 </View>
                 ) : reviews.length === 0 ? (
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>No reviews yet</Text>
-                    <Text style={styles.cardSubtitle}>
+                <View style={[styles.card, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+                    <Text style={[styles.cardTitle, { color: themeColors.text }]}>No reviews yet</Text>
+                    <Text style={[styles.cardSubtitle, { color: themeColors.textMuted }]}>
                     Be the first to leave a review.
                     Please note that cafe owners cannot review any cafes.
                     </Text>
                 </View>
                 ) : (
-                reviews.map((review) => (
+                reviews.map((review) => {
+                  const isMine = !!userId && review.user_id === userId;
+                  return (
                     <View key={review.id} style={styles.card}>
-                    <View style={{ flexDirection: "row", marginBottom: verticalScale(6) }}>
-                        {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                            key={star}
-                            size={scale(14)}
-                            color={star <= review.rating ? "#D4A373" : "#ddd"}
-                            fill={star <= review.rating ? "#D4A373" : "transparent"}
-                        />
-                        ))}
-                    </View>
+                      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: verticalScale(6) }}>
+                        <View style={{ flexDirection: "row", flex: 1 }}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              size={scale(14)}
+                              color={star <= review.rating ? "#D4A373" : "#ddd"}
+                              fill={star <= review.rating ? "#D4A373" : "transparent"}
+                            />
+                          ))}
+                        </View>
+                        {isMine && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setReviewRating(review.rating);
+                              setReviewText(review.review_text || "");
+                              setReviewError("");
+                              setReviewFormOpen(true);
+                            }}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={[styles.reviewEditBtn, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border }]}
+                            accessibilityLabel="Edit your review"
+                          >
+                            <Pencil size={scale(14)} color="#D4A373" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
 
-                    <Text style={styles.cardTitle}>
+                      <Text style={[styles.cardTitle, { color: themeColors.text }]}>
                         {review.review_text || "No written review"}
-                    </Text>
+                      </Text>
+                      {isMine && (
+                        <Text style={styles.reviewMineLabel}>Your review</Text>
+                      )}
                     </View>
-                ))
+                  );
+                })
                 )}
             </View>
             )}
@@ -1661,8 +1813,8 @@ export default function CafeProfileScreen() {
           activeOpacity={1}
           onPress={() => setShowHoursModal(false)}
         >
-          <View style={styles.hoursModal}>
-            <Text style={styles.hoursTitle}>Opening Hours</Text>
+          <View style={[styles.hoursModal, { backgroundColor: themeColors.card }]}>
+            <Text style={[styles.hoursTitle, { color: themeColors.text }]}>Opening Hours</Text>
 
             {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day, index) => {
               const now = new Date();
@@ -1679,12 +1831,13 @@ export default function CafeProfileScreen() {
                   key={day}
                   style={[
                     styles.hoursRow,
-                    isToday && { backgroundColor: "#F3EDE7", borderRadius: 8, padding: 6 },
+                    isToday && { backgroundColor: themeColors.accentMuted, borderRadius: 8, padding: 6 },
                   ]}
                 >
                   <Text
                     style={[
                       styles.hoursDay,
+                      { color: themeColors.text },
                       isToday && { fontWeight: "700", color: "#D4A373" },
                     ]}
                   >
@@ -1694,6 +1847,7 @@ export default function CafeProfileScreen() {
                   <Text
                     style={[
                       styles.hoursTime,
+                      { color: themeColors.textMuted },
                       isToday && { fontWeight: "700", color: "#D4A373" },
                     ]}
                   >
@@ -1718,10 +1872,10 @@ export default function CafeProfileScreen() {
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View style={styles.postModalContainer}>
+          <View style={[styles.postModalContainer, { backgroundColor: themeColors.bg }]}>
 
             {/* Header */}
-            <View style={styles.addPostHeader}>
+            <View style={[styles.addPostHeader, { borderBottomColor: themeColors.border }]}>
               <TouchableOpacity
                 onPress={() => {
                   setShowAddPostModal(false);
@@ -1732,7 +1886,7 @@ export default function CafeProfileScreen() {
                 <Text style={{ fontSize: 18 }}>✕</Text>
               </TouchableOpacity>
 
-              <Text style={styles.addPostTitle}>New Post</Text>
+              <Text style={[styles.addPostTitle, { color: themeColors.text }]}>New Post</Text>
 
               <TouchableOpacity
                 onPress={handleCreatePost}
@@ -1765,7 +1919,7 @@ export default function CafeProfileScreen() {
                     { height: scale(100), marginBottom: scale(12) },
                   ]}
                 >
-                  <Text style={styles.mediaEmptyTitle}>
+                  <Text style={[styles.mediaEmptyTitle, { color: themeColors.text }]}>
                     {selectedMedia.length === 0 ? "Add Photos" : "Add More"}
                   </Text>
                   <Text style={styles.mediaEmptySubtitle}>
@@ -1798,19 +1952,19 @@ export default function CafeProfileScreen() {
 
               {/* CAPTION */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Caption</Text>
+                <Text style={[styles.inputLabel, { color: themeColors.text }]}>Caption</Text>
                 <TextInput
                   placeholder="Write something..."
                   placeholderTextColor="#BBB"
                   value={postCaption}
                   onChangeText={setPostCaption}
                   multiline
-                  style={styles.captionInput}
+                  style={[styles.captionInput, { backgroundColor: themeColors.bg, borderColor: themeColors.border, color: themeColors.text }]}
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Tags</Text>
+                <Text style={[styles.inputLabel, { color: themeColors.text }]}>Tags</Text>
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: scale(8) }}>
                     {TAG_OPTIONS.map((tag) => {
                       const selected = selectedTags.includes(tag);
@@ -1818,9 +1972,9 @@ export default function CafeProfileScreen() {
                       <TouchableOpacity
                         key={tag}
                         onPress={() => toggleTag(tag)}
-                        style={[styles.tagChip, selected && styles.tagChipSelected]}
+                        style={[styles.tagChip, { backgroundColor: themeColors.card, borderColor: themeColors.border }, selected && styles.tagChipSelected]}
                       >
-                    <Text style={[styles.tagChipText, selected && styles.tagChipTextSelected]}>{tag}</Text>
+                    <Text style={[styles.tagChipText, { color: themeColors.textMuted }, selected && styles.tagChipTextSelected]}>{tag}</Text>
                     </TouchableOpacity>
                     );
                   })}
@@ -1838,47 +1992,89 @@ export default function CafeProfileScreen() {
       </Modal>
     )}
 
-    {selectedPost && (
-      <Modal visible transparent animationType="fade">
-        <TouchableOpacity
-          style={styles.previewOverlay}
-          activeOpacity={1}
-          onPress={() => setSelectedPost(null)}
-        >
-          <View style={styles.postPreviewContainer}>
-            <ScrollView horizontal pagingEnabled>
-              {selectedPost.media?.map((m, i) =>
-                m.file_type === "video" ? (
-                  <Video
-                    key={i}
-                    source={{ uri: m.file_url }}
-                    style={styles.postPreviewMedia}
-                    resizeMode="contain"
-                    useNativeControls
-                  />
-                ) : (
-                  <Image
-                    key={i}
-                    source={{ uri: m.file_url }}
-                    style={styles.postPreviewMedia}
-                    resizeMode="contain"
-                  />
-                )
+    <Modal
+      visible={!!selectedPost}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={() => { setSelectedPost(null); setPreviewIndex(0); }}
+    >
+      {selectedPost && (
+        <View style={[styles.previewSheet, { backgroundColor: themeColors.bg }]}>
+          <TouchableOpacity
+            style={styles.previewCloseBtn}
+            onPress={() => { setSelectedPost(null); setPreviewIndex(0); }}
+            accessibilityLabel="Close"
+          >
+            <X size={scale(18)} color="#333" />
+          </TouchableOpacity>
+
+          <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+            <View style={{ width: deviceWidth }}>
+              <FlatList
+                data={selectedPost.media ?? []}
+                keyExtractor={(_, i) => `pv-${i}`}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(e) => {
+                  setPreviewIndex(Math.round(e.nativeEvent.contentOffset.x / deviceWidth));
+                }}
+                renderItem={({ item }) =>
+                  item.file_type === "video" ? (
+                    <Video
+                      source={{ uri: item.file_url }}
+                      style={{ width: deviceWidth, height: deviceWidth }}
+                      resizeMode={ResizeMode.COVER}
+                      useNativeControls
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: item.file_url }}
+                      style={{ width: deviceWidth, height: deviceWidth }}
+                      resizeMode="cover"
+                    />
+                  )
+                }
+              />
+              {(selectedPost.media?.length ?? 0) > 1 && (
+                <View style={styles.previewDots} pointerEvents="none">
+                  {selectedPost.media!.map((_, i) => (
+                    <View
+                      key={`pv-dot-${i}`}
+                      style={[styles.previewDot, i === previewIndex && styles.previewDotActive]}
+                    />
+                  ))}
+                </View>
               )}
-            </ScrollView>
+            </View>
+
+            {selectedPost.location ? (
+              <View style={styles.previewLocationRow}>
+                <MapPin size={scale(13)} color="#D4A373" />
+                <Text style={styles.previewLocationText}>{selectedPost.location}</Text>
+              </View>
+            ) : null}
 
             {selectedPost.caption ? (
-              <Text style={styles.postPreviewCaption}>
-                {selectedPost.caption}
-              </Text>
+              <Text style={[styles.previewCaption, { color: themeColors.text }]}>{selectedPost.caption}</Text>
             ) : null}
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    )}
+
+            {selectedPost.tags && selectedPost.tags.length > 0 && (
+              <View style={styles.previewTagsRow}>
+                {selectedPost.tags.map((tag, i) => (
+                  <View key={`pv-tag-${i}`} style={[styles.previewTagChip, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border }]}>
+                    <Text style={styles.previewTagChipText}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      )}
+    </Modal>
 
       <BottomNav />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -1893,6 +2089,27 @@ const styles = StyleSheet.create({
 
   hero: { position: "relative" },
   heroImage: { width: "100%", height: scale(200) },
+  heroDots: {
+    position: "absolute",
+    top: scale(10),
+    right: scale(12),
+    flexDirection: "row",
+    gap: scale(5),
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(10),
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  heroDot: {
+    width: scale(6),
+    height: scale(6),
+    borderRadius: scale(3),
+    backgroundColor: "rgba(255,255,255,0.55)",
+  },
+  heroDotActive: {
+    backgroundColor: "#FFF",
+    width: scale(10),
+  },
   heroOverlay: {
     position: "absolute",
     bottom: scale(12),
@@ -2018,10 +2235,100 @@ const styles = StyleSheet.create({
   // },
   addPostButton: {
     flex: 1,
+    flexDirection: "row",
     backgroundColor: "#D4A373",
-    paddingVertical: scale(12),
-    borderRadius: scale(12),
+    paddingVertical: scale(11),
+    borderRadius: scale(10),
     alignItems: "center",
+    justifyContent: "center",
+    gap: scale(6),
+    shadowColor: "#D4A373",
+    shadowOpacity: 0.25,
+    shadowRadius: scale(6),
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  addPostButtonText: {
+    color: "#FFF",
+    fontWeight: "600",
+    fontSize: moderateScale(14),
+  },
+  reviewEditBtn: {
+    width: scale(28),
+    height: scale(28),
+    borderRadius: scale(14),
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF7EE",
+    borderWidth: 1,
+    borderColor: "#F1E4D2",
+  },
+  reviewMineLabel: {
+    fontSize: moderateScale(11),
+    color: "#D4A373",
+    fontWeight: "600",
+    marginTop: verticalScale(4),
+  },
+  editProfileButton: {
+    flex: 1,
+    flexDirection: "row",
+    backgroundColor: "#FFF",
+    paddingVertical: scale(11),
+    borderRadius: scale(10),
+    alignItems: "center",
+    justifyContent: "center",
+    gap: scale(6),
+    borderWidth: 1,
+    borderColor: "#D4A373",
+  },
+  editProfileButtonText: {
+    color: "#D4A373",
+    fontWeight: "600",
+    fontSize: moderateScale(14),
+  },
+  socialsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: scale(8),
+    marginTop: verticalScale(14),
+  },
+  socialChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(5),
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(6),
+    borderRadius: scale(14),
+    backgroundColor: "#FFF7EE",
+    borderWidth: 1,
+    borderColor: "#F1E4D2",
+  },
+  socialChipText: {
+    color: "#8B6F47",
+    fontSize: moderateScale(12),
+    fontWeight: "500",
+  },
+  tagChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: scale(6),
+    marginTop: verticalScale(12),
+    paddingHorizontal: scale(8),
+  },
+  attributeChip: {
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(5),
+    borderRadius: scale(14),
+    backgroundColor: "#FFF7EE",
+    borderWidth: 1,
+    borderColor: "#F1E4D2",
+  },
+  attributeChipText: {
+    color: "#8B6F47",
+    fontSize: moderateScale(11),
+    fontWeight: "500",
   },
   doneText: {
     color: "#D4A373",
@@ -2466,5 +2773,87 @@ shareButtonText: {
     color: "#FFF",
     fontSize: moderateScale(14),
     textAlign: "center",
+  },
+  previewSheet: {
+    flex: 1,
+    backgroundColor: "#FFF",
+  },
+  previewCloseBtn: {
+    position: "absolute",
+    top: scale(12),
+    right: scale(12),
+    zIndex: 10,
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    backgroundColor: "rgba(255,255,255,0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: scale(4),
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  previewDots: {
+    position: "absolute",
+    bottom: scale(10),
+    alignSelf: "center",
+    flexDirection: "row",
+    gap: scale(5),
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(10),
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  previewDot: {
+    width: scale(6),
+    height: scale(6),
+    borderRadius: scale(3),
+    backgroundColor: "rgba(255,255,255,0.55)",
+  },
+  previewDotActive: {
+    backgroundColor: "#FFF",
+    width: scale(10),
+  },
+  previewLocationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(5),
+    paddingHorizontal: scale(16),
+    paddingTop: scale(12),
+  },
+  previewLocationText: {
+    color: "#8B6F47",
+    fontSize: moderateScale(12),
+    fontWeight: "500",
+  },
+  previewCaption: {
+    paddingHorizontal: scale(16),
+    paddingTop: scale(12),
+    color: "#1A1A1A",
+    fontSize: moderateScale(14),
+    lineHeight: moderateScale(20),
+  },
+  previewTagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: scale(6),
+    paddingHorizontal: scale(16),
+    paddingTop: scale(12),
+    paddingBottom: scale(24),
+  },
+  previewTagChip: {
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(5),
+    borderRadius: scale(14),
+    backgroundColor: "#FFF7EE",
+    borderWidth: 1,
+    borderColor: "#F1E4D2",
+  },
+  previewTagChipText: {
+    color: "#8B6F47",
+    fontSize: moderateScale(11),
+    fontWeight: "500",
   },
 });

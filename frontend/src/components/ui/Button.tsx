@@ -1,6 +1,6 @@
 // components/ui/Button.tsx
 import React from "react";
-import { Pressable, Text, StyleSheet, ViewStyle, TextStyle } from "react-native";
+import { Pressable, Text, StyleSheet, ViewStyle, TextStyle, StyleProp } from "react-native";
 import { scale, moderateScale } from "../../utils/responsive";
 
 type ButtonProps = {
@@ -10,7 +10,7 @@ type ButtonProps = {
   variant?: "caramel" | "outline";
   size?: "sm" | "md" | "icon";
   disabled?: boolean;
-  style?: ViewStyle;             // allow custom styles
+  style?: StyleProp<ViewStyle>;  // allow custom styles, including arrays
   textStyle?: TextStyle;         // allow custom text styles
 };
 

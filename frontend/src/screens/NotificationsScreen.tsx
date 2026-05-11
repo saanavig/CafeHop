@@ -19,11 +19,13 @@ import { moderateScale, scale } from "../utils/responsive";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
+import { useTheme } from "../context/ThemeContext";
 
 // import { useRole } from "../context/RoleContext";
 
 const NotificationsScreen = () => {
   const navigation = useNavigation<any>();
+  const { colors: themeColors } = useTheme();
   // const { role } = useRole();
 
   const { width } = Dimensions.get("window");
@@ -112,17 +114,17 @@ const NotificationsScreen = () => {
   };
 
   return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "#F7F3F0" }}>
-    <ScrollView contentContainerStyle={styles.container}>
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: themeColors.bg }}>
+    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: themeColors.bg }]}> 
       {/* Header */}
       <View style={styles.header}>
         <Pressable
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
-          <ArrowLeft size={24} color="#333" />
+          <ArrowLeft size={24} color={themeColors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>{title}</Text>
+        <Text style={[styles.headerTitle, { color: themeColors.text }]}>{title}</Text>
       </View>
 
       {/* Main Content */}
@@ -145,25 +147,26 @@ const NotificationsScreen = () => {
                   key={item.id}
                   style={[
                     styles.notificationCard,
+                    { backgroundColor: themeColors.card, borderColor: themeColors.border },
                     !item.is_read && styles.unreadCard,
                   ]}
                 >
-                  <View style={styles.iconBackground}>
+                  <View style={[styles.iconBackground, { backgroundColor: themeColors.iconBg }] }>
                     <Icon size={24} color="#D4A373" />
                   </View>
 
                   <View style={styles.notificationContent}>
                     <View style={styles.titleRow}>
-                      <Text style={styles.notificationTitle}>
+                      <Text style={[styles.notificationTitle, { color: themeColors.text }]}> 
                         {item.title}
                       </Text>
 
-                      <Text style={styles.timeText}>
+                      <Text style={[styles.timeText, { color: themeColors.textMuted }]}> 
                         {formatTimeAgo(item.created_at)}
                       </Text>
                     </View>
 
-                    <Text style={styles.notificationMessage}>
+                    <Text style={[styles.notificationMessage, { color: themeColors.textMuted }]}> 
                       {item.message}
                     </Text>
                   </View>

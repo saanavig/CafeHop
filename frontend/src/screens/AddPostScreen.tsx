@@ -10,9 +10,11 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../api/supabaseClient";
 import Button from "../components/ui/Button";
 import { scale, moderateScale, verticalScale } from "../utils/responsive";
+import { useTheme } from "../context/ThemeContext";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -38,6 +40,7 @@ export default function AddPostScreen({
   route,
 }: AddPostScreenProps) {
   const { cafeId, cafeName } = route.params;
+  const { colors: themeColors } = useTheme();
 
   const [caption, setCaption] = useState("");
   const [mediaUri, setMediaUri] = useState<string | null>(null);
@@ -173,16 +176,17 @@ export default function AddPostScreen({
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Add Post</Text>
-        <Text style={styles.subtitle}>Posting about {cafeName}</Text>
+        <Text style={[styles.title, { color: themeColors.text }]}>Add Post</Text>
+        <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>Posting about {cafeName}</Text>
 
         <View style={styles.section}>
-          <Text style={styles.label}>Caption</Text>
+          <Text style={[styles.label, { color: themeColors.text }]}>Caption</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: themeColors.card, borderColor: themeColors.border, color: themeColors.text }]}
             placeholder="Write something about this cafe..."
+            placeholderTextColor={themeColors.textMuted}
             value={caption}
             onChangeText={setCaption}
             multiline
@@ -190,19 +194,19 @@ export default function AddPostScreen({
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>Media</Text>
-          <Pressable style={styles.mediaBox} onPress={pickMedia}>
+          <Text style={[styles.label, { color: themeColors.text }]}>Media</Text>
+          <Pressable style={[styles.mediaBox, { backgroundColor: themeColors.card, borderColor: themeColors.border }]} onPress={pickMedia}>
             {mediaUri ? (
               mediaType === "image" ? (
                 <Image source={{ uri: mediaUri }} style={styles.previewImage} />
               ) : (
                 <View style={styles.videoPlaceholder}>
-                  <Text style={styles.videoText}>Video selected</Text>
-                  <Text style={styles.videoSubtext}>{mediaUri.split("/").pop()}</Text>
+                  <Text style={[styles.videoText, { color: themeColors.text }]}>Video selected</Text>
+                  <Text style={[styles.videoSubtext, { color: themeColors.textMuted }]}>{mediaUri.split("/").pop()}</Text>
                 </View>
               )
             ) : (
-              <Text style={styles.mediaText}>Select image or video</Text>
+              <Text style={[styles.mediaText, { color: themeColors.textMuted }]}>Select image or video</Text>
             )}
           </Pressable>
         </View>
@@ -214,7 +218,7 @@ export default function AddPostScreen({
           disabled={uploading || !mediaUri}
         />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
