@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import Button from "../components/ui/Button";
 import { supabase } from "../api/supabaseClient";
@@ -67,6 +67,13 @@ export default function NameScreen() {
 
     return (
         <View style={styles.container}>
+        <Pressable
+            onPress={() => navigation.navigate("Onboarding")}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={styles.backPressable}
+        >
+            <Text style={styles.backText}>← Back</Text>
+        </Pressable>
         <Text style={styles.title}>What’s your name?</Text>
 
         <TextInput
@@ -108,6 +115,8 @@ export default function NameScreen() {
 
     const styles = StyleSheet.create({
     container: { flex: 1, justifyContent: "center", padding: 24 },
+    backPressable: { position: "absolute", top: 24, left: 24, paddingVertical: 4, paddingRight: 8 },
+    backText: { color: "#555", fontSize: 14 },
     title: { fontSize: 24, fontWeight: "600", marginBottom: 20 },
     input: {
         borderWidth: 1,

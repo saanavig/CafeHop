@@ -15,6 +15,8 @@ import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/nativ
 import BottomNav from "../components/ui/BottomNav";
 import { supabase } from "../api/supabaseClient";
 import { useEffect } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "../context/ThemeContext";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -68,8 +70,8 @@ const PreferencesScreen = () => {
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
 
+  const { mode: themeMode, colors: themeColors, setMode: setThemeMode } = useTheme();
   const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
   const [privateAccount, setPrivateAccount] = useState(false);
   const [twoFactorAuth, setTwoFactorAuth] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -253,31 +255,31 @@ const PreferencesScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { alignItems: "flex-start" }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <ArrowLeft size={24} color="#333" />
+            <ArrowLeft size={24} color={themeColors.text} />
           </Pressable>
-          <Text style={styles.headerTitle}>Preferences</Text>
+          <Text style={[styles.headerTitle, { color: themeColors.text }]}>Preferences</Text>
         </View>
 
         <View style={[styles.content, { width: contentWidth }]}>
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>General</Text>
+            <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>General</Text>
 
-            <View style={styles.settingsContainer}>
-              <View style={styles.settingRow}>
+            <View style={[styles.settingsContainer, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}> 
+              <View style={[styles.settingRow, { borderBottomColor: themeColors.border }]}> 
                 <View style={styles.settingLeft}>
-                  <View style={styles.iconBg}>
+                  <View style={[styles.iconBg, { backgroundColor: themeColors.iconBg }]}>
                     <Bell size={18} color="#D4A373" />
                   </View>
                   <View>
-                    <Text style={styles.settingTitle}>Notifications</Text>
-                    <Text style={styles.settingDesc}>Rewards, visits, and updates</Text>
+                    <Text style={[styles.settingTitle, { color: themeColors.text }]}>Notifications</Text>
+                    <Text style={[styles.settingDesc, { color: themeColors.textMuted }]}>Rewards, visits, and updates</Text>
                   </View>
                 </View>
 
@@ -290,18 +292,18 @@ const PreferencesScreen = () => {
 
               <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
                 <View style={styles.settingLeft}>
-                  <View style={styles.iconBg}>
+                  <View style={[styles.iconBg, { backgroundColor: themeColors.iconBg }]}>
                     <Moon size={18} color="#D4A373" />
                   </View>
                   <View>
-                    <Text style={styles.settingTitle}>Dark Mode</Text>
-                    <Text style={styles.settingDesc}>System appearance</Text>
+                    <Text style={[styles.settingTitle, { color: themeColors.text }]}>Dark Mode</Text>
+                    <Text style={[styles.settingDesc, { color: themeColors.textMuted }]}>System appearance</Text>
                   </View>
                 </View>
 
                 <Switch
-                  value={darkMode}
-                  onValueChange={setDarkMode}
+                  value={themeMode === "dark"}
+                  onValueChange={(v) => setThemeMode(v ? "dark" : "light")}
                   trackColor={{ false: "#E8DFD5", true: "#D4A373" }}
                 />
               </View>
@@ -311,11 +313,11 @@ const PreferencesScreen = () => {
           {role === "user" ? (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Cafe Preferences</Text>
+                <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>Cafe Preferences</Text>
 
                 {preferenceCategories.map((category) => (
-                  <View key={category.key} style={styles.preferenceGroup}>
-                    <Text style={styles.preferenceTitle}>{category.title}</Text>
+                  <View key={category.key} style={[styles.preferenceGroup, { backgroundColor: themeColors.card, borderColor: themeColors.border }] }>
+                    <Text style={[styles.preferenceTitle, { color: themeColors.text }]}>{category.title}</Text>
 
                     <View style={styles.chipWrap}>
                       {category.items.map((item) => {
@@ -325,11 +327,12 @@ const PreferencesScreen = () => {
                           <Pressable
                             key={item}
                             onPress={() => togglePref(category.key, item)}
-                            style={[styles.chip, selected && styles.chipSelected]}
+                            style={[styles.chip, { backgroundColor: selected ? themeColors.accent : themeColors.card, borderColor: selected ? themeColors.accent : themeColors.border }, selected && styles.chipSelected]}
                           >
                             <Text
                               style={[
                                 styles.chipText,
+                                { color: selected ? "#FFF" : themeColors.text },
                                 selected && styles.chipTextSelected,
                               ]}
                             >
@@ -344,9 +347,9 @@ const PreferencesScreen = () => {
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Budget</Text>
+                <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>Budget</Text>
 
-                <View style={styles.chipWrap}>
+                <View style={styles.chipWrap}> 
                   {priceOptions.map((option) => {
                     const selected = preferredPriceLevel === option.value;
 
@@ -354,11 +357,12 @@ const PreferencesScreen = () => {
                       <Pressable
                         key={option.value}
                         onPress={() => selectPriceLevel(option.value)}
-                        style={[styles.chip, selected && styles.chipSelected]}
+                        style={[styles.chip, { backgroundColor: selected ? themeColors.accent : themeColors.card, borderColor: selected ? themeColors.accent : themeColors.border }, selected && styles.chipSelected]}
                       >
                         <Text
                           style={[
                             styles.chipText,
+                            { color: selected ? "#FFF" : themeColors.text },
                             selected && styles.chipTextSelected,
                           ]}
                         >
@@ -371,9 +375,9 @@ const PreferencesScreen = () => {
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Max Distance</Text>
+                <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>Max Distance</Text>
 
-                <View style={styles.chipWrap}>
+                <View style={styles.chipWrap}> 
                   {[1, 2, 3, 5, 10].map((distance) => {
                     const selected = maxDistance === distance;
 
@@ -381,11 +385,12 @@ const PreferencesScreen = () => {
                       <Pressable
                         key={distance}
                         onPress={() => selectDistance(distance)}
-                        style={[styles.chip, selected && styles.chipSelected]}
+                        style={[styles.chip, { backgroundColor: selected ? themeColors.accent : themeColors.card, borderColor: selected ? themeColors.accent : themeColors.border }, selected && styles.chipSelected]}
                       >
                         <Text
                           style={[
                             styles.chipText,
+                            { color: selected ? "#FFF" : themeColors.text },
                             selected && styles.chipTextSelected,
                           ]}
                         >
@@ -400,17 +405,17 @@ const PreferencesScreen = () => {
           ) : null}
 
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Privacy & Security</Text>
+            <Text style={[styles.sectionLabel, { color: themeColors.textMuted }]}>Privacy & Security</Text>
 
-            <View style={styles.settingsContainer}>
-              <View style={styles.settingRow}>
+            <View style={[styles.settingsContainer, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}> 
+              <View style={[styles.settingRow, { borderBottomColor: themeColors.border }]}> 
                 <View style={styles.settingLeft}>
-                  <View style={styles.iconBg}>
+                  <View style={[styles.iconBg, { backgroundColor: themeColors.iconBg }]}>
                     <Lock size={18} color="#D4A373" />
                   </View>
                   <View>
-                    <Text style={styles.settingTitle}>Private Account</Text>
-                    <Text style={styles.settingDesc}>Control profile visibility</Text>
+                    <Text style={[styles.settingTitle, { color: themeColors.text }]}>Private Account</Text>
+                    <Text style={[styles.settingDesc, { color: themeColors.textMuted }]}>Control profile visibility</Text>
                   </View>
                 </View>
 
@@ -423,12 +428,12 @@ const PreferencesScreen = () => {
 
               <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
-                  <View style={styles.iconBg}>
+                  <View style={[styles.iconBg, { backgroundColor: themeColors.iconBg }]}>
                     <Lock size={18} color="#D4A373" />
                   </View>
                   <View>
-                    <Text style={styles.settingTitle}>Two-Factor Authentication</Text>
-                    <Text style={styles.settingDesc}>Enhanced security</Text>
+                    <Text style={[styles.settingTitle, { color: themeColors.text }]}>Two-Factor Authentication</Text>
+                    <Text style={[styles.settingDesc, { color: themeColors.textMuted }]}>Enhanced security</Text>
                   </View>
                 </View>
 
@@ -441,12 +446,12 @@ const PreferencesScreen = () => {
 
               <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
                 <View style={styles.settingLeft}>
-                  <View style={styles.iconBg}>
+                  <View style={[styles.iconBg, { backgroundColor: themeColors.iconBg }]}>
                     <Bell size={18} color="#D4A373" />
                   </View>
                   <View>
-                    <Text style={styles.settingTitle}>Email Notifications</Text>
-                    <Text style={styles.settingDesc}>Stay updated via email</Text>
+                    <Text style={[styles.settingTitle, { color: themeColors.text }]}>Email Notifications</Text>
+                    <Text style={[styles.settingDesc, { color: themeColors.textMuted }]}>Stay updated via email</Text>
                   </View>
                 </View>
 
@@ -459,12 +464,12 @@ const PreferencesScreen = () => {
             </View>
           </View>
 
-          <Text style={styles.footer}>CafeHop v1.0.0</Text>
+          <Text style={[styles.footer, { color: themeColors.textMuted }]}>CafeHop v1.0.0</Text>
         </View>
       </ScrollView>
 
       <BottomNav />
-    </View>
+    </SafeAreaView>
   );
 };
 

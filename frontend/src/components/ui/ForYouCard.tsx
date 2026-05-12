@@ -29,6 +29,7 @@ import {
 
 import Button from "./Button";
 import { useNavigation } from "@react-navigation/native";
+import { useTheme } from "../../context/ThemeContext";
 
 const CARD_WIDTH = deviceWidth * 0.88;
 
@@ -345,11 +346,11 @@ const ForYouCard = ({
           <Animated.View style={[styles.modalContent, { top: slideAnim }]}>
             <View style={styles.dragBar} />
 
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Comments</Text>
+            <View style={[styles.modalHeader, { borderBottomColor: themeColors.border }]}>
+              <Text style={[styles.modalTitle, { color: themeColors.text }]}>Comments</Text>
 
               <TouchableOpacity onPress={closeComments}>
-                <X size={scale(20)} color="#555" />
+                <X size={scale(20)} color={themeColors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -357,7 +358,7 @@ const ForYouCard = ({
               data={commentsState}
               keyExtractor={(item, index) => item.id || index.toString()}
               renderItem={({ item }) => (
-                <Text style={styles.commentText}>
+                <Text style={[styles.commentText, { color: themeColors.text }]}>
                   <Text style={{ fontWeight: "bold" }}>
                     {(item.username || item.user || "User") + ": "}
                   </Text>
@@ -377,7 +378,8 @@ const ForYouCard = ({
               <View style={styles.commentRow}>
                 <TextInput
                   placeholder="Add a comment..."
-                  style={styles.commentInput}
+                  placeholderTextColor={themeColors.textMuted}
+                  style={[styles.commentInput, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border, color: themeColors.text }]}
                   value={newComment}
                   onChangeText={setNewComment}
                 />

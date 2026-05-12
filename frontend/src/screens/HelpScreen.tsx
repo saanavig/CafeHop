@@ -14,6 +14,8 @@ import BottomNav from "../components/ui/BottomNav";
 import Button from "../components/ui/Button";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "../context/ThemeContext";
 
 const customerFAQs = [
   {
@@ -79,9 +81,121 @@ const cafeFAQs = [
 const HelpScreen = () => {
   const navigation = useNavigation<any>();
   const { role } = useRole();
+  const { colors: themeColors } = useTheme();
 
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
+
+  const styles = {
+    container: {
+      flex: 1,
+      backgroundColor: themeColors.bg,
+    },
+    scrollContent: {
+      paddingTop: scale(16),
+      paddingBottom: scale(100),
+      alignItems: "center",
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: scale(16),
+      marginBottom: scale(24),
+    },
+    backButton: {
+      padding: scale(8),
+      marginRight: scale(12),
+    },
+    headerTitle: {
+      fontSize: moderateScale(20),
+      fontWeight: "600",
+      fontFamily: "PlayfairDisplay_700Bold",
+      marginLeft: scale(8),
+      color: themeColors.text,
+    },
+    content: {
+      alignSelf: "center",
+      paddingHorizontal: scale(16),
+    },
+    section: {
+      marginBottom: scale(24),
+    },
+    sectionTitle: {
+      fontSize: moderateScale(16),
+      fontWeight: "600",
+      color: themeColors.text,
+      marginBottom: scale(12),
+    },
+    faqContainer: {
+      backgroundColor: themeColors.card,
+      borderRadius: scale(16),
+      borderWidth: 1,
+      borderColor: themeColors.border,
+      overflow: "hidden",
+    },
+    faqButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: scale(16),
+      paddingVertical: scale(14),
+      borderBottomWidth: 1,
+      borderBottomColor: themeColors.border,
+    },
+    faqLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: scale(12),
+      flex: 1,
+    },
+    iconBg: {
+      width: scale(36),
+      height: scale(36),
+      borderRadius: scale(8),
+      backgroundColor: themeColors.bg,
+      justifyContent: "center",
+      alignItems: "center",
+      flexShrink: 0,
+    },
+    faqQuestion: {
+      fontSize: moderateScale(13),
+      fontWeight: "600",
+      color: themeColors.text,
+      flex: 1,
+    },
+    faqAnswer: {
+      paddingHorizontal: scale(16),
+      paddingVertical: scale(12),
+      backgroundColor: themeColors.bg,
+      borderBottomWidth: 1,
+      borderBottomColor: themeColors.border,
+    },
+    faqAnswerText: {
+      fontSize: moderateScale(13),
+      color: themeColors.textMuted,
+      lineHeight: moderateScale(18),
+    },
+    emailButton: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: themeColors.accent,
+      paddingVertical: scale(12),
+      paddingHorizontal: scale(16),
+      borderRadius: scale(12),
+    },
+    emailButtonText: {
+      fontSize: moderateScale(14),
+      fontWeight: "600",
+      color: themeColors.card,
+    },
+    footer: {
+      textAlign: "center",
+      fontSize: moderateScale(12),
+      color: themeColors.textMuted,
+      marginTop: scale(24),
+    },
+  } as any;
 
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
   const faqs = role === "cafe" ? cafeFAQs : customerFAQs;
@@ -91,7 +205,7 @@ const HelpScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={styles.container}>
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { alignItems: "flex-start" }]}
         showsVerticalScrollIndicator={false}
@@ -102,7 +216,7 @@ const HelpScreen = () => {
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            <ArrowLeft size={24} color="#333" />
+            <ArrowLeft size={24} color={themeColors.text} />
           </Pressable>
           <Text style={styles.headerTitle}>Help</Text>
         </View>
@@ -121,14 +235,14 @@ const HelpScreen = () => {
                   >
                     <View style={styles.faqLeft}>
                       <View style={styles.iconBg}>
-                        <Info size={16} color="#D4A373" />
+                        <Info size={16} color={themeColors.accent} />
                       </View>
                       <Text style={styles.faqQuestion}>{faq.question}</Text>
                     </View>
                     {openFAQ === index ? (
-                      <ChevronUp size={20} color="#888" />
+                      <ChevronUp size={20} color={themeColors.textMuted} />
                     ) : (
-                      <ChevronDown size={20} color="#888" />
+                      <ChevronDown size={20} color={themeColors.textMuted} />
                     )}
                   </Pressable>
 
@@ -164,119 +278,8 @@ const HelpScreen = () => {
 
       {/* Bottom Nav */}
       <BottomNav />
-    </View>
+    </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F7F3F0",
-  },
-  scrollContent: {
-    paddingTop: scale(16),
-    paddingBottom: scale(100),
-    alignItems: "center",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: scale(16),
-    marginBottom: scale(24),
-  },
-  backButton: {
-    padding: scale(8),
-    marginRight: scale(12),
-  },
-  headerTitle: {
-    fontSize: moderateScale(20),
-    fontWeight: "600",
-    fontFamily: "PlayfairDisplay_700Bold",
-    marginLeft: scale(8),
-    color: "#1A1A1A",
-  },
-  content: {
-    alignSelf: "center",
-    paddingHorizontal: scale(16),
-  },
-  section: {
-    marginBottom: scale(24),
-  },
-  sectionTitle: {
-    fontSize: moderateScale(16),
-    fontWeight: "600",
-    color: "#1A1A1A",
-    marginBottom: scale(12),
-  },
-  faqContainer: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: scale(16),
-    borderWidth: 1,
-    borderColor: "#E8DFD5",
-    overflow: "hidden",
-  },
-  faqButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(14),
-    borderBottomWidth: 1,
-    borderBottomColor: "#E8DFD5",
-  },
-  faqLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(12),
-    flex: 1,
-  },
-  iconBg: {
-    width: scale(36),
-    height: scale(36),
-    borderRadius: scale(8),
-    backgroundColor: "#F7F3F0",
-    justifyContent: "center",
-    alignItems: "center",
-    flexShrink: 0,
-  },
-  faqQuestion: {
-    fontSize: moderateScale(13),
-    fontWeight: "600",
-    color: "#1A1A1A",
-    flex: 1,
-  },
-  faqAnswer: {
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(12),
-    backgroundColor: "rgba(247, 243, 240, 0.5)",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E8DFD5",
-  },
-  faqAnswerText: {
-    fontSize: moderateScale(13),
-    color: "#666",
-    lineHeight: moderateScale(18),
-  },
-  emailButton: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#D4A373",
-    paddingVertical: scale(12),
-    paddingHorizontal: scale(16),
-    borderRadius: scale(12),
-  },
-  emailButtonText: {
-    fontSize: moderateScale(14),
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  footer: {
-    textAlign: "center",
-    fontSize: moderateScale(12),
-    color: "#888",
-    marginTop: scale(24),
-  },
-});
 
 export default HelpScreen;

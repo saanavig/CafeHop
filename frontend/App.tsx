@@ -12,6 +12,7 @@ import CafeProfileScreen from "./src/screens/CafeProfileScreen";
 import CustomerOnboardingScreen from "./src/screens/CustomerOnboardingScreen";
 import ExploreScreen from "./src/screens/ExploreScreen";
 import FavoritesScreen from "./src/screens/Favorites";
+import EditCustomerProfileScreen from "./src/screens/EditCustomerProfileScreen";
 import HelpScreen from "./src/screens/HelpScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 import Index from "./src/screens/Index";
@@ -25,6 +26,7 @@ import React from "react";
 import ReceiptUploadScreen from "./src/screens/ReceiptUploadScreen";
 import RewardsScreen from "./src/screens/RewardsScreen";
 import { RoleProvider } from "./src/context/RoleContext";
+import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
 import SplashScreen from "./src/screens/SplashScreen";
@@ -43,16 +45,19 @@ export default function App() {
   if (!fontsLoaded) return null;
 
   return (
-    <RoleProvider>
-      <AuthProvider>
-          <AppContent />
-      </AuthProvider>
-    </RoleProvider>
+    <ThemeProvider>
+      <RoleProvider>
+        <AuthProvider>
+            <AppContent />
+        </AuthProvider>
+      </RoleProvider>
+    </ThemeProvider>
   );
 }
 
 function AppContent() {
   const { user, loading } = useAuth();
+  const { colors: themeColors } = useTheme();
 
   if (loading) return null;
 
@@ -61,7 +66,7 @@ function AppContent() {
       <Stack.Navigator
         key={user ? "user" : "guest"}
         initialRouteName={user ? "Home" : "Splash"}
-        screenOptions={{ headerShown: false }}
+        screenOptions={{ headerShown: false, contentStyle: { backgroundColor: themeColors.bg } }}
       >
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
@@ -85,6 +90,7 @@ function AppContent() {
         <Stack.Screen name="Rewards" component={RewardsScreen} />
         <Stack.Screen name="Analytics" component={AnalyticsScreen} />
         <Stack.Screen name="CafeEdit" component={CafeEditScreen} />
+        <Stack.Screen name="EditCustomerProfile" component={EditCustomerProfileScreen} />
         <Stack.Screen name="CafeQRScanner" component={CafeQRScannerScreen} />
       </Stack.Navigator>
     </NavigationContainer>

@@ -24,7 +24,7 @@ export default function OnboardingRoleScreen() {
             });
 
             setRole("customer");
-            navigation.navigate("Name");
+            navigation.navigate("CustomerOnboarding");
           }}
         >
           <Text style={styles.icon}>☕</Text>

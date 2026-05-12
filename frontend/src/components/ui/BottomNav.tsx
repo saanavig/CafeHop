@@ -5,6 +5,7 @@ import { moderateScale, scale } from "../../utils/responsive";
 import { useNavigation, useRoute } from "@react-navigation/native";
 
 import { useRole } from "../../context/RoleContext";
+import { useTheme } from "../../context/ThemeContext";
 
 interface NavItem {
   icon: React.ElementType;
@@ -35,6 +36,7 @@ const BottomNav: React.FC = () => {
   const route = useRoute();
   // const { role, toggleRole } = useRole();
   const { role } = useRole();
+  const { colors: themeColors } = useTheme();
 
   const navItems = role === "cafe" ? cafeNavItems : customerNavItems;
 
@@ -58,7 +60,7 @@ const BottomNav: React.FC = () => {
   // };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.card, borderTopColor: themeColors.border }]}>
       {/* Role Toggle */}
       {/* <Animated.View style={[styles.toggleRow, { transform: [{ scale: pillScale }] }]}>
         <Pressable
@@ -98,10 +100,10 @@ const BottomNav: React.FC = () => {
               </View>
               <Icon
                 size={scale(20)}
-                color={isActive ? "#D4A373" : "#AAA"}
+                color={isActive ? "#D4A373" : themeColors.textMuted}
                 strokeWidth={isActive ? 2.5 : 1.8}
               />
-              <Text style={[styles.navLabel, isActive && styles.activeNavLabel]}>
+              <Text style={[styles.navLabel, { color: themeColors.textMuted }, isActive && styles.activeNavLabel]}>
                 {item.label}
               </Text>
             </Pressable>

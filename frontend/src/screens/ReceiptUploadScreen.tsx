@@ -11,6 +11,8 @@ import {
   StyleSheet,
   Text,
   View,
+  ViewStyle,
+  TextStyle,
 } from "react-native";
 //recueptuploadscreen.tsx
 import React, { useState } from "react";
@@ -18,6 +20,8 @@ import { moderateScale, scale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
 import { supabase } from "../api/supabaseClient";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "../context/ThemeContext";
 
 type UploadState = "idle" | "uploading" | "success" | "error";
 
@@ -34,8 +38,135 @@ export default function ReceiptUploadScreen({
   const [successMessage, setSuccessMessage] = useState("");
   const [ocrText, setOcrText] = useState("");
   const [earnedPoints, setEarnedPoints] = useState<number | null>(null);
+  const { colors: themeColors } = useTheme();
 
   const BACKEND_URL = "http://127.0.0.1:3001/api/receipt";
+
+  const styles = {
+    container: {
+      flex: 1,
+      backgroundColor: themeColors.bg,
+    },
+    scrollContent: {
+      padding: scale(20),
+      paddingBottom: scale(40),
+    },
+    title: {
+      fontSize: moderateScale(28),
+      fontWeight: "700",
+      color: themeColors.text,
+      marginBottom: scale(6),
+    },
+    subtitle: {
+      fontSize: moderateScale(14),
+      color: themeColors.textMuted,
+      marginBottom: scale(20),
+    },
+    card: {
+      backgroundColor: themeColors.card,
+      borderRadius: scale(18),
+      padding: scale(16),
+    },
+    placeholder: {
+      height: scale(240),
+      borderRadius: scale(14),
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: themeColors.border,
+      backgroundColor: themeColors.bg,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: scale(16),
+    },
+    placeholderText: {
+      color: themeColors.textMuted,
+      fontSize: moderateScale(14),
+    },
+    previewImage: {
+      width: "100%",
+      height: scale(240),
+      borderRadius: scale(14),
+      marginBottom: scale(16),
+    },
+    buttonGroup: {
+      marginTop: scale(4),
+    },
+    statusBox: {
+      marginTop: scale(16),
+      alignItems: "center",
+    },
+    statusText: {
+      marginTop: scale(8),
+      color: themeColors.textMuted,
+      textAlign: "center",
+      fontSize: moderateScale(13),
+    },
+    successBox: {
+      marginTop: scale(16),
+      backgroundColor: themeColors.card,
+      padding: scale(14),
+      borderRadius: scale(12),
+    },
+    successTitle: {
+      fontSize: moderateScale(16),
+      fontWeight: "700",
+      color: themeColors.text,
+      marginBottom: scale(4),
+    },
+    successText: {
+      color: themeColors.text,
+      fontSize: moderateScale(13),
+    },
+    pointsText: {
+      marginTop: scale(8),
+      fontSize: moderateScale(15),
+      fontWeight: "700",
+      color: themeColors.accent,
+    },
+    errorBox: {
+      marginTop: scale(16),
+      backgroundColor: themeColors.card,
+      padding: scale(14),
+      borderRadius: scale(12),
+    },
+    errorTitle: {
+      fontSize: moderateScale(16),
+      fontWeight: "700",
+      color: themeColors.text,
+      marginBottom: scale(4),
+    },
+    errorText: {
+      color: themeColors.text,
+      fontSize: moderateScale(13),
+    },
+    resultCard: {
+      marginTop: scale(16),
+      backgroundColor: themeColors.card,
+      borderRadius: scale(12),
+      padding: scale(14),
+    },
+    resultTitle: {
+      fontSize: moderateScale(15),
+      fontWeight: "600",
+      marginBottom: scale(8),
+      color: themeColors.text,
+    },
+    resultBody: {
+      color: themeColors.textMuted,
+      fontSize: moderateScale(13),
+      lineHeight: moderateScale(20),
+    },
+    bottomActions: {
+      marginTop: scale(20),
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    secondaryAction: {
+      color: themeColors.accent,
+      fontWeight: "600",
+      fontSize: moderateScale(14),
+    },
+  } as any;
 
   const requestCameraPermission = async () => {
     const result = await ImagePicker.requestCameraPermissionsAsync();
@@ -209,7 +340,7 @@ export default function ReceiptUploadScreen({
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView edges={["top"]} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Upload Receipt</Text>
         <Text style={styles.subtitle}>
@@ -291,132 +422,6 @@ export default function ReceiptUploadScreen({
           </View>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F7F3F0",
-  },
-  scrollContent: {
-    padding: scale(20),
-    paddingBottom: scale(40),
-  },
-  title: {
-    fontSize: moderateScale(28),
-    fontWeight: "700",
-    color: "#1A1A1A",
-    marginBottom: scale(6),
-  },
-  subtitle: {
-    fontSize: moderateScale(14),
-    color: "#666",
-    marginBottom: scale(20),
-  },
-  card: {
-    backgroundColor: "#FFF",
-    borderRadius: scale(18),
-    padding: scale(16),
-  },
-  placeholder: {
-    height: scale(240),
-    borderRadius: scale(14),
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: "#D8CFC7",
-    backgroundColor: "#FAF8F6",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: scale(16),
-  },
-  placeholderText: {
-    color: "#888",
-    fontSize: moderateScale(14),
-  },
-  previewImage: {
-    width: "100%",
-    height: scale(240),
-    borderRadius: scale(14),
-    marginBottom: scale(16),
-  },
-  buttonGroup: {
-    marginTop: scale(4),
-  },
-  statusBox: {
-    marginTop: scale(16),
-    alignItems: "center",
-  },
-  statusText: {
-    marginTop: scale(8),
-    color: "#666",
-    textAlign: "center",
-    fontSize: moderateScale(13),
-  },
-  successBox: {
-    marginTop: scale(16),
-    backgroundColor: "#EEF9F0",
-    padding: scale(14),
-    borderRadius: scale(12),
-  },
-  successTitle: {
-    fontSize: moderateScale(16),
-    fontWeight: "700",
-    color: "#2E7D32",
-    marginBottom: scale(4),
-  },
-  successText: {
-    color: "#2E7D32",
-    fontSize: moderateScale(13),
-  },
-  pointsText: {
-    marginTop: scale(8),
-    fontSize: moderateScale(15),
-    fontWeight: "700",
-    color: "#1B5E20",
-  },
-  errorBox: {
-    marginTop: scale(16),
-    backgroundColor: "#FDEDED",
-    padding: scale(14),
-    borderRadius: scale(12),
-  },
-  errorTitle: {
-    fontSize: moderateScale(16),
-    fontWeight: "700",
-    color: "#B3261E",
-    marginBottom: scale(4),
-  },
-  errorText: {
-    color: "#B3261E",
-    fontSize: moderateScale(13),
-  },
-  resultCard: {
-    marginTop: scale(16),
-    backgroundColor: "#FAF8F6",
-    borderRadius: scale(12),
-    padding: scale(14),
-  },
-  resultTitle: {
-    fontSize: moderateScale(15),
-    fontWeight: "600",
-    marginBottom: scale(8),
-    color: "#1A1A1A",
-  },
-  resultBody: {
-    color: "#555",
-    fontSize: moderateScale(13),
-    lineHeight: moderateScale(20),
-  },
-  bottomActions: {
-    marginTop: scale(20),
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  secondaryAction: {
-    color: "#D4A373",
-    fontWeight: "600",
-    fontSize: moderateScale(14),
-  },
-});

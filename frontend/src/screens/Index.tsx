@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch } from "../api/client";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
+import { useTheme } from "../context/ThemeContext";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -97,6 +98,11 @@ type FeedPost = Post & {
   saved_by_user?: boolean;
 };
 
+type PostMedia = {
+  file_url: string;
+  file_type: string;
+};
+
 type UserCoords = {
   lat: number;
   lng: number;
@@ -106,6 +112,7 @@ let sessionFeedCache: FeedPost[] | null = null;
 
 const Index = () => {
   const navigation = useNavigation<any>();
+  const { colors: themeColors } = useTheme();
 
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [search, setSearch] = useState("");
@@ -391,14 +398,15 @@ const Index = () => {
     return String(rec?.display?.cafe_id || rec?.cafe?.id || rec?.cafe_id || "");
   };
 
-  const getPostMediaFromPost = (post: any) => {
-    const mediaList = post?.post_media || post?.media || [];
+  const getPostMediaFromPost = (post: any): PostMedia | null => {
+    const mediaList: any[] = post?.post_media || post?.media || [];
 
-    const validMedia = mediaList.filter((m: any) =>
-      isValidMediaUrl(m?.file_url)
+    const validMedia: PostMedia[] = mediaList.filter((m: any): m is PostMedia =>
+      isValidMediaUrl(m?.file_url) && typeof m?.file_type === 'string'
     );
 
-    return getRandomItem(validMedia);
+    const item = getRandomItem(validMedia);
+    return item;
   };
 
   const buildPostCard = (
@@ -664,7 +672,7 @@ const Index = () => {
   });
 
   return (
-    <SafeAreaView edges={["top"]} style={styles.container}>
+    <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
       <Animated.View
         style={[
           styles.header,
@@ -691,7 +699,7 @@ const Index = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.searchRow}>
+        <View style={[styles.searchRow, { backgroundColor: themeColors.card, borderColor: themeColors.border }] }>
           <Search
             size={scale(18)}
             color="#AAA"
@@ -700,8 +708,8 @@ const Index = () => {
 
           <TextInput
             placeholder="Search cafes..."
-            placeholderTextColor="#AAA"
-            style={styles.searchInput}
+            placeholderTextColor={themeColors.textMuted}
+            style={[styles.searchInput, { color: themeColors.text }]}
             value={search}
             onChangeText={setSearch}
           />

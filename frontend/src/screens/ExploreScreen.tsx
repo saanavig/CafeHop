@@ -40,6 +40,8 @@ import { Platform } from "react-native";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "../context/ThemeContext";
 
 const { width: RAW_WIDTH, height: RAW_HEIGHT } = Dimensions.get("window");
 const width  = Math.min(RAW_WIDTH,  430);
@@ -75,6 +77,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL;
 export default function ExploreScreen() {
   const { role } = useRole();
   const navigation = useNavigation<any>();
+  const { colors: themeColors } = useTheme();
 
   const [search, setSearch]               = useState("");
   const [inputText, setInputText]         = useState("");
@@ -574,7 +577,7 @@ export default function ExploreScreen() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <View style={styles.root}>
+    <SafeAreaView edges={["top"]} style={[styles.root, { backgroundColor: themeColors.bg }]}>
       <StatusBar barStyle="dark-content" />
 
       {/* ── PANNABLE MAP ────────────────────────────────────── */}
@@ -633,15 +636,15 @@ export default function ExploreScreen() {
       )}
 
       {/* ── BOTTOM SHEET (list) ─────────────────────────────── */}
-      <View style={styles.sheet} ref={sheetRef}>
-        <View style={styles.handle} />
+      <View style={[styles.sheet, { backgroundColor: themeColors.card }]} ref={sheetRef}>
+        <View style={[styles.handle, { backgroundColor: themeColors.border }]} />
 
-        <View style={styles.searchContainer}>
-          <Search size={15} color="#999" />
+        <View style={[styles.searchContainer, { backgroundColor: themeColors.card }]}> 
+          <Search size={15} color={themeColors.textMuted} />
           <TextInput
             placeholder="Search cafes near you…"
-            placeholderTextColor="#BBB"
-            style={styles.searchInput}
+            placeholderTextColor={themeColors.textMuted}
+            style={[styles.searchInput, { color: themeColors.text }]}
             value={inputText}
             onChangeText={(text) => {
               setInputText(text);
@@ -651,7 +654,7 @@ export default function ExploreScreen() {
           />
           {inputText.length > 0 && (
             <TouchableOpacity onPress={() => { setInputText(""); setSearch(""); }}>
-              <X size={14} color="#BBB" />
+              <X size={14} color={themeColors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -672,8 +675,8 @@ export default function ExploreScreen() {
           }
         >
           <View style={styles.listHeader}>
-            <Text style={styles.listTitle}>Cafes Near You</Text>
-            <View style={styles.listCountChip}>
+            <Text style={[styles.listTitle, { color: themeColors.text }]}>Cafes Near You</Text>
+            <View style={[styles.listCountChip, { backgroundColor: themeColors.iconBg }]}> 
               <Navigation size={11} color="#D4A373" />
               <Text style={styles.listCountText}>{filteredCafes.length} places</Text>
             </View>
@@ -698,13 +701,14 @@ export default function ExploreScreen() {
                   <View
                     style={[
                       styles.filterChip,
+                      { backgroundColor: isActive ? themeColors.accent : themeColors.card, borderColor: isActive ? themeColors.accent : themeColors.border },
                       isActive && styles.filterChipActive,
                     ]}
                   >
                     <Text
                       style={[
                         styles.filterChipText,
-                        isActive && { color: "#FFF" },
+                        { color: isActive ? "#FFF" : themeColors.textMuted },
                       ]}
                     >
                       {filter}
@@ -751,15 +755,16 @@ export default function ExploreScreen() {
             >
               <View style={[
                 styles.filterChip,
+                { backgroundColor: selectedPrices.length > 0 ? themeColors.accent : themeColors.card, borderColor: selectedPrices.length > 0 ? themeColors.accent : themeColors.border },
                 selectedPrices.length > 0 && styles.filterChipActive
               ]}>
                 <Text style={[
                   styles.filterChipText,
-                  selectedPrices.length > 0 && { color: "#FFF" }
+                  { color: selectedPrices.length > 0 ? "#FFF" : themeColors.textMuted },
                 ]}>
                   Price
                 </Text>
-                <ChevronDown size={12} color={selectedPrices.length ? "#FFF" : "#666"} />
+                <ChevronDown size={12} color={selectedPrices.length ? "#FFF" : themeColors.textMuted} />
               </View>
             </TouchableOpacity>
           </View>
@@ -801,16 +806,16 @@ export default function ExploreScreen() {
             >
               <View style={[
                 styles.filterChip,
-                styles.filterChip,
+                { backgroundColor: maxDistance !== 5 ? themeColors.accent : themeColors.card, borderColor: maxDistance !== 5 ? themeColors.accent : themeColors.border },
                 maxDistance !== 5 && styles.filterChipActive
               ]}>
                 <Text style={[
                   styles.filterChipText,
-                  maxDistance !== 5 && { color: "#FFF" }
+                  { color: maxDistance !== 5 ? "#FFF" : themeColors.textMuted }
                 ]}>
                   Distance
                 </Text>
-                <ChevronDown size={12} color={maxDistance !== 5 ? "#FFF" : "#666"} />
+                <ChevronDown size={12} color={maxDistance !== 5 ? "#FFF" : themeColors.textMuted} />
               </View>
             </TouchableOpacity>
           </View>
@@ -830,16 +835,16 @@ export default function ExploreScreen() {
           {loading && (
             <View style={styles.loadingState}>
               <ActivityIndicator size="small" color="#D4A373" />
-              <Text style={styles.loadingText}>Finding cafes near you…</Text>
+              <Text style={[styles.loadingText, { color: themeColors.textMuted }]}>Finding cafes near you…</Text>
             </View>
           )}
 
           {/* Empty state */}
           {!loading && !fetchError && filteredCafes.length === 0 && (
             <View style={styles.emptyState}>
-              <Coffee size={scale(32)} color="#CCC" />
-              <Text style={styles.emptyStateText}>No cafes found</Text>
-              <Text style={styles.emptyStateSub}>Try a different search or filter</Text>
+              <Coffee size={scale(32)} color={themeColors.textMuted} />
+              <Text style={[styles.emptyStateText, { color: themeColors.textMuted }]}>No cafes found</Text>
+              <Text style={[styles.emptyStateSub, { color: themeColors.textMuted }]}>Try a different search or filter</Text>
             </View>
           )}
 
@@ -887,6 +892,7 @@ export default function ExploreScreen() {
             position: "absolute",
             left: dropdownPos.x,
             top: dropdownPos.y,
+            backgroundColor: themeColors.card,
           },
           ]}
           >
@@ -904,7 +910,8 @@ export default function ExploreScreen() {
               >
               <Text style={[
                 styles.dropdownText,
-                  active && { color: "#D4A373", fontWeight: "700" }
+                { color: themeColors.text },
+                active && { color: "#D4A373", fontWeight: "700" }
                 ]}>
                 {"$".repeat(p)}
               </Text>
@@ -922,6 +929,7 @@ export default function ExploreScreen() {
             position: "absolute",
             left: dropdownPos.x,
             top: dropdownPos.y,
+            backgroundColor: themeColors.card,
           },
         ]}
         >
@@ -937,6 +945,7 @@ export default function ExploreScreen() {
           >
           <Text style={[
             styles.dropdownText,
+            { color: themeColors.text },
             active && { color: "#D4A373", fontWeight: "700" }
           ]}>
           {d} mi
@@ -960,7 +969,7 @@ export default function ExploreScreen() {
           </TouchableOpacity>
 
           {selectedCafe && (
-            <Animated.View style={[styles.detailSheet, { transform: [{ translateY: detailSlide }] }]}>
+            <Animated.View style={[styles.detailSheet, { backgroundColor: themeColors.card, transform: [{ translateY: detailSlide }] }]}>
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: scale(48) }}>
 
                 {/* ── Photo Carousel ── */}
@@ -999,7 +1008,7 @@ export default function ExploreScreen() {
 
                   {/* Close button */}
                   <TouchableOpacity style={styles.closeBtn} onPress={closeDetail}>
-                    <X size={scale(16)} color="#444" />
+                    <X size={scale(16)} color={themeColors.textMuted} />
                   </TouchableOpacity>
                 </View>
 
@@ -1008,20 +1017,20 @@ export default function ExploreScreen() {
                   {/* ── Name, category, rating ── */}
                   <View style={styles.nameRow}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.detailName}>{selectedCafe.name}</Text>
-                      <Text style={styles.detailCategory}>{selectedCafe.category}</Text>
+                      <Text style={[styles.detailName, { color: themeColors.text }]}>{selectedCafe.name}</Text>
+                      <Text style={[styles.detailCategory, { color: themeColors.textMuted }]}>{selectedCafe.category}</Text>
                     </View>
-                    <View style={styles.ratingChip}>
+                    <View style={[styles.ratingChip, { backgroundColor: themeColors.iconBg }]}> 
                       <Star size={13} color="#D4A373" fill="#D4A373" />
-                      <Text style={styles.ratingNum}>{selectedCafe.rating}</Text>
-                      <Text style={styles.ratingReviews}>({selectedCafe.reviews})</Text>
+                      <Text style={[styles.ratingNum, { color: themeColors.text }]}>{selectedCafe.rating}</Text>
+                      <Text style={[styles.ratingReviews, { color: themeColors.textMuted }]}>({selectedCafe.reviews})</Text>
                     </View>
                   </View>
 
                   {/* ── Address + distance ── */}
                   <View style={styles.addressRow}>
                     <MapPin size={scale(13)} color="#D4A373" />
-                    <Text style={styles.addressText}>{selectedCafe.address}</Text>
+                    <Text style={[styles.addressText, { color: themeColors.textMuted }]}>{selectedCafe.address}</Text>
                     {formattedDistance(selectedCafe) ? (
                       <Text style={styles.distancePill}>{formattedDistance(selectedCafe)}</Text>
                     ) : null}
@@ -1042,11 +1051,11 @@ export default function ExploreScreen() {
                     ].map(({ icon: Icon, label, onPress, active }) => (
                       <TouchableOpacity
                         key={label}
-                        style={[styles.actionBtn, active && styles.actionBtnActive]}
+                        style={[styles.actionBtn, { backgroundColor: themeColors.iconBg }, active && styles.actionBtnActive]}
                         onPress={onPress}
                       >
-                        <Icon size={scale(18)} color={active ? "#D4A373" : "#444"} fill={active ? "#D4A373" : "transparent"} />
-                        <Text style={[styles.actionBtnLabel, active && { color: "#D4A373" }]}>{label}</Text>
+                        <Icon size={scale(18)} color={active ? "#D4A373" : themeColors.text} fill={active ? "#D4A373" : "transparent"} />
+                        <Text style={[styles.actionBtnLabel, { color: themeColors.text }, active && { color: "#D4A373" }]}>{label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -1059,26 +1068,26 @@ export default function ExploreScreen() {
                     contentContainerStyle={{ gap: scale(8) }}
                   >
                     {[...(selectedCafe.amenities ?? []), ...(selectedCafe.attributes ?? [])].map((a: string) => (
-                      <View key={a} style={styles.amenityChip}>
-                        <Text style={styles.amenityChipText}>{a}</Text>
+                      <View key={a} style={[styles.amenityChip, { backgroundColor: themeColors.iconBg, borderColor: themeColors.border }]}> 
+                        <Text style={[styles.amenityChipText, { color: themeColors.text }]}>{a}</Text>
                       </View>
                     ))}
                     {(selectedCafe.vibes ?? []).map((v) => (
-                      <View key={v} style={[styles.amenityChip, styles.vibeChip]}>
+                      <View key={v} style={[styles.amenityChip, styles.vibeChip, { borderColor: themeColors.accentMuted, backgroundColor: themeColors.accentMuted }]}> 
                         <Text style={[styles.amenityChipText, { color: "#D4A373" }]}>{v}</Text>
                       </View>
                     ))}
                   </ScrollView>
 
                   {/* ── Tabs ── */}
-                  <View style={styles.tabRow}>
+                  <View style={[styles.tabRow, { backgroundColor: themeColors.iconBg }] }>
                     {(["info", "rewards", "reviews"] as const).map((t) => (
                       <TouchableOpacity
                         key={t}
-                        style={[styles.tabBtn, activeTab === t && styles.tabBtnActive]}
+                        style={[styles.tabBtn, activeTab === t && [styles.tabBtnActive, { backgroundColor: themeColors.card }]]}
                         onPress={() => switchTab(t)}
                       >
-                        <Text style={[styles.tabBtnText, activeTab === t && styles.tabBtnTextActive]}>
+                        <Text style={[styles.tabBtnText, { color: themeColors.textMuted }, activeTab === t && [styles.tabBtnTextActive, { color: themeColors.text }]]}>
                           {t[0].toUpperCase() + t.slice(1)}
                         </Text>
                       </TouchableOpacity>
@@ -1092,14 +1101,14 @@ export default function ExploreScreen() {
                     {activeTab === "info" && (
                       <View>
                         {/* About */}
-                        <Text style={styles.sectionHeading}>About</Text>
+                        <Text style={[styles.sectionHeading, { color: themeColors.text }]}>About</Text>
                         {selectedCafe.description ? (
-                          <Text style={styles.descriptionText}>{selectedCafe.description}</Text>
+                          <Text style={[styles.descriptionText, { color: themeColors.textMuted }]}>{selectedCafe.description}</Text>
                         ) : (
-                          <Text style={[styles.descriptionText, { color: "#CCC" }]}>No description available.</Text>
+                          <Text style={[styles.descriptionText, { color: themeColors.textMuted }]}>No description available.</Text>
                         )}
                         {cafeAiProfile?.vibe_summary ? (
-                          <Text style={[styles.descriptionText, { fontStyle: "italic", color: "#888", marginTop: scale(-8) }]}>
+                          <Text style={[styles.descriptionText, { fontStyle: "italic", color: themeColors.textMuted, marginTop: scale(-8) }]}>
                             {cafeAiProfile.vibe_summary}
                           </Text>
                         ) : null}
@@ -1125,15 +1134,15 @@ export default function ExploreScreen() {
                           >
                             <View style={{ flexDirection: "row", alignItems: "center", gap: scale(8) }}>
                               <Clock size={scale(15)} color="#D4A373" />
-                              <Text style={styles.sectionHeading}>Hours</Text>
+                              <Text style={[styles.sectionHeading, { color: themeColors.text }]}>Hours</Text>
                             </View>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: scale(6) }}>
-                              <Text style={styles.todayHoursPreview}>
+                              <Text style={[styles.todayHoursPreview, { color: themeColors.textMuted }]}>
                                 Today: {cafeHours[todayKey] ?? "—"}
                               </Text>
                               {hoursExpanded
-                                ? <ChevronUp size={scale(14)} color="#888" />
-                                : <ChevronDown size={scale(14)} color="#888" />
+                                ? <ChevronUp size={scale(14)} color={themeColors.textMuted} />
+                                : <ChevronDown size={scale(14)} color={themeColors.textMuted} />
                               }
                             </View>
                           </TouchableOpacity>
@@ -1144,37 +1153,37 @@ export default function ExploreScreen() {
                         ) : null}
 
                         {hoursExpanded && Object.keys(cafeHours).length > 0 && (
-                          <View style={styles.hoursGrid}>
+                          <View style={[styles.hoursGrid, { backgroundColor: themeColors.iconBg }]}>
                             {Object.entries(cafeHours).map(([day, hrs]) => (
-                              <View key={day} style={[styles.hoursRow, day === todayKey && styles.hoursRowToday]}>
-                                <Text style={[styles.hoursDay, day === todayKey && styles.hoursDayToday]}>{day}</Text>
-                                <Text style={[styles.hoursTime, day === todayKey && styles.hoursTimeToday]}>{hrs as string}</Text>
+                              <View key={day} style={[styles.hoursRow, { borderBottomColor: themeColors.border }, day === todayKey && styles.hoursRowToday]}>
+                                <Text style={[styles.hoursDay, { color: themeColors.textMuted }, day === todayKey && styles.hoursDayToday]}>{day}</Text>
+                                <Text style={[styles.hoursTime, { color: themeColors.text }, day === todayKey && styles.hoursTimeToday]}>{hrs as string}</Text>
                               </View>
                             ))}
                           </View>
                         )}
 
                         {/* Contact */}
-                        <Text style={[styles.sectionHeading, { marginTop: scale(16) }]}>Contact</Text>
-                        <View style={styles.contactCard}>
-                          <View style={styles.contactRow}>
+                        <Text style={[styles.sectionHeading, { marginTop: scale(16), color: themeColors.text }]}>Contact</Text>
+                        <View style={[styles.contactCard, { backgroundColor: themeColors.iconBg }]}>
+                          <View style={[styles.contactRow, { borderBottomColor: themeColors.border }]}>
                             <Phone size={scale(15)} color="#D4A373" />
-                            <Text style={styles.contactText}>{selectedCafe.contact_phone || "—"}</Text>
+                            <Text style={[styles.contactText, { color: themeColors.text }]}>{selectedCafe.contact_phone || "—"}</Text>
                           </View>
-                          <View style={styles.contactRow}>
+                          <View style={[styles.contactRow, { borderBottomColor: themeColors.border }]}>
                             <Globe size={scale(15)} color="#D4A373" />
-                            <Text style={styles.contactText}>{selectedCafe.website_url || "—"}</Text>
+                            <Text style={[styles.contactText, { color: themeColors.text }]}>{selectedCafe.website_url || "—"}</Text>
                           </View>
-                          <View style={[styles.contactRow, { borderBottomWidth: 0 }]}>
+                          <View style={[styles.contactRow, { borderBottomWidth: 0, borderBottomColor: themeColors.border }]}>
                             <Globe size={scale(15)} color="#D4A373" />
-                            <Text style={styles.contactText}>{selectedCafe.instagram_url || "—"}</Text>
+                            <Text style={[styles.contactText, { color: themeColors.text }]}>{selectedCafe.instagram_url || "—"}</Text>
                           </View>
                         </View>
 
                         {/* Price */}
-                        <View style={styles.priceRow}>
-                          <Text style={styles.priceLabel}>Price range</Text>
-                          <Text style={styles.priceValue}>
+                        <View style={[styles.priceRow, { borderTopColor: themeColors.border }]}>
+                          <Text style={[styles.priceLabel, { color: themeColors.textMuted }]}>Price range</Text>
+                          <Text style={[styles.priceValue, { color: themeColors.text }]}>
                             {["", "$", "$$", "$$$", "$$$$"][selectedCafe.price_level ?? 0] || "—"}
                           </Text>
                         </View>
@@ -1184,19 +1193,19 @@ export default function ExploreScreen() {
                     {/* REWARDS TAB */}
                     {activeTab === "rewards" && (
                       <View style={styles.tabContent}>
-                        <Text style={styles.sectionHeading}>Available Rewards</Text>
+                        <Text style={[styles.sectionHeading, { color: themeColors.text }]}>Available Rewards</Text>
                         {detailLoading ? (
                           <ActivityIndicator size="small" color="#D4A373" style={{ marginVertical: scale(16) }} />
                         ) : cafeRewards.length > 0 ? (
                           cafeRewards.map((r: any) => (
-                            <View key={r.id} style={styles.rewardRow}>
+                            <View key={r.id} style={[styles.rewardRow, { backgroundColor: themeColors.iconBg }]}>
                               <View style={styles.rewardPtsBadge}>
                                 <Text style={styles.rewardPts}>{r.points_required} pts</Text>
                               </View>
                               <View style={{ flex: 1 }}>
-                                <Text style={styles.rewardLabel}>{r.title}</Text>
+                                <Text style={[styles.rewardLabel, { color: themeColors.text }]}>{r.title}</Text>
                                 {r.description ? (
-                                  <Text style={{ fontSize: moderateScale(11), color: "#AAA", marginTop: scale(2) }}>
+                                  <Text style={{ fontSize: moderateScale(11), color: themeColors.textMuted, marginTop: scale(2) }}>
                                     {r.description}
                                   </Text>
                                 ) : null}
@@ -1204,7 +1213,7 @@ export default function ExploreScreen() {
                             </View>
                           ))
                         ) : (
-                          <Text style={{ color: "#BBB", fontSize: moderateScale(13), marginVertical: scale(16) }}>
+                          <Text style={{ color: themeColors.textMuted, fontSize: moderateScale(13), marginVertical: scale(16) }}>
                             No rewards available yet
                           </Text>
                         )}
@@ -1228,21 +1237,21 @@ export default function ExploreScreen() {
                             : (selectedCafe.rating ?? 0);
                           const displayRating = avgRating > 0 ? avgRating.toFixed(1) : "—";
                           return (
-                            <View style={styles.ratingSummary}>
-                              <Text style={styles.ratingSummaryBig}>{displayRating}</Text>
+                            <View style={[styles.ratingSummary, { backgroundColor: themeColors.iconBg }]}>
+                              <Text style={[styles.ratingSummaryBig, { color: themeColors.text }]}>{displayRating}</Text>
                               <View>
                                 <View style={{ flexDirection: "row", gap: scale(3), marginBottom: scale(4) }}>
                                   {Array.from({ length: 5 }).map((_, j) => (
                                     <Star key={j} size={scale(14)} color="#D4A373" fill={j < Math.round(avgRating) ? "#D4A373" : "transparent"} />
                                   ))}
                                 </View>
-                                <Text style={styles.ratingSummaryCount}>{cafeReviews.length} reviews</Text>
+                                <Text style={[styles.ratingSummaryCount, { color: themeColors.textMuted }]}>{cafeReviews.length} reviews</Text>
                               </View>
                             </View>
                           );
                         })()}
 
-                        <Text style={styles.sectionHeading}>Recent Reviews</Text>
+                        <Text style={[styles.sectionHeading, { color: themeColors.text }]}>Recent Reviews</Text>
                         {detailLoading ? (
                           <ActivityIndicator size="small" color="#D4A373" style={{ marginVertical: scale(16) }} />
                         ) : cafeReviews.length > 0 ? (
@@ -1259,7 +1268,7 @@ export default function ExploreScreen() {
                               ? `${profile.first_name}${profile.last_name ? " " + profile.last_name[0] + "." : ""}`
                               : "Anonymous";
                             return (
-                              <View key={r.id} style={styles.reviewCard}>
+                              <View key={r.id} style={[styles.reviewCard, { backgroundColor: themeColors.iconBg }]}>
                                 <View style={styles.reviewHeader}>
                                   <View style={styles.reviewAvatar}>
                                     <Text style={{ fontSize: moderateScale(13), fontWeight: "700", color: "#D4A373" }}>
@@ -1269,7 +1278,7 @@ export default function ExploreScreen() {
                                   <View style={{ flex: 1 }}>
                                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
                                       <View>
-                                        <Text style={{ fontSize: moderateScale(12), fontWeight: "600", color: "#333", marginBottom: scale(2) }}>
+                                        <Text style={{ fontSize: moderateScale(12), fontWeight: "600", color: themeColors.text, marginBottom: scale(2) }}>
                                           {name}
                                         </Text>
                                         <View style={{ flexDirection: "row", gap: scale(2) }}>
@@ -1278,10 +1287,10 @@ export default function ExploreScreen() {
                                           ))}
                                         </View>
                                       </View>
-                                      <Text style={styles.reviewTime}>{timeAgo(r.created_at)}</Text>
+                                      <Text style={[styles.reviewTime, { color: themeColors.textMuted }]}>{timeAgo(r.created_at)}</Text>
                                     </View>
                                     {r.review_text ? (
-                                      <Text style={styles.reviewText}>{r.review_text}</Text>
+                                      <Text style={[styles.reviewText, { color: themeColors.textMuted }]}>{r.review_text}</Text>
                                     ) : null}
                                   </View>
                                 </View>
@@ -1290,7 +1299,7 @@ export default function ExploreScreen() {
                           })
                         ) : (
                           <View style={{ alignItems: "center", paddingVertical: scale(24) }}>
-                            <Text style={{ color: "#BBB", fontSize: moderateScale(13) }}>No reviews yet</Text>
+                            <Text style={{ color: themeColors.textMuted, fontSize: moderateScale(13) }}>No reviews yet</Text>
                           </View>
                         )}
                       </View>
@@ -1302,7 +1311,7 @@ export default function ExploreScreen() {
           )}
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
