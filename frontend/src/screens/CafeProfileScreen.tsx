@@ -79,6 +79,7 @@ export default function CafeProfileScreen() {
 
     const contentWidth = Math.min(deviceWidth * 0.9, 480);
     const photoSize = (contentWidth - 6) / 3;
+    const heroWidth = Math.min(deviceWidth, 430);
 
     const [cafe, setCafe] = useState<Cafe | null>(null);
     const [cafeLoading, setCafeLoading] = useState(true);
@@ -131,6 +132,7 @@ export default function CafeProfileScreen() {
     const [authLoading, setAuthLoading] = useState(true);
     const [hours, setHours] = useState<any[]>([]);
     const [heroIndex, setHeroIndex] = useState(0);
+    const [cafeImages, setCafeImages] = useState<string[]>([]);
     const [previewIndex, setPreviewIndex] = useState(0);
     const [showHoursModal, setShowHoursModal] = useState(false);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -267,6 +269,19 @@ export default function CafeProfileScreen() {
       if (data) {
         setCafe(data);
         setOwnerId(data.owner_id || null);
+
+        const resolvedId = cafeId || data.id;
+        if (resolvedId) {
+          const { data: imgs, error: imgsError } = await supabase
+            .from("cafe_images")
+            .select("image_url")
+            .eq("cafe_id", resolvedId)
+            .order("order_index", { ascending: true });
+          console.log("[cafe_images] resolvedId:", resolvedId, "rows:", imgs, "error:", imgsError);
+          if (imgs && imgs.length > 0) {
+            setCafeImages(imgs.map((r: any) => r.image_url).filter(Boolean));
+          }
+        }
       } else {
         setCafe(null);
       }
@@ -885,6 +900,7 @@ export default function CafeProfileScreen() {
   }
 
   const heroImages: string[] = (() => {
+    if (cafeImages.length > 0) return cafeImages;
     const arr: string[] = [];
     if (Array.isArray(cafe.image_urls)) {
       for (const u of cafe.image_urls) if (u && !arr.includes(u)) arr.push(u);
@@ -913,11 +929,11 @@ export default function CafeProfileScreen() {
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 onMomentumScrollEnd={(e) => {
-                  const i = Math.round(e.nativeEvent.contentOffset.x / deviceWidth);
+                  const i = Math.round(e.nativeEvent.contentOffset.x / heroWidth);
                   setHeroIndex(i);
                 }}
                 renderItem={({ item }) => (
-                  <Image source={{ uri: item }} style={[styles.heroImage, { width: deviceWidth }]} />
+                  <Image source={{ uri: item }} style={[styles.heroImage, { width: heroWidth }]} />
                 )}
               />
             ) : (
