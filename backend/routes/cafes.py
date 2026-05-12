@@ -1,9 +1,9 @@
 from flask import Blueprint, request, jsonify, g
 from routes.auth import require_auth, require_role
 from supabase import create_client
+from database.supabase_client import supabase, supabase_for_user
 import os
 from dotenv import load_dotenv
-from database.supabase_client import supabase_admin as supabase
 from datetime import datetime
 import requests
 from services.notification_service import create_notification
@@ -451,78 +451,52 @@ def get_comments_by_post(post_id):
 
 @cafe_bp.route("/posts/<post_id>/comments", methods=["POST"])
 @require_auth
-def create_comment_by_post(post_id):
-    data = request.get_json()
-    user_id = g.user["id"]
-
-    content = data.get("content")
-
-    if not content or content.strip() == "":
-        return jsonify({"error": "Comment cannot be empty"}), 400
-
+def add_post_comment(post_id):
     try:
+        print("CAFE COMMENT ROUTE RUNNING")
+
+        user_id = g.user["id"]
+        data = request.get_json(silent=True) or {}
+
+        content = (data.get("content") or "").strip()
+
+        if not content:
+            return jsonify({"error": "Missing content"}), 400
+
         response = supabase.table("comments").insert({
             "post_id": post_id,
             "user_id": user_id,
-            "content": content.strip()
+            "content": content,
         }).execute()
 
-        # get post cafe
-        post_response = (
+        post_res = (
             supabase.table("posts")
-            .select("cafe_id")
+            .select("comments_count")
             .eq("id", post_id)
             .maybe_single()
             .execute()
         )
 
-        if post_response.data:
+        current_count = (post_res.data or {}).get("comments_count") or 0
+        new_count = current_count + 1
 
-            cafe_id = post_response.data["cafe_id"]
+        update_res = (
+            supabase.table("posts")
+            .update({"comments_count": new_count})
+            .eq("id", post_id)
+            .execute()
+        )
 
-            cafe_response = (
-                supabase.table("cafes")
-                .select("owner_id, name")
-                .eq("id", cafe_id)
-                .maybe_single()
-                .execute()
-            )
+        print("COMMENTS COUNT UPDATE:", update_res.data)
 
-            if cafe_response.data:
-
-                cafe_owner_id = cafe_response.data["owner_id"]
-                cafe_name = cafe_response.data["name"]
-
-                # don't notify yourself
-                if cafe_owner_id != user_id:
-
-                    profile_response = (
-                        supabase.table("profiles")
-                        .select("full_name")
-                        .eq("id", user_id)
-                        .maybe_single()
-                        .execute()
-                    )
-
-                    customer_name = (
-                        profile_response.data["full_name"]
-                        if profile_response.data
-                        else "Someone"
-                    )
-
-                    create_notification(
-                        user_id=cafe_owner_id,
-                        notif_type="new_review",
-                        title="New comment 💬",
-                        message=f"{customer_name} commented on a post from {cafe_name}",
-                    )
-
-        return jsonify(response.data[0]), 201
+        return jsonify({
+            "comment": response.data[0],
+            "comments_count": new_count,
+        }), 201
 
     except Exception as e:
-        print("Error creating post comment:", str(e))
-        return jsonify({"error": "Failed to create comment"}), 500
-
+        print("COMMENT POST ERROR:", e)
+        return jsonify({"error": str(e)}), 500
 
 # google address for autocomplete
 @cafe_bp.route("/places/autocomplete", methods=["GET"])

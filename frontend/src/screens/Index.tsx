@@ -8,13 +8,14 @@ import {
   View,
 } from "react-native";
 import { Bell, Search } from "lucide-react-native";
-import ForYouCard, { Post } from "../components/ui/ForYouCard";
+import ForYouCard, { Comment, Post } from "../components/ui/ForYouCard";
 import React, { useEffect, useRef, useState } from "react";
 import { deviceHeight, moderateScale, scale } from "../utils/responsive";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import BottomNav from "../components/ui/BottomNav";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { apiFetch } from "../api/client";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../context/ThemeContext";
@@ -48,6 +49,17 @@ const getRandomItem = <T,>(items: T[]): T | null => {
   return items[Math.floor(Math.random() * items.length)];
 };
 
+const safeJson = async (res: Response) => {
+  const text = await res.text();
+
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    console.log("NON JSON RESPONSE:", text.slice(0, 300));
+    return {};
+  }
+};
+
 const calculateDistanceMiles = (
   lat1: number,
   lon1: number,
@@ -69,10 +81,8 @@ const calculateDistanceMiles = (
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-const FEED_CACHE_KEY = "cafehop_feed_cache";
-
 type FeedPost = Post & {
-  itemType?: "post" | "empty_cafe_prompt";
+  itemType?: "post";
   cafeId?: string;
   isRecommended?: boolean;
   postId?: string;
@@ -82,6 +92,10 @@ type FeedPost = Post & {
   canSavePost?: boolean;
   canSaveCafe?: boolean;
   mediaType?: "image" | "video" | string;
+  liked?: boolean;
+  saved?: boolean;
+  liked_by_user?: boolean;
+  saved_by_user?: boolean;
 };
 
 type PostMedia = {
@@ -132,7 +146,6 @@ const Index = () => {
     if (hasFetchedFeed.current) return;
 
     hasFetchedFeed.current = true;
-
     loadFeed();
     fetchUnreadNotificationStatus();
   }, []);
@@ -140,6 +153,152 @@ const Index = () => {
   const clearFeedCache = async () => {
     sessionFeedCache = null;
     await AsyncStorage.removeItem(FEED_CACHE_KEY);
+  };
+
+  const updatePostInState = (
+    postId: string,
+    updater: (post: FeedPost) => FeedPost
+  ) => {
+    setPosts((prev) =>
+      prev.map((post) => {
+        const id = post.postId || post.id;
+        return id === postId ? updater(post) : post;
+      })
+    );
+  };
+
+  const handleLikePost = async (postId: string, currentlyLiked: boolean) => {
+    const previousPost = posts.find((p) => (p.postId || p.id) === postId);
+    if (!previousPost) return;
+
+    const nextLiked = !currentlyLiked;
+
+    updatePostInState(postId, (post) => ({
+      ...post,
+      liked: nextLiked,
+      liked_by_user: nextLiked,
+      likes: nextLiked
+        ? Number(post.likes || 0) + 1
+        : Math.max(0, Number(post.likes || 0) - 1),
+    }));
+
+    try {
+      const res = await apiFetch(`/posts/${postId}/like`, {
+        method: nextLiked ? "POST" : "DELETE",
+      });
+
+      const data = await safeJson(res);
+
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || "Like failed");
+      }
+
+      updatePostInState(postId, (post) => ({
+        ...post,
+        liked: Boolean(data.liked_by_user ?? nextLiked),
+        liked_by_user: Boolean(data.liked_by_user ?? nextLiked),
+        likes:
+          typeof data.likes_count === "number" ? data.likes_count : post.likes,
+      }));
+    } catch (err) {
+      console.error("LIKE ERROR:", err);
+      updatePostInState(postId, () => previousPost);
+    }
+  };
+
+  const handleSavePost = async (postId: string, currentlySaved: boolean) => {
+    const previousPost = posts.find((p) => (p.postId || p.id) === postId);
+    if (!previousPost) return;
+
+    const nextSaved = !currentlySaved;
+
+    updatePostInState(postId, (post) => ({
+      ...post,
+      saved: nextSaved,
+      saved_by_user: nextSaved,
+    }));
+
+    try {
+      const res = await apiFetch(`/posts/${postId}/save`, {
+        method: nextSaved ? "POST" : "DELETE",
+      });
+
+      const data = await safeJson(res);
+
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || "Save failed");
+      }
+    } catch (err) {
+      console.error("SAVE ERROR:", err);
+      updatePostInState(postId, () => previousPost);
+    }
+  };
+
+  const handleFetchComments = async (postId: string): Promise<Comment[]> => {
+    try {
+      const res = await apiFetch(`/posts/${postId}/comments`);
+      const data = await safeJson(res);
+
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || "Fetch comments failed");
+      }
+
+      const comments = Array.isArray(data) ? data : [];
+
+      updatePostInState(postId, (post) => ({
+        ...post,
+        comments: comments.length,
+      }));
+
+      return comments;
+    } catch (err) {
+      console.error("FETCH COMMENTS ERROR:", err);
+      return [];
+    }
+  };
+
+  const handlePostComment = async (
+    postId: string,
+    content: string
+  ): Promise<Comment | null> => {
+    const previousPost = posts.find((p) => (p.postId || p.id) === postId);
+    if (!previousPost) return null;
+
+    updatePostInState(postId, (post) => ({
+      ...post,
+      comments: Number(post.comments || 0) + 1,
+    }));
+
+    try {
+      const res = await apiFetch(`/posts/${postId}/comments`, {
+        method: "POST",
+        body: JSON.stringify({ content }),
+      });
+
+      const data = await safeJson(res);
+
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || "Comment failed");
+      }
+
+      updatePostInState(postId, (post) => ({
+        ...post,
+        comments:
+          typeof data.comments_count === "number"
+            ? data.comments_count
+            : post.comments,
+      }));
+
+      return {
+        ...(data.comment || {}),
+        username: "You",
+        content,
+      };
+    } catch (err) {
+      console.error("POST COMMENT ERROR:", err);
+      updatePostInState(postId, () => previousPost);
+      return null;
+    }
   };
 
   const fetchUnreadNotificationStatus = async () => {
@@ -150,25 +309,19 @@ const Index = () => {
 
       if (!session?.access_token) return;
 
-      const response = await fetch(
-        `${API_URL}/api/notifications`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      );
+      const response = await fetch(`${API_URL}/api/notifications`, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       const notifications = Array.isArray(data)
         ? data
         : data.notifications || [];
 
-      const hasUnread = notifications.some(
-        (n: any) => !n.is_read
-      );
-
+      const hasUnread = notifications.some((n: any) => !n.is_read);
       setHasUnreadNotifications(hasUnread);
     } catch (err) {
       console.log("UNREAD NOTIFICATION ERROR:", err);
@@ -263,11 +416,9 @@ const Index = () => {
     coords: UserCoords,
     explanation?: string
   ): FeedPost | null => {
-    const cafeId = String(post?.cafe_id || cafe?.id || "");
+    const cafeId = String(post?.cafe_id || cafe?.id || post?.cafes?.id || "");
     const postId = String(post?.id || post?.post_id || "");
     const cafeName = cafe?.name || post?.cafes?.name || "Cafe";
-
-    console.log("PROFILE DATA:", post.profiles);
 
     const media = getPostMediaFromPost(post);
     const mediaUrl = media?.file_url;
@@ -282,119 +433,58 @@ const Index = () => {
       cafe?.longitude ?? post?.cafes?.longitude
     );
 
-    console.log("POST DEBUG:", {
-      author_type: post.author_type,
-      author_id: post.author_id,
-      user_id: post.user_id,
-      author_profile: post.author_profile,
-    });
-
-  return {
-    id: postId,
-    itemType: "post",
-    postId,
-    cafeId,
-    isRecommended,
-    cafeName,
-    image: { uri: mediaUrl },
-    mediaType,
-    caption: isRecommended
-      ? explanation || "Recommended for you based on your cafe preferences."
-      : post.caption || `Posted at ${cafeName}`,
-    likes: Number(post.likes_count || 0),
-    comments: Number(post.comments_count || 0),
-    postedBy:
-      post.author_type === "cafe_owner"
-        ? cafeName
-        : post.author_profile?.full_name ||
-          post.author_profile?.first_name ||
-          "User",
-    postedById:
-      post.author_type === "cafe_owner"
-        ? post.cafes?.id || post.cafe_id
-        : post.author_id || post.user_id,
-    postedByType:
-      post.author_type === "cafe_owner"
-        ? "cafe_owner"
-        : "user",
-    tags: isRecommended ? ["recommended", "for-you"] : ["cafe"],
-    location:
-      cafe?.address || post?.cafes?.address || "Nearby",
-    commentList: [],
-    distanceMiles,
-    canLike: true,
-    canComment: true,
-    canSavePost: true,
-    canSaveCafe: true,
-  };
-  };
-
-  const buildEmptyCafePrompt = (
-    cafe: any,
-    isRecommended: boolean,
-    coords: UserCoords,
-    explanation?: string
-  ): FeedPost => {
-    const cafeId = String(cafe?.id || "");
-    const cafeName = cafe?.name || "Cafe";
-
-    const distanceMiles = calculateDistanceMiles(
-      coords.lat,
-      coords.lng,
-      cafe?.latitude,
-      cafe?.longitude
-    );
+    const likedByUser = Boolean(post.liked_by_user);
+    const savedByUser = Boolean(post.saved_by_user);
 
     return {
-      id: `cafe-${cafeId || cafeName}`,
-      itemType: "empty_cafe_prompt",
+      id: postId,
+      itemType: "post",
+      postId,
       cafeId,
       isRecommended,
       cafeName,
-      image: { uri: getFallbackImage(cafeId || cafeName) },
+      image: { uri: mediaUrl },
+      mediaType,
+
       caption: isRecommended
         ? explanation ||
-          `Recommended for you. Be the first to post a picture at ${cafeName}.`
-        : `Be the first to post a picture at ${cafeName}.`,
-      likes: 0,
-      comments: 0,
-      postedBy: "CafeHop",
-      tags: isRecommended ? ["recommended", "needs-photo"] : ["needs-photo"],
-      location: cafe?.address || "Nearby",
+          post.caption ||
+          "Recommended for you based on your cafe preferences."
+        : post.caption || `Posted at ${cafeName}`,
+
+      likes: Number(post.likes_count || 0),
+      liked: likedByUser,
+      liked_by_user: likedByUser,
+
+      comments: Number(post.comments_count || 0),
+
+      saved: savedByUser,
+      saved_by_user: savedByUser,
+
+      postedBy:
+        post.author_type === "cafe_owner"
+          ? cafeName
+          : post.author_profile?.full_name ||
+            post.author_profile?.first_name ||
+            "User",
+
+      postedById:
+        post.author_type === "cafe_owner"
+          ? post.cafes?.id || post.cafe_id
+          : post.author_id || post.user_id,
+
+      postedByType:
+        post.author_type === "cafe_owner" ? "cafe_owner" : "user",
+
+      tags: isRecommended ? ["recommended", "for-you"] : ["cafe"],
+      location: cafe?.address || post?.cafes?.address || "Nearby",
       commentList: [],
       distanceMiles,
-      canLike: false,
-      canComment: false,
-      canSavePost: false,
+      canLike: true,
+      canComment: true,
+      canSavePost: true,
       canSaveCafe: true,
     };
-  };
-
-  const markCafeVisited = async (cafeId: string) => {
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData.session?.user?.id;
-
-      if (!userId) return;
-
-      const { data: existing } = await supabase
-        .from("user_cafe_interactions")
-        .select("user_id")
-        .eq("user_id", userId)
-        .eq("cafe_id", cafeId)
-        .eq("interaction_type", "visited")
-        .maybeSingle();
-
-      if (existing) return;
-
-      await supabase.from("user_cafe_interactions").insert({
-        user_id: userId,
-        cafe_id: cafeId,
-        interaction_type: "visited",
-      });
-    } catch (err) {
-      console.error("Mark visited failed:", err);
-    }
   };
 
   const fetchFeed = async (coords: UserCoords) => {
@@ -412,7 +502,7 @@ const Index = () => {
         }
       );
 
-      const recData = await recRes.json();
+      const recData = await safeJson(recRes);
       const rawRecommendations = recData.recommendations || [];
 
       const recommendations = uniqueByKey(rawRecommendations, (rec: any) =>
@@ -434,7 +524,7 @@ const Index = () => {
           }
         );
 
-        const expData = await expRes.json();
+        const expData = await safeJson(expRes);
         const explanations = expData.explanations || [];
 
         for (const item of explanations) {
@@ -447,7 +537,7 @@ const Index = () => {
       }
 
       const cafesRes = await fetch(`${API_URL}/api/cafe/all`);
-      const cafesData = await cafesRes.json();
+      const cafesData = await safeJson(cafesRes);
       const allCafes = Array.isArray(cafesData) ? cafesData : [];
 
       const postsRes = await fetch(`${API_URL}/api/posts/feed`, {
@@ -456,9 +546,8 @@ const Index = () => {
         },
       });
 
-      const postsData = await postsRes.json();
+      const postsData = await safeJson(postsRes);
       const rawPosts = postsData.posts || [];
-      console.log(rawPosts[0]);
 
       const postsByCafe: Record<string, any[]> = {};
 
@@ -483,8 +572,10 @@ const Index = () => {
         cafe: any,
         isRecommended: boolean,
         explanation?: string
-      ): FeedPost => {
+      ): FeedPost | null => {
         const cafeId = String(cafe.id || "");
+        if (!cafeId) return null;
+
         const cafePosts = postsByCafe[cafeId] || [];
 
         const postsWithMedia = cafePosts.filter((post: any) =>
@@ -494,43 +585,15 @@ const Index = () => {
         );
 
         const randomPost = getRandomItem(postsWithMedia);
+        if (!randomPost) return null;
 
-        if (randomPost) {
-          const card = buildPostCard(
-            randomPost,
-            cafe,
-            isRecommended,
-            coords,
-            explanation
-          );
-
-          if (card) {
-            return {
-              ...card,
-              cafeId,
-              isRecommended,
-              canLike: true,
-              canComment: true,
-              canSavePost: true,
-              canSaveCafe: true,
-            };
-          }
-        }
-
-        return {
-          ...buildEmptyCafePrompt(cafe, isRecommended, coords, explanation),
-          id: `cafe-${cafeId}`,
-          caption: isRecommended
-            ? explanation ||
-              `Recommended for you. Be the first to post a picture at ${
-                cafe.name || "this cafe"
-              }.`
-            : `Be the first to post a picture at ${cafe.name || "this cafe"}.`,
-          canLike: false,
-          canComment: false,
-          canSavePost: false,
-          canSaveCafe: true,
-        };
+        return buildPostCard(
+          randomPost,
+          cafe,
+          isRecommended,
+          coords,
+          explanation
+        );
       };
 
       const recommendedCards = recommendations
@@ -567,19 +630,21 @@ const Index = () => {
         .filter((cafe: any) => cafe.distanceMiles <= maxDistanceMiles)
         .sort((a: any, b: any) => a.distanceMiles - b.distanceMiles);
 
-      const nearbyIds = new Set(nearbyCafes.map((cafe: any) => String(cafe.id)));
+      const nearbyIds = new Set(
+        nearbyCafes.map((cafe: any) => String(cafe.id))
+      );
 
       const remainingCafes = nonRecommendedCafes
         .filter((cafe: any) => !nearbyIds.has(String(cafe.id)))
         .sort((a: any, b: any) => a.distanceMiles - b.distanceMiles);
 
-      const nearbyCards = nearbyCafes.map((cafe: any) =>
-        buildCafeCard(cafe, false)
-      );
+      const nearbyCards = nearbyCafes
+        .map((cafe: any) => buildCafeCard(cafe, false))
+        .filter((card: FeedPost | null): card is FeedPost => card !== null);
 
-      const remainingCards = remainingCafes.map((cafe: any) =>
-        buildCafeCard(cafe, false)
-      );
+      const remainingCards = remainingCafes
+        .map((cafe: any) => buildCafeCard(cafe, false))
+        .filter((card: FeedPost | null): card is FeedPost => card !== null);
 
       const finalFeed = uniqueByKey(
         [...recommendedCards, ...nearbyCards, ...remainingCards],
@@ -619,7 +684,8 @@ const Index = () => {
         ]}
       >
         <View style={styles.titleRow}>
-          <Text style={[styles.title, { color: themeColors.text }]}>CAFEHOP</Text>
+          <Text style={styles.title}>CAFEHOP</Text>
+
           <TouchableOpacity
             onPress={() => {
               setHasUnreadNotifications(false);
@@ -629,9 +695,7 @@ const Index = () => {
           >
             <Bell size={scale(22)} color="#D4A373" strokeWidth={2} />
 
-            {hasUnreadNotifications && (
-              <View style={[styles.notificationDot, { borderColor: themeColors.bg }]} />
-            )}
+            {hasUnreadNotifications && <View style={styles.notificationDot} />}
           </TouchableOpacity>
         </View>
 
@@ -659,19 +723,23 @@ const Index = () => {
         <FlatList
           ref={flatListRef}
           data={filteredPosts}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
-          <ForYouCard
-            post={item}
-            listHeight={listHeight}
-            onModalToggle={(isOpen) => setModalOpen(isOpen)}
-            currentUserType={item.postedByType}
-          />
+            <ForYouCard
+              post={item}
+              listHeight={listHeight}
+              onModalToggle={(isOpen) => setModalOpen(isOpen)}
+              currentUserType={item.postedByType}
+              onLike={handleLikePost}
+              onSave={handleSavePost}
+              onFetchComments={handleFetchComments}
+              onPostComment={handlePostComment}
+            />
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: themeColors.textMuted }]}> 
-                {loading ? "Loading feed..." : "No cafes found."}
+              <Text style={styles.emptyText}>
+                {loading ? "Loading feed..." : "No posts found."}
               </Text>
             </View>
           }

@@ -18,7 +18,7 @@ import {
   MessageCircle,
   X,
 } from "lucide-react-native";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ResizeMode, Video } from "expo-av";
 import {
   deviceHeight,
@@ -28,15 +28,17 @@ import {
 } from "../../utils/responsive";
 
 import Button from "./Button";
-import { apiFetch } from "../../api/client";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../context/ThemeContext";
 
 const CARD_WIDTH = deviceWidth * 0.88;
 
 export interface Comment {
-  user: string;
-  text: string;
+  id?: string;
+  username?: string;
+  content?: string;
+  user?: string;
+  text?: string;
 }
 
 export interface Post {
@@ -46,14 +48,18 @@ export interface Post {
   caption: string;
   likes: number;
   comments: number;
+
+  liked?: boolean;
+  saved?: boolean;
+  liked_by_user?: boolean;
+  saved_by_user?: boolean;
+
   postedBy: string;
   postedById?: string;
   postedByType?: "user" | "cafe_owner";
   tags: string[];
   location?: string;
   commentList?: Comment[];
-  liked_by_user?: boolean;
-  saved_by_user?: boolean;
   mediaType?: "image" | "video" | string;
 }
 
@@ -62,6 +68,11 @@ interface ForYouCardProps {
   listHeight?: number;
   onModalToggle?: (isOpen: boolean) => void;
   currentUserType?: "user" | "cafe_owner";
+
+  onLike?: (postId: string, currentlyLiked: boolean) => Promise<void> | void;
+  onSave?: (postId: string, currentlySaved: boolean) => Promise<void> | void;
+  onFetchComments?: (postId: string) => Promise<Comment[]>;
+  onPostComment?: (postId: string, content: string) => Promise<Comment | null>;
 }
 
 const ForYouCard = ({
@@ -69,34 +80,46 @@ const ForYouCard = ({
   listHeight,
   onModalToggle,
   currentUserType,
+  onLike,
+  onSave,
+  onFetchComments,
+  onPostComment,
 }: ForYouCardProps) => {
   const wrapperH = listHeight ?? deviceHeight - 180;
   const cardH = wrapperH * 0.97;
 
-  const { colors: themeColors } = useTheme();
-  const [liked, setLiked] = useState(post.liked_by_user ?? false);
-  const [saved, setSaved] = useState(post.saved_by_user ?? false);
-  const [likesState, setLikesState] = useState(post.likes);
-  const [commentsCount, setCommentsCount] = useState(post.comments);
-  const [loadingLike, setLoadingLike] = useState(false);
   const navigation = useNavigation<any>();
 
+  const liked = Boolean(post.liked ?? post.liked_by_user ?? false);
+  const saved = Boolean(post.saved ?? post.saved_by_user ?? false);
+  const likesState = Number(post.likes || 0);
+  const commentsCount = Number(post.comments || 0);
+
+  const [loadingLike, setLoadingLike] = useState(false);
+  const [loadingSave, setLoadingSave] = useState(false);
+  const [loadingComment, setLoadingComment] = useState(false);
+
   const [showComments, setShowComments] = useState(false);
-  const [commentsState, setCommentsState] = useState<any[]>([]);
+  const [commentsState, setCommentsState] = useState<Comment[]>(
+    post.commentList || []
+  );
   const [newComment, setNewComment] = useState("");
 
   const slideAnim = useRef(new Animated.Value(deviceHeight)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
-  const fetchComments = async () => {
-    try {
-      const res = await apiFetch(`/posts/${post.id}/comments`);
-      const data = await res.json();
+  useEffect(() => {
+    setCommentsState(post.commentList || []);
+  }, [post.id, post.commentList]);
 
-      setCommentsState(data);
-      setCommentsCount(data.length);
+  const fetchComments = async () => {
+    if (!onFetchComments) return;
+
+    try {
+      const comments = await onFetchComments(post.id);
+      setCommentsState(Array.isArray(comments) ? comments : []);
     } catch (err) {
-      console.error("Fetch error:", err);
+      console.error("Fetch comments error:", err);
     }
   };
 
@@ -143,14 +166,7 @@ const ForYouCard = ({
   };
 
   const handleProfilePress = () => {
-    console.log("Pressed profile");
-    console.log(post.postedById);
-    console.log(post.postedByType);
-
-    if (!post.postedById) {
-      console.log("Missing postedById");
-      return;
-    }
+    if (!post.postedById) return;
 
     if (post.postedByType === "cafe_owner") {
       navigation.navigate("CafeProfile", {
@@ -163,88 +179,55 @@ const ForYouCard = ({
     }
   };
 
-//   const handleProfilePress = () => {
-//   navigation.navigate("CafeProfile");
-// };
-
-  const handleLike = async () => {
+  const handleLikePress = async () => {
     if (!post.id || post.id.startsWith("cafe-")) return;
     if (loadingLike) return;
 
-    const newLiked = !liked;
-
-    setLiked(newLiked);
-    setLikesState((prev) =>
-      newLiked ? prev + 1 : Math.max(0, prev - 1)
-    );
-
-    setLoadingLike(true);
-
     try {
-      await apiFetch(`/posts/${post.id}/like`, {
-        method: newLiked ? "POST" : "DELETE",
-      });
+      setLoadingLike(true);
+      await onLike?.(post.id, liked);
     } catch (err) {
-      setLiked(!newLiked);
-      setLikesState((prev) =>
-        newLiked ? prev - 1 : prev + 1
-      );
-      console.error("Like error:", err);
+      console.error("Like action error:", err);
     } finally {
       setLoadingLike(false);
     }
   };
 
-  const handlePostComment = async () => {
+  const handleSavePress = async () => {
     if (!post.id || post.id.startsWith("cafe-")) return;
-    if (!newComment.trim()) return;
+    if (loadingSave) return;
 
     try {
-      const res = await apiFetch(`/posts/${post.id}/comments`, {
-        method: "POST",
-        body: JSON.stringify({
-          content: newComment,
-        }),
-      });
-
-      const data = await res.json();
-
-      setCommentsState((prev: any) => {
-        const newItem = {
-          ...data,
-          username: "You",
-        };
-
-        const updated = [newItem, ...prev];
-        setCommentsCount(updated.length);
-        return updated;
-      });
-
-      setNewComment("");
+      setLoadingSave(true);
+      await onSave?.(post.id, saved);
     } catch (err) {
-      console.error("Post error:", err);
+      console.error("Save action error:", err);
+    } finally {
+      setLoadingSave(false);
     }
   };
 
-  const handleSave = async () => {
+  const handlePostCommentPress = async () => {
     if (!post.id || post.id.startsWith("cafe-")) return;
+    if (!newComment.trim()) return;
+    if (loadingComment) return;
 
-    const newState = !saved;
-    setSaved(newState);
+    const content = newComment.trim();
 
     try {
-      if (newState) {
-        await apiFetch(`/posts/${post.id}/save`, {
-          method: "POST",
-        });
-      } else {
-        await apiFetch(`/posts/${post.id}/save`, {
-          method: "DELETE",
-        });
+      setLoadingComment(true);
+
+      const createdComment = await onPostComment?.(post.id, content);
+
+      if (createdComment) {
+        setCommentsState((prev) => [createdComment, ...prev]);
       }
+
+      setNewComment("");
     } catch (err) {
-      setSaved(!newState);
-      console.error("Save error:", err);
+      console.error("Post comment action error:", err);
+    } finally {
+      setLoadingComment(false);
     }
   };
 
@@ -270,13 +253,8 @@ const ForYouCard = ({
 
             {post.location && (
               <View style={styles.locationRow}>
-                <MapPin
-                  size={scale(12)}
-                  color="rgba(255,255,255,0.85)"
-                />
-                <Text style={styles.locationText}>
-                  {post.location}
-                </Text>
+                <MapPin size={scale(12)} color="rgba(255,255,255,0.85)" />
+                <Text style={styles.locationText}>{post.location}</Text>
               </View>
             )}
 
@@ -287,9 +265,7 @@ const ForYouCard = ({
             >
               <Text style={styles.postedByText}>
                 Posted by{" "}
-                <Text style={styles.postedByUsername}>
-                  {post.postedBy}
-                </Text>
+                <Text style={styles.postedByUsername}>{post.postedBy}</Text>
               </Text>
             </TouchableOpacity>
 
@@ -306,8 +282,9 @@ const ForYouCard = ({
 
           <View style={styles.actionsContainer}>
             <TouchableOpacity
-              onPress={handleLike}
+              onPress={handleLikePress}
               style={styles.actionButton}
+              disabled={loadingLike}
             >
               <Heart
                 size={scale(26)}
@@ -315,29 +292,19 @@ const ForYouCard = ({
                 fill={liked ? "#FF6B6B" : "transparent"}
                 strokeWidth={liked ? 0 : 2}
               />
-              <Text style={styles.actionText}>
-                {likesState}
-              </Text>
+              <Text style={styles.actionText}>{likesState}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={openComments}
-              style={styles.actionButton}
-            >
-              <MessageCircle
-                size={scale(26)}
-                color="#FFF"
-                strokeWidth={2}
-              />
-              <Text style={styles.actionText}>
-                {commentsCount}
-              </Text>
+            <TouchableOpacity onPress={openComments} style={styles.actionButton}>
+              <MessageCircle size={scale(26)} color="#FFF" strokeWidth={2} />
+              <Text style={styles.actionText}>{commentsCount}</Text>
             </TouchableOpacity>
 
             {currentUserType === "user" && (
               <TouchableOpacity
-                onPress={handleSave}
+                onPress={handleSavePress}
                 style={styles.actionButton}
+                disabled={loadingSave}
               >
                 <Bookmark
                   size={scale(26)}
@@ -345,9 +312,7 @@ const ForYouCard = ({
                   fill={saved ? "#D4A373" : "transparent"}
                   strokeWidth={saved ? 0 : 2}
                 />
-                <Text style={styles.actionText}>
-                  {saved ? "Saved" : "Save"}
-                </Text>
+                <Text style={styles.actionText}>{saved ? "Saved" : "Save"}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -378,10 +343,8 @@ const ForYouCard = ({
             />
           </TouchableOpacity>
 
-          <Animated.View
-            style={[styles.modalContent, { top: slideAnim, backgroundColor: themeColors.card }]}
-          >
-            <View style={[styles.dragBar, { backgroundColor: themeColors.border }]} />
+          <Animated.View style={[styles.modalContent, { top: slideAnim }]}>
+            <View style={styles.dragBar} />
 
             <View style={[styles.modalHeader, { borderBottomColor: themeColors.border }]}>
               <Text style={[styles.modalTitle, { color: themeColors.text }]}>Comments</Text>
@@ -393,15 +356,13 @@ const ForYouCard = ({
 
             <FlatList
               data={commentsState}
-              keyExtractor={(item, index) =>
-                item.id || index.toString()
-              }
+              keyExtractor={(item, index) => item.id || index.toString()}
               renderItem={({ item }) => (
                 <Text style={[styles.commentText, { color: themeColors.text }]}>
                   <Text style={{ fontWeight: "bold" }}>
-                    {(item.username ?? "User") + ": "}
+                    {(item.username || item.user || "User") + ": "}
                   </Text>
-                  {item.content}
+                  {item.content || item.text}
                 </Text>
               )}
               style={{ flex: 1 }}
@@ -412,9 +373,7 @@ const ForYouCard = ({
             />
 
             <KeyboardAvoidingView
-              behavior={
-                Platform.OS === "ios" ? "padding" : undefined
-              }
+              behavior={Platform.OS === "ios" ? "padding" : undefined}
             >
               <View style={styles.commentRow}>
                 <TextInput
@@ -428,9 +387,9 @@ const ForYouCard = ({
                 <Button
                   variant="caramel"
                   size="sm"
-                  onPress={handlePostComment}
+                  onPress={handlePostCommentPress}
                 >
-                  <Text>Post</Text>
+                  <Text>{loadingComment ? "..." : "Post"}</Text>
                 </Button>
               </View>
             </KeyboardAvoidingView>
