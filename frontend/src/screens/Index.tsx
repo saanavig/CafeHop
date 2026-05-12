@@ -21,6 +21,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../context/ThemeContext";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const FEED_CACHE_KEY = "cafehop_feed_cache_v1";
 
 const fallbackImages = [
   "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=900",
