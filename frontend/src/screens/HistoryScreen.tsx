@@ -25,7 +25,6 @@ import BottomNav from "../components/ui/BottomNav";
 import { supabase } from "../api/supabaseClient";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 
 type CustomerVisit = {
@@ -90,7 +89,7 @@ const HistoryScreen = () => {
   const { width } = Dimensions.get("window");
   const contentWidth = Math.min(width * 0.9, 480);
 
-  const styles = {
+  const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: themeColors.bg },
     scrollContent: { paddingTop: scale(16), paddingBottom: scale(100), alignItems: "center" },
     loadingState: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: scale(80) },
@@ -202,15 +201,15 @@ const HistoryScreen = () => {
       maxHeight: "70%",
     },
     closeBtn: {
-      position: "absolute",
+      position: "absolute" as const,
       top: scale(12),
       right: scale(12),
       width: scale(36),
       height: scale(36),
       borderRadius: scale(18),
-      backgroundColor: themeColors.card,
-      justifyContent: "center",
-      alignItems: "center",
+      backgroundColor: "rgba(255,255,255,0.9)",
+      justifyContent: "center" as const,
+      alignItems: "center" as const,
       zIndex: 10,
     },
     receiptBody: { padding: scale(24) },
@@ -275,7 +274,7 @@ const HistoryScreen = () => {
     },
     rewardDetailLabel: { fontSize: moderateScale(13), color: themeColors.textMuted },
     rewardDetailValue: { fontSize: moderateScale(13), color: themeColors.text, fontWeight: "500" },
-  } as any;
+  });
 
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -419,7 +418,7 @@ const HistoryScreen = () => {
         };
 
   return (
-    <SafeAreaView edges={["top"]} style={styles.container}>
+    <View style={styles.container}>
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { alignItems: "flex-start" }]}
         showsVerticalScrollIndicator={false}
@@ -521,7 +520,7 @@ const HistoryScreen = () => {
                           {role === "cafe" ? (
                             <User size={16} color={themeColors.accent} />
                           ) : (
-                            <Coffee size={16} color={themeColors.accent} />
+                            <Coffee size={16} color="#D4A373" />
                           )}
                         </View>
                         <View style={styles.itemContent}>
@@ -580,9 +579,9 @@ const HistoryScreen = () => {
                       >
                         <View style={styles.itemIconBg}>
                           {role === "cafe" ? (
-                            <Coffee size={16} color={themeColors.accent} />
+                            <Coffee size={16} color="#D4A373" />
                           ) : (
-                            <Clock size={16} color={themeColors.accent} />
+                            <Clock size={16} color="#D4A373" />
                           )}
                         </View>
                         <View style={styles.itemContent}>
@@ -631,12 +630,12 @@ const HistoryScreen = () => {
             {selectedVisit && (
               <>
                 <Pressable style={styles.closeBtn} onPress={() => setSelectedVisit(null)}>
-                  <X size={20} color={themeColors.textMuted} />
+                  <X size={20} color="#555" />
                 </Pressable>
 
                 <View style={styles.receiptBody}>
                   <View style={styles.receiptIconRow}>
-                    <Coffee size={scale(28)} color={themeColors.accent} />
+                    <Coffee size={scale(28)} color="#D4A373" />
                   </View>
                   <Text style={styles.receiptCafe}>{selectedVisit.cafe}</Text>
                   <Text style={styles.receiptDate}>{selectedVisit.date}</Text>
@@ -665,7 +664,7 @@ const HistoryScreen = () => {
             {selectedReward && (
               <>
                 <Pressable style={styles.closeBtn} onPress={() => setSelectedReward(null)}>
-                  <X size={20} color={themeColors.textMuted} />
+                  <X size={20} color="#555" />
                 </Pressable>
 
                 <View style={styles.receiptBody}>
@@ -686,7 +685,7 @@ const HistoryScreen = () => {
                   </View>
                   <View style={styles.rewardDetailRow}>
                     <Text style={styles.rewardDetailLabel}>Points Used</Text>
-                    <Text style={[styles.rewardDetailValue, { color: themeColors.accent, fontWeight: "700" }]}>
+                    <Text style={[styles.rewardDetailValue, { color: "#D4A373", fontWeight: "700" }]}>
                       {selectedReward.points} pts
                     </Text>
                   </View>
@@ -696,7 +695,7 @@ const HistoryScreen = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

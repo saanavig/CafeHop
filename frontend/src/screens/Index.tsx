@@ -673,6 +673,7 @@ const Index = () => {
 
   return (
     <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
+      <View style={{ maxWidth: 430, width: "100%", alignSelf: "center", flex: 1 }}>
       <Animated.View
         style={[
           styles.header,
@@ -695,7 +696,7 @@ const Index = () => {
           >
             <Bell size={scale(22)} color="#D4A373" strokeWidth={2} />
 
-            {hasUnreadNotifications && <View style={styles.notificationDot} />}
+            {hasUnreadNotifications && <View style={[styles.notificationDot, { borderColor: themeColors.bg }]} />}
           </TouchableOpacity>
         </View>
 
@@ -753,6 +754,7 @@ const Index = () => {
             index,
           })}
         />
+      </View>
       </View>
 
       <BottomNav />
