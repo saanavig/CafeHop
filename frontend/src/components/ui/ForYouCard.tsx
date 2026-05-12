@@ -45,6 +45,7 @@ export interface Post {
   id: string;
   cafeName: string;
   image: any;
+  images?: string[];
   caption: string;
   likes: number;
   comments: number;
@@ -88,6 +89,7 @@ const ForYouCard = ({
   const wrapperH = listHeight ?? deviceHeight - 180;
   const cardH = wrapperH * 0.97;
 
+  const { colors: themeColors } = useTheme();
   const navigation = useNavigation<any>();
 
   const liked = Boolean(post.liked ?? post.liked_by_user ?? false);
@@ -95,6 +97,7 @@ const ForYouCard = ({
   const likesState = Number(post.likes || 0);
   const commentsCount = Number(post.comments || 0);
 
+  const [carouselIndex, setCarouselIndex] = useState(0);
   const [loadingLike, setLoadingLike] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
   const [loadingComment, setLoadingComment] = useState(false);
@@ -234,7 +237,31 @@ const ForYouCard = ({
   return (
     <View style={[styles.cardWrapper, { height: wrapperH }]}>
       <View style={[styles.card, { width: CARD_WIDTH, height: cardH }]}>
-        {post.mediaType === "video" ? (
+        {post.images && post.images.length > 1 ? (
+          <FlatList
+            data={post.images}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            style={styles.image}
+            keyExtractor={(_, i) => i.toString()}
+            onMomentumScrollEnd={(e) => {
+              const idx = Math.round(e.nativeEvent.contentOffset.x / CARD_WIDTH);
+              setCarouselIndex(idx);
+            }}
+            onScrollEndDrag={(e) => {
+              const idx = Math.round(e.nativeEvent.contentOffset.x / CARD_WIDTH);
+              setCarouselIndex(idx);
+            }}
+            renderItem={({ item }) => (
+              <Image
+                source={{ uri: item }}
+                style={{ width: CARD_WIDTH, height: cardH }}
+                resizeMode="cover"
+              />
+            )}
+          />
+        ) : post.mediaType === "video" ? (
           <Video
             source={post.image}
             style={styles.image}
@@ -245,6 +272,14 @@ const ForYouCard = ({
           />
         ) : (
           <Image source={post.image} style={styles.image} />
+        )}
+
+        {post.images && post.images.length > 1 && (
+          <View style={styles.dotsRow}>
+            {post.images.map((_, i) => (
+              <View key={i} style={[styles.dot, i === carouselIndex && styles.dotActive]} />
+            ))}
+          </View>
         )}
 
         <View style={styles.overlay}>
@@ -343,8 +378,8 @@ const ForYouCard = ({
             />
           </TouchableOpacity>
 
-          <Animated.View style={[styles.modalContent, { top: slideAnim }]}>
-            <View style={styles.dragBar} />
+          <Animated.View style={[styles.modalContent, { top: slideAnim, backgroundColor: themeColors.card }]}>
+            <View style={[styles.dragBar, { backgroundColor: themeColors.border }]} />
 
             <View style={[styles.modalHeader, { borderBottomColor: themeColors.border }]}>
               <Text style={[styles.modalTitle, { color: themeColors.text }]}>Comments</Text>
@@ -413,6 +448,26 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
+  },
+  dotsRow: {
+    position: "absolute",
+    top: scale(14),
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: scale(5),
+  },
+  dot: {
+    width: scale(6),
+    height: scale(6),
+    borderRadius: scale(3),
+    backgroundColor: "rgba(255,255,255,0.45)",
+  },
+  dotActive: {
+    backgroundColor: "#FFF",
+    width: scale(18),
+    borderRadius: scale(3),
   },
   overlay: {
     position: "absolute",

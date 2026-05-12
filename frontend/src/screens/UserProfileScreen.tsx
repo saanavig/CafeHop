@@ -767,8 +767,8 @@ export default function UserProfileScreen() {
 
       {/* ── Add Post Modal ── */}
       <Modal visible={showAddPost} animationType="slide" presentationStyle="pageSheet">
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <View style={[styles.addPostModal, { backgroundColor: themeColors.bg }]}>
+        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: themeColors.bg }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          <View style={[styles.addPostModal, { backgroundColor: themeColors.bg, maxWidth: 600, width: "100%", alignSelf: "center" }]}>
             {/* Header */}
             <View style={[styles.addPostHeader, { borderBottomColor: themeColors.border }]}>
               <TouchableOpacity
@@ -906,7 +906,7 @@ export default function UserProfileScreen() {
       <Modal visible={!!selectedPost} animationType="slide" presentationStyle="pageSheet">
         {selectedPost && (
           <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-            <View style={[styles.detailModal, { backgroundColor: themeColors.bg }]}>
+            <View style={[styles.detailModal, { backgroundColor: themeColors.bg, maxWidth: 430, width: "100%", alignSelf: "center" }]}>
 
               {/* Close button – top right, floating */}
               <TouchableOpacity style={[styles.detailCloseBtn, { backgroundColor: themeColors.card }]} onPress={() => { setSelectedPost(null); setCommentInput(""); }}>
@@ -922,7 +922,21 @@ export default function UserProfileScreen() {
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(_, i) => i.toString()}
+                    getItemLayout={(_, index) => ({
+                      length: SCREEN_WIDTH,
+                      offset: SCREEN_WIDTH * index,
+                      index,
+                    })}
+                    onScroll={(e) => {
+                      const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                      setCarouselIndex(Math.max(0, Math.min(idx, selectedPost.images.length - 1)));
+                    }}
+                    scrollEventThrottle={32}
                     onMomentumScrollEnd={(e) => {
+                      const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                      setCarouselIndex(idx);
+                    }}
+                    onScrollEndDrag={(e) => {
                       const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
                       setCarouselIndex(idx);
                     }}
@@ -934,16 +948,23 @@ export default function UserProfileScreen() {
                       />
                     )}
                   />
-                  {/* Dot indicators */}
+                  {/* Counter + dot indicators */}
                   {selectedPost.images.length > 1 && (
-                    <View style={styles.dotsRow}>
-                      {selectedPost.images.map((_, i) => (
-                        <View
-                          key={i}
-                          style={[styles.dot, i === carouselIndex && styles.dotActive]}
-                        />
-                      ))}
-                    </View>
+                    <>
+                      <View style={styles.imageCounter}>
+                        <Text style={styles.imageCounterText}>
+                          {carouselIndex + 1} / {selectedPost.images.length}
+                        </Text>
+                      </View>
+                      <View style={styles.dotsRow}>
+                        {selectedPost.images.map((_, i) => (
+                          <View
+                            key={i}
+                            style={[styles.dot, i === carouselIndex && styles.dotActive]}
+                          />
+                        ))}
+                      </View>
+                    </>
                   )}
                 </View>
 
@@ -1225,6 +1246,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#CCC",
   },
   dotActive: { backgroundColor: "#D4A373", width: scale(8), height: scale(8), borderRadius: scale(4) },
+  imageCounter: {
+    position: "absolute", top: scale(12), right: scale(12),
+    backgroundColor: "rgba(0,0,0,0.55)", borderRadius: scale(12),
+    paddingHorizontal: scale(10), paddingVertical: scale(4),
+  },
+  imageCounterText: { color: "#FFF", fontSize: moderateScale(12), fontWeight: "600" },
   actionsRow: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: scale(14), paddingVertical: scale(10),
