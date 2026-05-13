@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch } from "../api/client";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
+import { useRole } from "../context/RoleContext";
 import { useTheme } from "../context/ThemeContext";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -127,7 +128,9 @@ const Index = () => {
 
   const headerFade = useRef(new Animated.Value(0)).current;
   const headerSlide = useRef(new Animated.Value(-12)).current;
+  const { role } = useRole();
 
+  
   useEffect(() => {
     Animated.parallel([
       Animated.timing(headerFade, {
@@ -731,7 +734,7 @@ const Index = () => {
               post={item}
               listHeight={listHeight}
               onModalToggle={(isOpen) => setModalOpen(isOpen)}
-              currentUserType={item.postedByType}
+              currentUserType={role === "cafe" ? "cafe_owner" : "user"}
               onLike={handleLikePost}
               onSave={handleSavePost}
               onFetchComments={handleFetchComments}

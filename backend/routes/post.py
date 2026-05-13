@@ -192,40 +192,108 @@ def unlike_post(post_id):
 @posts_bp.route("/posts/<post_id>/save", methods=["POST"])
 @require_auth
 def save_post(post_id):
-    user_id = g.user["id"]
-    user_supabase = supabase_for_user(g.access_token)
-    existing = (
-        user_supabase.table("post_saves")
-        .select("id")
-        .eq("post_id", post_id)
-        .eq("user_id", user_id)
-        .maybe_single()
-        .execute()
-    )
+    try:
+        user_id = g.user["id"]
+        user_supabase = supabase_for_user(g.access_token)
 
-    if existing.data:
-        return jsonify({"message": "Already saved"}), 200
+        existing = (
+            user_supabase.table("post_saves")
+            .select("id")
+            .eq("post_id", post_id)
+            .eq("user_id", user_id)
+            # .maybe_single()
+            .execute()
+        )
 
-    user_supabase.table("post_saves").insert({
-        "post_id": post_id,
-        "user_id": user_id
-    }).execute()
+        existing_rows = existing.data if existing and existing.data else []
 
-    return jsonify({"message": "Saved"}), 201
+        if existing_rows:
+            return jsonify({"message": "Already saved"}), 200
+
+        user_supabase.table("post_saves").insert({
+            "post_id": post_id,
+            "user_id": user_id
+        }).execute()
+
+        return jsonify({"message": "Saved"}), 201
+
+    except Exception as e:
+        print("SAVE POST ERROR:", e)
+        return jsonify({"error": str(e)}), 500
+
+@posts_bp.route("/posts/saved", methods=["GET"])
+@require_auth
+def get_saved_posts():
+    try:
+        user_id = g.user["id"]
+        user_supabase = supabase_for_user(g.access_token)
+
+        response = (
+            user_supabase.table("post_saves")
+            .select("""
+                post_id,
+                posts(
+                    id,
+                    caption,
+                    likes_count,
+                    comments_count,
+                    cafes(name),
+                    post_media(
+                        file_url,
+                        file_type
+                    )
+                )
+            """)
+            .eq("user_id", user_id)
+            .execute()
+        )
+
+        saved_posts = []
+
+        for row in (response.data or []):
+            post = row.get("posts")
+
+            if not post:
+                continue
+
+            media = post.get("post_media") or []
+            cafe = post.get("cafes") or {}
+
+            for item in media:
+                saved_posts.append({
+                    "id": post["id"],
+                    "caption": post.get("caption"),
+                    "likes_count": post.get("likes_count", 0),
+                    "comments_count": post.get("comments_count", 0),
+                    "file_url": item.get("file_url"),
+                    "file_type": item.get("file_type"),
+                    "cafe_name": cafe.get("name"),
+                })
+
+        return jsonify(saved_posts), 200
+
+    except Exception as e:
+        print("FETCH SAVED POSTS ERROR:", e)
+        return jsonify({"error": str(e)}), 500
 
 @posts_bp.route("/posts/<post_id>/save", methods=["DELETE"])
 @require_auth
 def unsave_post(post_id):
-    user_id = g.user["id"]
-    user_supabase = supabase_for_user(g.access_token)
+    try:
+        user_id = g.user["id"]
+        user_supabase = supabase_for_user(g.access_token)
 
-    user_supabase.table("post_saves") \
-        .delete() \
-        .eq("post_id", post_id) \
-        .eq("user_id", user_id) \
-        .execute()
+        user_supabase.table("post_saves") \
+            .delete() \
+            .eq("post_id", post_id) \
+            .eq("user_id", user_id) \
+            .execute()
 
-    return jsonify({"message": "Unsaved"}), 200
+        return jsonify({"message": "Unsaved"}), 200
+
+    except Exception as e:
+        print("UNSAVE POST ERROR:", e)
+        return jsonify({"error": str(e)}), 500
 
 @posts_bp.route("/posts/<post_id>/comments", methods=["GET"])
 @require_auth

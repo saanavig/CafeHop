@@ -83,7 +83,15 @@ const NotificationsScreen = () => {
       const data = await response.json();
       console.log("NOTIFICATIONS RESPONSE:", data);
 
-      setNotifications(data || []);
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+      const filteredNotifications = (data || []).filter(
+        (notif: any) =>
+          new Date(notif.created_at) > oneWeekAgo
+      );
+
+      setNotifications(filteredNotifications);
     } catch (err) {
       console.log("NOTIFICATIONS ERROR:", err);
     } finally {

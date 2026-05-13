@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { Bookmark, BookOpen, Globe, Grid3X3, Heart, MapPin, Pencil, Plus, Star, Store, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
+import { ResizeMode, Video } from "expo-av";
 import {
   deviceWidth,
   moderateScale,
@@ -25,12 +26,11 @@ import {
 } from "../utils/responsive";
 
 import BottomNav from "../components/ui/BottomNav";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { TextInput } from "react-native";
-import { ResizeMode, Video } from "expo-av";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { useRoute } from "@react-navigation/native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 
 type Comment = { text: string };
@@ -1237,7 +1237,7 @@ export default function CafeProfileScreen() {
                         />
 
                         <TextInput
-                          placeholder="Description optional"
+                          placeholder="Description (optional)"
                           value={newDescription}
                           onChangeText={setNewDescription}
                           style={[inputStyle, { minHeight: verticalScale(60) }]}
