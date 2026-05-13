@@ -123,13 +123,13 @@ export default function CafeEditScreen() {
 
         if (hoursData && hoursData.length > 0) {
         const DAY_MAP = [
-          "Sunday",
           "Monday",
           "Tuesday",
           "Wednesday",
           "Thursday",
           "Friday",
           "Saturday",
+          "Sunday",
         ];
           const loadedHours: Record<string, DayHours> = { ...defaultHours };
           hoursData.forEach((row: any) => {

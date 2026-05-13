@@ -127,6 +127,22 @@ const Index = () => {
   const headerFade = useRef(new Animated.Value(0)).current;
   const headerSlide = useRef(new Animated.Value(-12)).current;
 
+  const [currentUserType, setCurrentUserType] = useState<
+    "user" | "cafe_owner"
+  >("user");
+
+  useEffect(() => {
+    const loadUserType = async () => {
+      const type = await AsyncStorage.getItem("userType");
+
+      if (type === "user" || type === "cafe_owner") {
+        setCurrentUserType(type);
+      }
+    };
+
+    loadUserType();
+  }, []);
+
   useEffect(() => {
     Animated.parallel([
       Animated.timing(headerFade, {
@@ -729,7 +745,7 @@ const Index = () => {
               post={item}
               listHeight={listHeight}
               onModalToggle={(isOpen) => setModalOpen(isOpen)}
-              currentUserType={item.postedByType}
+              currentUserType={currentUserType}
               onLike={handleLikePost}
               onSave={handleSavePost}
               onFetchComments={handleFetchComments}
