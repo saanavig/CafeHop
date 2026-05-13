@@ -265,14 +265,23 @@ const Index = () => {
         return id === postId ? updater(post) : post;
       });
 
-      if (sessionFeedCache) {
-        sessionFeedCache = updated;
+      sessionFeedCache = updated;
+
+      if (sessionFeedCacheUserId) {
+        const payload: FeedCachePayload = {
+          userId: sessionFeedCacheUserId,
+          feed: updated,
+          savedAt: Date.now(),
+        };
+
+        AsyncStorage.setItem(FEED_CACHE_KEY, JSON.stringify(payload)).catch(
+          (err) => console.log("FEED CACHE UPDATE ERROR:", err)
+        );
       }
 
       return updated;
     });
   };
-
   const handleLikePost = async (postId: string, currentlyLiked: boolean) => {
     const previousPost = posts.find((p) => (p.postId || p.id) === postId);
     if (!previousPost) return;
