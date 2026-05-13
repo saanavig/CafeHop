@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { BookOpen, Globe, Grid3X3, MapPin, Pencil, Plus, Star, Store, X } from "lucide-react-native";
+import { Bookmark, BookOpen, Globe, Grid3X3, Heart, MapPin, Pencil, Plus, Star, Store, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { ResizeMode, Video } from "expo-av";
 import {
@@ -79,6 +79,7 @@ export default function CafeProfileScreen() {
 
     const contentWidth = Math.min(deviceWidth * 0.9, 480);
     const photoSize = (contentWidth - 6) / 3;
+    const heroWidth = Math.min(deviceWidth, 430);
 
     const [cafe, setCafe] = useState<Cafe | null>(null);
     const [cafeLoading, setCafeLoading] = useState(true);
@@ -131,9 +132,45 @@ export default function CafeProfileScreen() {
     const [authLoading, setAuthLoading] = useState(true);
     const [hours, setHours] = useState<any[]>([]);
     const [heroIndex, setHeroIndex] = useState(0);
+    const [cafeImages, setCafeImages] = useState<string[]>([]);
     const [previewIndex, setPreviewIndex] = useState(0);
     const [showHoursModal, setShowHoursModal] = useState(false);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [commentInput, setCommentInput] = useState("");
+
+    const handleLike = (id: string | number) => {
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p
+        )
+      );
+      if (selectedPost?.id === id) {
+        setSelectedPost((prev) =>
+          prev ? { ...prev, liked: !prev.liked, likes: prev.liked ? prev.likes - 1 : prev.likes + 1 } : prev
+        );
+      }
+    };
+
+    const handleSave = (id: string | number) => {
+      setPosts((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, saved: !p.saved } : p))
+      );
+      if (selectedPost?.id === id) {
+        setSelectedPost((prev) =>
+          prev ? { ...prev, saved: !prev.saved } : prev
+        );
+      }
+    };
+
+    const handleAddComment = () => {
+      if (!commentInput.trim() || !selectedPost) return;
+      const newComment: Comment = { text: commentInput.trim() };
+      setPosts((prev) =>
+        prev.map((p) => p.id === selectedPost.id ? { ...p, comments: [...p.comments, newComment] } : p)
+      );
+      setSelectedPost((prev) => prev ? { ...prev, comments: [...prev.comments, newComment] } : prev);
+      setCommentInput("");
+    };
 
     const toggleTag = (tag: string) => {
       setSelectedTags((prev) =>
@@ -232,6 +269,19 @@ export default function CafeProfileScreen() {
       if (data) {
         setCafe(data);
         setOwnerId(data.owner_id || null);
+
+        const resolvedId = cafeId || data.id;
+        if (resolvedId) {
+          const { data: imgs, error: imgsError } = await supabase
+            .from("cafe_images")
+            .select("image_url")
+            .eq("cafe_id", resolvedId)
+            .order("order_index", { ascending: true });
+          console.log("[cafe_images] resolvedId:", resolvedId, "rows:", imgs, "error:", imgsError);
+          if (imgs && imgs.length > 0) {
+            setCafeImages(imgs.map((r: any) => r.image_url).filter(Boolean));
+          }
+        }
       } else {
         setCafe(null);
       }
@@ -850,6 +900,7 @@ export default function CafeProfileScreen() {
   }
 
   const heroImages: string[] = (() => {
+    if (cafeImages.length > 0) return cafeImages;
     const arr: string[] = [];
     if (Array.isArray(cafe.image_urls)) {
       for (const u of cafe.image_urls) if (u && !arr.includes(u)) arr.push(u);
@@ -868,40 +919,42 @@ export default function CafeProfileScreen() {
           transform: [{ translateY: slideAnim }],
         }}
       >
-        <View style={styles.hero}>
-          {heroImages.length > 1 ? (
-            <FlatList
-              data={heroImages}
-              keyExtractor={(_, i) => `hero-${i}`}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={(e) => {
-                const i = Math.round(e.nativeEvent.contentOffset.x / deviceWidth);
-                setHeroIndex(i);
-              }}
-              renderItem={({ item }) => (
-                <Image source={{ uri: item }} style={[styles.heroImage, { width: deviceWidth }]} />
-              )}
-            />
-          ) : (
-            <Image source={{ uri: heroImages[0] }} style={styles.heroImage} />
-          )}
-          {heroImages.length > 1 && (
-            <View style={styles.heroDots} pointerEvents="none">
-              {heroImages.map((_, i) => (
-                <View
-                  key={`hero-dot-${i}`}
-                  style={[styles.heroDot, i === heroIndex && styles.heroDotActive]}
-                />
-              ))}
+        <View style={{ maxWidth: 430, width: "100%", alignSelf: "center" }}>
+          <View style={styles.hero}>
+            {heroImages.length > 1 ? (
+              <FlatList
+                data={heroImages}
+                keyExtractor={(_, i) => `hero-${i}`}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(e) => {
+                  const i = Math.round(e.nativeEvent.contentOffset.x / heroWidth);
+                  setHeroIndex(i);
+                }}
+                renderItem={({ item }) => (
+                  <Image source={{ uri: item }} style={[styles.heroImage, { width: heroWidth }]} />
+                )}
+              />
+            ) : (
+              <Image source={{ uri: heroImages[0] }} style={styles.heroImage} />
+            )}
+            {heroImages.length > 1 && (
+              <View style={styles.heroDots} pointerEvents="none">
+                {heroImages.map((_, i) => (
+                  <View
+                    key={`hero-dot-${i}`}
+                    style={[styles.heroDot, i === heroIndex && styles.heroDotActive]}
+                  />
+                ))}
+              </View>
+            )}
+            <View style={styles.heroOverlay}>
+              <Text style={styles.heroTitle}>{cafe.name || "Cafe"}</Text>
+              <Text style={styles.heroSubtitle}>
+                ⭐ {averageRating ?? "New"} • {cafe.address || "No address"}
+              </Text>
             </View>
-          )}
-          <View style={styles.heroOverlay}>
-            <Text style={styles.heroTitle}>{cafe.name || "Cafe"}</Text>
-            <Text style={styles.heroSubtitle}>
-              ⭐ {averageRating ?? "New"} • {cafe.address || "No address"}
-            </Text>
           </View>
         </View>
 
@@ -1142,19 +1195,6 @@ export default function CafeProfileScreen() {
 
                 {(hasMenu || isEditing) && (
                   <>
-                    {isOwner && (
-                      <TouchableOpacity
-                        onPress={() => setIsEditing((prev) => !prev)}
-                        style={styles.editButton}
-                      >
-                        {isEditing ? (
-                          <Text style={styles.doneText}>Done</Text>
-                        ) : (
-                          <Pencil size={scale(18)} color="#D4A373" />
-                        )}
-                      </TouchableOpacity>
-                    )}
-
                     <Text style={styles.sectionTitle}>
                       {isEditing ? "Editing Menu" : "Menu"}
                     </Text>
@@ -1996,13 +2036,14 @@ export default function CafeProfileScreen() {
       visible={!!selectedPost}
       animationType="slide"
       presentationStyle="pageSheet"
-      onRequestClose={() => { setSelectedPost(null); setPreviewIndex(0); }}
+      onRequestClose={() => { setSelectedPost(null); setPreviewIndex(0); setCommentInput(""); }}
     >
       {selectedPost && (
-        <View style={[styles.previewSheet, { backgroundColor: themeColors.bg }]}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <View style={[styles.previewSheet, { backgroundColor: themeColors.bg, maxWidth: 430, width: "100%", alignSelf: "center" }]}>
           <TouchableOpacity
             style={styles.previewCloseBtn}
-            onPress={() => { setSelectedPost(null); setPreviewIndex(0); }}
+            onPress={() => { setSelectedPost(null); setPreviewIndex(0); setCommentInput(""); }}
             accessibilityLabel="Close"
           >
             <X size={scale(18)} color="#333" />
@@ -2016,7 +2057,15 @@ export default function CafeProfileScreen() {
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
+                onScroll={(e) => {
+                  const idx = Math.round(e.nativeEvent.contentOffset.x / deviceWidth);
+                  setPreviewIndex(Math.max(0, Math.min(idx, (selectedPost.media?.length ?? 1) - 1)));
+                }}
+                scrollEventThrottle={32}
                 onMomentumScrollEnd={(e) => {
+                  setPreviewIndex(Math.round(e.nativeEvent.contentOffset.x / deviceWidth));
+                }}
+                onScrollEndDrag={(e) => {
                   setPreviewIndex(Math.round(e.nativeEvent.contentOffset.x / deviceWidth));
                 }}
                 renderItem={({ item }) =>
@@ -2048,6 +2097,28 @@ export default function CafeProfileScreen() {
               )}
             </View>
 
+            {/* ── Actions ── */}
+            <View style={styles.previewActionsRow}>
+              <TouchableOpacity style={styles.previewActionBtn} onPress={() => handleLike(selectedPost.id)}>
+                <Heart
+                  size={scale(24)}
+                  color={selectedPost.liked ? "#E0635A" : themeColors.text}
+                  fill={selectedPost.liked ? "#E0635A" : "transparent"}
+                  strokeWidth={selectedPost.liked ? 0 : 2}
+                />
+              </TouchableOpacity>
+              <Text style={[styles.previewLikeCount, { color: themeColors.text }]}>{selectedPost.likes}</Text>
+              <View style={{ flex: 1 }} />
+              <TouchableOpacity style={styles.previewActionBtn} onPress={() => handleSave(selectedPost.id)}>
+                <Bookmark
+                  size={scale(24)}
+                  color={selectedPost.saved ? "#D4A373" : themeColors.text}
+                  fill={selectedPost.saved ? "#D4A373" : "transparent"}
+                  strokeWidth={selectedPost.saved ? 0 : 2}
+                />
+              </TouchableOpacity>
+            </View>
+
             {selectedPost.location ? (
               <View style={styles.previewLocationRow}>
                 <MapPin size={scale(13)} color="#D4A373" />
@@ -2069,7 +2140,33 @@ export default function CafeProfileScreen() {
               </View>
             )}
           </ScrollView>
+
+          {/* ── Comment input ── */}
+          <View style={[styles.previewCommentBar, { backgroundColor: themeColors.card, borderTopColor: themeColors.border }]}>
+            <TextInput
+              placeholder="Add a comment…"
+              placeholderTextColor={themeColors.textMuted}
+              value={commentInput}
+              onChangeText={setCommentInput}
+              style={[styles.previewCommentInput, { backgroundColor: themeColors.iconBg, color: themeColors.text }]}
+              returnKeyType="send"
+              onSubmitEditing={handleAddComment}
+            />
+            <TouchableOpacity onPress={handleAddComment} disabled={!commentInput.trim()}>
+              <Text style={[styles.previewCommentPostBtn, !commentInput.trim() && { opacity: 0.4 }]}>Post</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Comments list ── */}
+          {selectedPost.comments.length > 0 && (
+            <View style={[styles.previewCommentsSection, { borderTopColor: themeColors.border }]}>
+              {selectedPost.comments.map((c, i) => (
+                <Text key={i} style={[styles.previewCommentText, { color: themeColors.textMuted }]}>{c.text}</Text>
+              ))}
+            </View>
+          )}
         </View>
+        </KeyboardAvoidingView>
       )}
     </Modal>
 
@@ -2855,5 +2952,48 @@ shareButtonText: {
     color: "#8B6F47",
     fontSize: moderateScale(11),
     fontWeight: "500",
+  },
+  previewActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(10),
+  },
+  previewActionBtn: { padding: scale(4) },
+  previewLikeCount: {
+    fontSize: moderateScale(14),
+    fontWeight: "600",
+    marginLeft: scale(6),
+  },
+  previewCommentBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(10),
+    borderTopWidth: 1,
+    gap: scale(10),
+  },
+  previewCommentInput: {
+    flex: 1,
+    fontSize: moderateScale(14),
+    borderRadius: scale(20),
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(8),
+  },
+  previewCommentPostBtn: {
+    fontSize: moderateScale(14),
+    fontWeight: "700",
+    color: "#D4A373",
+  },
+  previewCommentsSection: {
+    paddingHorizontal: scale(16),
+    paddingBottom: scale(16),
+    borderTopWidth: 1,
+    paddingTop: scale(12),
+    gap: scale(8),
+  },
+  previewCommentText: {
+    fontSize: moderateScale(13),
+    lineHeight: moderateScale(18),
   },
 });

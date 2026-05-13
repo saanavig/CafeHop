@@ -21,6 +21,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../context/ThemeContext";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const FEED_CACHE_KEY = "cafehop_feed_cache_v1";
 
 const fallbackImages = [
   "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=900",
@@ -689,6 +690,7 @@ const Index = () => {
 
   return (
     <SafeAreaView edges={["top"]} style={[styles.container, { backgroundColor: themeColors.bg }]}>
+      <View style={{ maxWidth: 430, width: "100%", alignSelf: "center", flex: 1 }}>
       <Animated.View
         style={[
           styles.header,
@@ -711,7 +713,7 @@ const Index = () => {
           >
             <Bell size={scale(22)} color="#D4A373" strokeWidth={2} />
 
-            {hasUnreadNotifications && <View style={styles.notificationDot} />}
+            {hasUnreadNotifications && <View style={[styles.notificationDot, { borderColor: themeColors.bg }]} />}
           </TouchableOpacity>
         </View>
 
@@ -769,6 +771,7 @@ const Index = () => {
             index,
           })}
         />
+      </View>
       </View>
 
       <BottomNav />

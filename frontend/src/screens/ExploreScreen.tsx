@@ -71,6 +71,10 @@ declare global {
 }
 
 const SHEET_HEIGHT = height * 0.52;
+const SHEET_FULL_HEIGHT = height * 0.84;
+const SNAP_EXPANDED  = 0;
+const SNAP_HALF      = Math.round(SHEET_FULL_HEIGHT - height * 0.48);
+const SNAP_COLLAPSED = Math.round(SHEET_FULL_HEIGHT - 120);
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -155,6 +159,35 @@ export default function ExploreScreen() {
   // Map panning
   const mapOffset     = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const lastMapOffset = useRef({ x: 0, y: 0 });
+
+  // ── Sheet drag ──────────────────────────────────────────────────────────────
+  const sheetAnim = useRef(new Animated.Value(SNAP_HALF)).current;
+  const snapRef   = useRef(SNAP_HALF);
+
+  const sheetPan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gs) =>
+        Math.abs(gs.dy) > 6 && Math.abs(gs.dy) > Math.abs(gs.dx),
+      onPanResponderMove: (_, gs) => {
+        const next = snapRef.current + gs.dy;
+        sheetAnim.setValue(Math.max(SNAP_EXPANDED, Math.min(SNAP_COLLAPSED, next)));
+      },
+      onPanResponderRelease: (_, gs) => {
+        const snaps = [SNAP_EXPANDED, SNAP_HALF, SNAP_COLLAPSED];
+        const pos   = snapRef.current + gs.dy;
+        let target: number;
+        if (gs.vy > 0.4) {
+          target = snaps.find(s => s > snapRef.current) ?? SNAP_COLLAPSED;
+        } else if (gs.vy < -0.4) {
+          target = [...snaps].reverse().find(s => s < snapRef.current) ?? SNAP_EXPANDED;
+        } else {
+          target = snaps.reduce((a, b) => Math.abs(b - pos) < Math.abs(a - pos) ? b : a);
+        }
+        snapRef.current = target;
+        Animated.spring(sheetAnim, { toValue: target, useNativeDriver: true, friction: 9, tension: 75 }).start();
+      },
+    })
+  ).current;
 
   const mapPanResponder = useRef(
     PanResponder.create({
@@ -636,8 +669,13 @@ export default function ExploreScreen() {
       )}
 
       {/* ── BOTTOM SHEET (list) ─────────────────────────────── */}
-      <View style={[styles.sheet, { backgroundColor: themeColors.card }]} ref={sheetRef}>
-        <View style={[styles.handle, { backgroundColor: themeColors.border }]} />
+      <Animated.View
+        style={[styles.sheet, { backgroundColor: themeColors.card, transform: [{ translateY: sheetAnim }] }]}
+        ref={sheetRef}
+      >
+        <View style={styles.handleArea} {...sheetPan.panHandlers}>
+          <View style={[styles.handle, { backgroundColor: themeColors.border }]} />
+        </View>
 
         <View style={[styles.searchContainer, { backgroundColor: themeColors.card }]}> 
           <Search size={15} color={themeColors.textMuted} />
@@ -955,7 +993,7 @@ export default function ExploreScreen() {
         })}
       </View>
     )}
-  </View>
+      </Animated.View>
 
       <View style={styles.navWrapper}>
         <BottomNav />
@@ -1360,16 +1398,19 @@ const styles = StyleSheet.create({
   pinText: { color: "#FFF", fontSize: moderateScale(11), fontWeight: "700" },
 
   sheet: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    height: SHEET_HEIGHT, backgroundColor: "#FFF",
+    position: "absolute", bottom: 0,
+    width: width, left: (RAW_WIDTH - width) / 2,
+    height: SHEET_FULL_HEIGHT, backgroundColor: "#FFF",
     borderTopLeftRadius: scale(28), borderTopRightRadius: scale(28),
     shadowColor: "#000", shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.12, shadowRadius: 20, elevation: 20, overflow: "visible",
   },
+  handleArea: {
+    paddingTop: scale(10), paddingBottom: scale(6), alignItems: "center",
+  },
   handle: {
     width: scale(40), height: scale(4), backgroundColor: "#DADADA",
     borderRadius: scale(2), alignSelf: "center",
-    marginTop: scale(10), marginBottom: scale(8),
   },
   searchContainer: {
     flexDirection: "row", alignItems: "center", backgroundColor: "#F7F3F0",

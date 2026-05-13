@@ -85,6 +85,7 @@ export default function CafeOnboarding({ navigation }: any) {
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [imageError, setImageError] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Socials
   const [instagramUrl, setInstagramUrl] = useState("");
@@ -109,7 +110,7 @@ export default function CafeOnboarding({ navigation }: any) {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: "images",
       allowsMultipleSelection: true,
       quality: 0.7,
     });
@@ -138,48 +139,63 @@ export default function CafeOnboarding({ navigation }: any) {
   const maxWidth = 420;
 
   const handleFinishSetup = async () => {
-    let imageUrls: string[] = [];
+    console.log("[Finish] called, isSubmitting=", isSubmitting);
+    if (isSubmitting) return;
 
-    for (const img of images) {
-      const fileName = `cafe-${Date.now()}-${Math.random()}.jpg`;
-
-      const response = await fetch(img);
-      const blob = await response.blob();
-
-      const { error } = await supabase.storage
-        .from("images")
-        .upload(fileName, blob, { contentType: "image/jpeg" });
-
-      if (error) {
-        Alert.alert("Error", "Image upload failed");
-        return;
-      }
-
-      const { data } = supabase.storage
-        .from("images")
-        .getPublicUrl(fileName);
-
-      imageUrls.push(data.publicUrl);
-    }
-
+    console.log("[Finish] phone=", phone.length, "coords=", coordinates);
     if (phone.length !== 10) {
       Alert.alert("Invalid Phone Number", "Phone number must be 10 digits");
       return;
     }
 
+    setIsSubmitting(true);
+    console.log("[Finish] starting upload, images=", images.length);
     try {
-      if (!coordinates) {
-        Alert.alert("Please select a valid address from the dropdown");
+      let imageUrls: string[] = [];
+
+      for (const img of images) {
+        try {
+          const fileName = `cafe-${Date.now()}-${Math.random()}.jpg`;
+          const response = await fetch(img);
+          const blob = await response.blob();
+
+          const { error } = await supabase.storage
+            .from("images")
+            .upload(fileName, blob, { contentType: "image/jpeg" });
+
+          if (error) {
+            console.error("Image upload error:", error);
+            Alert.alert("Error", "Image upload failed: " + error.message);
+            return;
+          }
+
+          const { data: urlData } = supabase.storage
+            .from("images")
+            .getPublicUrl(fileName);
+
+          imageUrls.push(urlData.publicUrl);
+        } catch (imgErr) {
+          console.error("Image fetch/upload crash:", imgErr);
+          Alert.alert("Error", "Failed to process an image. Please try again.");
+          return;
+        }
+      }
+
+      console.log("[Finish] images uploaded, urls=", imageUrls);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        Alert.alert("Error", "You are not logged in");
         return;
       }
 
+      console.log("[Finish] session ok, calling register API");
       const payload = {
         name: cafeName,
         description: description.trim() || null,
         address,
         contact_phone: phone,
-        latitude: coordinates.lat,
-        longitude: coordinates.lng,
+        latitude: coordinates?.lat ?? null,
+        longitude: coordinates?.lng ?? null,
         hours,
         price_range: priceRange,
         image_urls: imageUrls,
@@ -188,12 +204,6 @@ export default function CafeOnboarding({ navigation }: any) {
         facebook_url: facebookUrl.trim() || null,
         website_url: websiteUrl.trim() || null,
       };
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        Alert.alert("Error", "You are not logged in");
-        return;
-      }
 
       const res = await fetch(`${API_URL}/api/cafe/register`, {
         method: "POST",
@@ -208,6 +218,7 @@ export default function CafeOnboarding({ navigation }: any) {
       let data: any;
       try { data = JSON.parse(text); } catch { data = { error: text }; }
 
+      console.log("[Finish] API response status=", res.status, "data=", data);
       if (!res.ok) {
         Alert.alert("Error", data.error || "Failed to create cafe");
         return;
@@ -215,10 +226,13 @@ export default function CafeOnboarding({ navigation }: any) {
 
       await supabase.auth.updateUser({ data: { display_name: cafeName } });
       setRole("cafe");
+      console.log("[Finish] navigating to Home");
       navigation.navigate("Home");
     } catch (err) {
       console.error("CRASH:", err);
-      Alert.alert("Error", "Something went wrong");
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -265,7 +279,7 @@ export default function CafeOnboarding({ navigation }: any) {
               />
               <TextInput
                 placeholder="Cafe Location"
-                style={styles.input}
+                style={[styles.input, address.trim() && !coordinates ? { borderColor: "#D9534F" } : null]}
                 value={address}
                 onChangeText={(text) => {
                   setAddress(text);
@@ -308,6 +322,16 @@ export default function CafeOnboarding({ navigation }: any) {
                     ))}
                   </ScrollView>
                 </View>
+              )}
+              {address.trim().length > 0 && !coordinates && (
+                <Text style={{ color: "#D9534F", fontSize: moderateScale(12), marginBottom: verticalScale(8), marginTop: -verticalScale(8) }}>
+                  Please select your address from the suggestions above
+                </Text>
+              )}
+              {coordinates && (
+                <Text style={{ color: "#5A9E6F", fontSize: moderateScale(12), marginBottom: verticalScale(8), marginTop: -verticalScale(8) }}>
+                  ✓ Address confirmed
+                </Text>
               )}
 
               <TextInput
@@ -541,8 +565,9 @@ export default function CafeOnboarding({ navigation }: any) {
               </View>
               {tagError ? <Text style={{ color: "red", marginTop: verticalScale(10), textAlign: "center", fontSize: moderateScale(13) }}>{tagError}</Text> : null}
               <Button
-                title="Finish Setup"
+                title={isSubmitting ? "Setting up…" : "Finish Setup"}
                 variant="caramel"
+                disabled={isSubmitting}
                 onPress={() => {
                   setTagError("");
                   handleFinishSetup();
