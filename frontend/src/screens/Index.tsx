@@ -24,23 +24,18 @@ import { useTheme } from "../context/ThemeContext";
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const FEED_CACHE_KEY = "cafehop_feed_cache_v1";
 
+type FeedCachePayload = {
+  userId: string;
+  feed: FeedPost[];
+  savedAt: number;
+};
+
 const fallbackImages = [
   "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=900",
   "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=900",
   "https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=900",
   "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=900",
 ];
-
-const getFallbackImage = (key?: string) => {
-  const value = key || "cafe";
-  let hash = 0;
-
-  for (let i = 0; i < value.length; i++) {
-    hash = value.charCodeAt(i) + ((hash << 5) - hash);
-  }
-
-  return fallbackImages[Math.abs(hash) % fallbackImages.length];
-};
 
 const isValidMediaUrl = (url?: string | null) => {
   return !!url && (url.startsWith("http://") || url.startsWith("https://"));
@@ -111,6 +106,7 @@ type UserCoords = {
 };
 
 let sessionFeedCache: FeedPost[] | null = null;
+let sessionFeedCacheUserId: string | null = null;
 
 const Index = () => {
   const navigation = useNavigation<any>();
@@ -154,23 +150,141 @@ const Index = () => {
     fetchUnreadNotificationStatus();
   }, []);
 
+  const getCurrentUserId = async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user.id ?? null;
+  };
+
   const clearFeedCache = async () => {
     sessionFeedCache = null;
+    sessionFeedCacheUserId = null;
     await AsyncStorage.removeItem(FEED_CACHE_KEY);
+  };
+
+  const loadCachedFeed = async (userId: string) => {
+    if (
+      sessionFeedCache &&
+      sessionFeedCacheUserId === userId &&
+      sessionFeedCache.length > 0
+    ) {
+      console.log("FEED CACHE HIT: session");
+      setPosts(sessionFeedCache);
+      return true;
+    }
+
+    const cached = await AsyncStorage.getItem(FEED_CACHE_KEY);
+
+    if (!cached) {
+      console.log("FEED CACHE MISS: no AsyncStorage cache");
+      return false;
+    }
+
+    try {
+      const parsed: FeedCachePayload = JSON.parse(cached);
+
+      if (parsed.userId !== userId) {
+        console.log("FEED CACHE MISS: different user");
+        await clearFeedCache();
+        return false;
+      }
+
+      if (!Array.isArray(parsed.feed) || parsed.feed.length === 0) {
+        console.log("FEED CACHE MISS: empty cache");
+        return false;
+      }
+
+      console.log("FEED CACHE HIT: AsyncStorage");
+
+      sessionFeedCache = parsed.feed;
+      sessionFeedCacheUserId = userId;
+      setPosts(parsed.feed);
+
+      return true;
+    } catch (err) {
+      console.log("FEED CACHE PARSE ERROR:", err);
+      await clearFeedCache();
+      return false;
+    }
+  };
+
+  const saveFeedCache = async (userId: string, feed: FeedPost[]) => {
+    sessionFeedCache = feed;
+    sessionFeedCacheUserId = userId;
+
+    const payload: FeedCachePayload = {
+      userId,
+      feed,
+      savedAt: Date.now(),
+    };
+
+    await AsyncStorage.setItem(FEED_CACHE_KEY, JSON.stringify(payload));
+  };
+
+  const refreshFeed = async () => {
+    try {
+      setLoading(true);
+      await clearFeedCache();
+      await getUserLocationAndFetchFeed();
+    } catch (err) {
+      console.error("REFRESH FEED ERROR:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFeed = async () => {
+    try {
+      setLoading(true);
+
+      const userId = await getCurrentUserId();
+
+      if (!userId) {
+        await getUserLocationAndFetchFeed();
+        return;
+      }
+
+      const cacheFound = await loadCachedFeed(userId);
+
+      if (cacheFound) {
+        setLoading(false);
+        return;
+      }
+
+      await getUserLocationAndFetchFeed();
+    } catch (err) {
+      console.error("LOAD FEED ERROR:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updatePostInState = (
     postId: string,
     updater: (post: FeedPost) => FeedPost
   ) => {
-    setPosts((prev) =>
-      prev.map((post) => {
+    setPosts((prev) => {
+      const updated = prev.map((post) => {
         const id = post.postId || post.id;
         return id === postId ? updater(post) : post;
-      })
-    );
-  };
+      });
 
+      sessionFeedCache = updated;
+
+      if (sessionFeedCacheUserId) {
+        const payload: FeedCachePayload = {
+          userId: sessionFeedCacheUserId,
+          feed: updated,
+          savedAt: Date.now(),
+        };
+
+        AsyncStorage.setItem(FEED_CACHE_KEY, JSON.stringify(payload)).catch(
+          (err) => console.log("FEED CACHE UPDATE ERROR:", err)
+        );
+      }
+
+      return updated;
+    });
+  };
   const handleLikePost = async (postId: string, currentlyLiked: boolean) => {
     const previousPost = posts.find((p) => (p.postId || p.id) === postId);
     if (!previousPost) return;
@@ -332,18 +446,6 @@ const Index = () => {
     }
   };
 
-  const loadFeed = async () => {
-    try {
-      setLoading(true);
-      await clearFeedCache();
-      await getUserLocationAndFetchFeed();
-    } catch (err) {
-      console.error("LOAD FEED ERROR:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const getToken = async () => {
     const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
@@ -405,12 +507,12 @@ const Index = () => {
   const getPostMediaFromPost = (post: any): PostMedia | null => {
     const mediaList: any[] = post?.post_media || post?.media || [];
 
-    const validMedia: PostMedia[] = mediaList.filter((m: any): m is PostMedia =>
-      isValidMediaUrl(m?.file_url) && typeof m?.file_type === 'string'
+    const validMedia: PostMedia[] = mediaList.filter(
+      (m: any): m is PostMedia =>
+        isValidMediaUrl(m?.file_url) && typeof m?.file_type === "string"
     );
 
-    const item = getRandomItem(validMedia);
-    return item;
+    return getRandomItem(validMedia);
   };
 
   const buildPostCard = (
@@ -496,6 +598,7 @@ const Index = () => {
       setLoading(true);
 
       const token = await getToken();
+      const userId = await getCurrentUserId();
 
       const recRes = await fetch(
         `${API_URL}/api/recommendations?lat=${coords.lat}&lng=${coords.lng}&limit=10`,
@@ -656,7 +759,10 @@ const Index = () => {
       );
 
       setPosts(finalFeed);
-      sessionFeedCache = finalFeed;
+
+      if (userId) {
+        await saveFeedCache(userId, finalFeed);
+      }
     } catch (err) {
       console.error("FEED FETCH ERROR:", err);
     } finally {
