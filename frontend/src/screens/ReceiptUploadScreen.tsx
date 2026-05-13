@@ -40,7 +40,7 @@ export default function ReceiptUploadScreen({
   const [earnedPoints, setEarnedPoints] = useState<number | null>(null);
   const { colors: themeColors } = useTheme();
 
-  const BACKEND_URL = "http://127.0.0.1:3001/api/receipt";
+  const BACKEND_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/receipt`;
 
   const styles = {
     container: {
@@ -310,7 +310,18 @@ export default function ReceiptUploadScreen({
         body: formData,
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      console.log("RECEIPT RAW RESPONSE:", text);
+
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { error: text };
+      }
+
+      console.log("RECEIPT STATUS:", response.status);
+      console.log("RECEIPT DATA:", data);
 
       if (!response.ok || !data.success) {
         const backendError =
