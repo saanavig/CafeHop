@@ -55,6 +55,62 @@ export default function UserProfileScreen() {
   const [viewedProfile, setViewedProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
+  const [savedPosts, setSavedPosts] = useState<Post[]>([]);
+
+  useEffect(() => {
+    const fetchSavedPosts = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        const token = session?.access_token;
+
+        const res = await fetch(
+          `${process.env.EXPO_PUBLIC_API_URL}/api/posts/saved`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const data = await res.json();
+
+        const grouped: Record<string, any> = {};
+
+        data.forEach((p: any) => {
+          if (!grouped[p.id]) {
+            grouped[p.id] = {
+              id: p.id,
+              images: [],
+              likes: p.likes_count || 0,
+              liked: false,
+              caption: p.caption,
+              location: p.cafe_name,
+              saved: true,
+              comments: [],
+            };
+          }
+
+          if (p.file_url) {
+            grouped[p.id].images.push(p.file_url);
+          }
+        });
+
+        setSavedPosts(Object.values(grouped));
+
+
+      } catch (err) {
+        console.error("Error fetching saved posts:", err);
+      }
+    };
+
+    if (!isCafe) {
+      fetchSavedPosts();
+    }
+  }, []);
+
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -436,18 +492,28 @@ export default function UserProfileScreen() {
 
         const data = await res.json();
 
-        const formatted = data.map((p: any) => ({
-          id: p.id,
-          images: [p.file_url],
-          likes: p.likes_count || 0,
-          liked: false,
-          caption: p.caption,
-          location: p.cafe_name,
-          saved: false,
-          comments: [],
-        }));
+        const grouped: Record<string, any> = {};
 
-        setPosts(formatted);
+        data.forEach((p: any) => {
+          if (!grouped[p.id]) {
+            grouped[p.id] = {
+              id: p.id,
+              images: [],
+              likes: p.likes_count || 0,
+              liked: false,
+              caption: p.caption,
+              location: p.cafe_name,
+              saved: p.saved || false,
+              comments: [],
+            };
+          }
+
+          if (p.file_url) {
+            grouped[p.id].images.push(p.file_url);
+          }
+        });
+
+        setPosts(Object.values(grouped));
       } catch (err) {
         console.error("Error fetching posts:", err);
       }
@@ -470,14 +536,73 @@ export default function UserProfileScreen() {
     }
   };
 
-  const handleSave = (id: number) => {
-    setPosts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, saved: !p.saved } : p))
-    );
-    if (selectedPost?.id === id) {
-      setSelectedPost((prev) =>
-        prev ? { ...prev, saved: !prev.saved } : prev
+  const handleSave = async (id: number) => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const token = session?.access_token;
+
+      // check selected/current post instead
+      const currentPost =
+        posts.find((p) => p.id === id) ||
+        savedPosts.find((p) => p.id === id);
+
+      const isCurrentlySaved = !!currentPost?.saved;
+
+      const endpoint = `${process.env.EXPO_PUBLIC_API_URL}/api/posts/${id}/save`;
+
+      const res = await fetch(endpoint, {
+        method: isCurrentlySaved ? "DELETE" : "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Save toggle failed:", text);
+        return;
+      }
+
+      // update posts feed
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, saved: !isCurrentlySaved }
+            : p
+        )
       );
+
+      // update saved tab
+      if (isCurrentlySaved) {
+        // remove immediately
+        setSavedPosts((prev) =>
+          prev.filter((p) => p.id !== id)
+        );
+      } else {
+        // add into saved tab
+        const postToAdd =
+          posts.find((p) => p.id === id);
+
+        if (postToAdd) {
+          setSavedPosts((prev) => [
+            { ...postToAdd, saved: true },
+            ...prev,
+          ]);
+        }
+      }
+
+      // update modal state
+      setSelectedPost((prev) =>
+        prev
+          ? { ...prev, saved: !isCurrentlySaved }
+          : prev
+      );
+
+    } catch (err) {
+      console.error("Save error:", err);
     }
   };
 
@@ -616,7 +741,7 @@ export default function UserProfileScreen() {
                         reviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
                         (reviews.length || 1)
                       ).toFixed(1)} ★`
-                    : profile.stats.favorites}
+                    : savedPosts.length}
                 </Text>
 
                 <Text style={styles.statLabel}>
@@ -743,7 +868,7 @@ export default function UserProfileScreen() {
             {/* Saved */}
             {activeTab === "saved" && !isCafe && (
               <View style={styles.grid}>
-                {posts.filter((p) => p.saved).map((post) => (
+                {savedPosts.map((post) => (
                   <TouchableOpacity key={post.id} onPress={() => openPost(post)} style={{ position: "relative" }}>
                     <Image
                       source={{ uri: post.images[0] }}
@@ -756,7 +881,7 @@ export default function UserProfileScreen() {
                     )}
                   </TouchableOpacity>
                 ))}
-                {posts.filter((p) => p.saved).length === 0 && (
+                {savedPosts.length === 0 && (
                   <Text style={styles.emptyText}>Nothing saved yet.</Text>
                 )}
               </View>
