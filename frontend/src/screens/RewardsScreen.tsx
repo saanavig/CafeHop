@@ -1197,7 +1197,16 @@ if (role === "cafe") {
                     <QRCode value={generateQRValue()} size={180} />
                   </View>
 
-                  <Button title="Reward Redeemed" onPress={redeemReward} />
+                  <Button
+                    title="Reward Redeemed"
+                    onPress={async () => {
+                      setSelectedReward(null);
+                      setShowQR(false);
+
+                      await fetchPoints();
+                      await fetchUserRedemptions();
+                    }}
+                  />
                 </>
               )}
               </>

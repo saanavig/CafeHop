@@ -164,6 +164,9 @@ def redeem_reward():
         points_needed = reward.data[0]["points_required"]
         current_points = get_user_points(customer_user_id)
 
+        print("CURRENT POINTS:", current_points)
+        print("POINTS NEEDED:", points_needed)
+
         if current_points < points_needed:
             return jsonify({"error": "Not enough points"}), 400
 

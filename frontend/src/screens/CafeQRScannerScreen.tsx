@@ -1,6 +1,6 @@
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 
 import { supabase } from "../api/supabaseClient";
 import { useTheme } from "../context/ThemeContext";
@@ -11,9 +11,12 @@ export default function CafeQRScannerScreen({ navigation }: any) {
   const { colors: themeColors } = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const scanLock = useRef(false);
 
   const handleScanned = async ({ data }: { data: string }) => {
-    if (scanned) return;
+    if (scanLock.current) return;
+    scanLock.current = true;
     console.log("RAW QR DATA:", data);
 
     try {
@@ -58,24 +61,30 @@ export default function CafeQRScannerScreen({ navigation }: any) {
 
       const result = await res.json();
       console.log("REDEEM RESPONSE:", result);
-
       if (!res.ok) {
+        setShowSuccess(false);
+
         Alert.alert(
           "Redemption failed",
           result.error || "Could not redeem"
         );
 
+        scanLock.current = false;
         setScanned(false);
         return;
       }
 
-      Alert.alert(
-        "Reward redeemed!",
-        `Points spent: ${result.points_spent}\nRemaining points: ${result.remaining_points}`,
-        [{ text: "Scan another", onPress: () => setScanned(false) }]
-      );
-    } catch (err) {
-    }
+      setShowSuccess(true);
+
+      setTimeout(() => {
+        navigation.goBack();
+      }, 1500);
+
+      } catch (err) {
+        console.error(err);
+        scanLock.current = false;
+        setScanned(false);
+      }
   };
 
   if (!permission) {
@@ -133,6 +142,22 @@ export default function CafeQRScannerScreen({ navigation }: any) {
         >
           <Text style={styles.scanAgainText}>Scan Again</Text>
         </TouchableOpacity>
+      )}
+
+      {showSuccess && (
+        <View style={styles.successOverlay}>
+          <View style={styles.successCard}>
+            <Text style={styles.successEmoji}>✅</Text>
+
+            <Text style={styles.successTitle}>
+              Reward Redeemed
+            </Text>
+
+            <Text style={styles.successText}>
+              QR scanned successfully
+            </Text>
+          </View>
+        </View>
       )}
     </View>
   );
@@ -233,5 +258,42 @@ const styles = StyleSheet.create({
   scanAgainText: {
     color: "#fff",
     fontWeight: "700",
+  },
+
+  successOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+
+  successCard: {
+    backgroundColor: "#FFF",
+    paddingHorizontal: 28,
+    paddingVertical: 26,
+    borderRadius: 22,
+    alignItems: "center",
+    minWidth: 240,
+  },
+
+  successEmoji: {
+    fontSize: 42,
+    marginBottom: 10,
+  },
+
+  successTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#1A1A1A",
+  },
+
+  successText: {
+    marginTop: 6,
+    color: "#777",
+    fontSize: 14,
   },
 });
