@@ -99,7 +99,11 @@ def get_rewards_for_cafe(cafe_id):
 @require_auth
 def redeem_reward():
     data = request.get_json(silent=True) or {}
-    user_id = g.user["id"]
+    if not data:
+        return jsonify({"error": "Invalid request body"}), 400
+
+    scanner_user_id = g.user["id"]
+    customer_user_id = data.get("user_id")
 
     print("REDEEM DATA:", data)
 
@@ -113,7 +117,9 @@ def redeem_reward():
     if not isinstance(timestamp, (int, float)):
         return jsonify({"error": "Invalid timestamp"}), 400
 
-    if abs(time.time() * 1000 - timestamp) > 60000:
+    QR_EXPIRY_MS = 2 * 60 * 1000  # 2 minutes
+
+    if abs(time.time() * 1000 - timestamp) > QR_EXPIRY_MS:
         return jsonify({"error": "QR expired"}), 400
 
     if not submission_token:
@@ -156,7 +162,7 @@ def redeem_reward():
             return jsonify({"error": "Invalid reward for this cafe"}), 400
 
         points_needed = reward.data[0]["points_required"]
-        current_points = get_user_points(user_id)
+        current_points = get_user_points(customer_user_id)
 
         if current_points < points_needed:
             return jsonify({"error": "Not enough points"}), 400
@@ -164,7 +170,7 @@ def redeem_reward():
 
         # Deduct points
         supabase.table("point_transactions").insert({
-            "user_id": user_id,
+            "user_id": customer_user_id,
             "cafe_id": cafe_id,
             "points_change": -points_needed,
             "reason": f"Redeemed: {reward_data.get('title', 'Reward')}",
@@ -172,14 +178,14 @@ def redeem_reward():
         }).execute()
 
         supabase.table("reward_redemptions").insert({
-            "user_id": user_id,
+            "user_id": customer_user_id,
             "reward_id": reward_id,
             "cafe_id": cafe_id,
             "points_spent": points_needed,
             "status": "completed",
         }).execute()
 
-        remaining_points = get_user_points(user_id)
+        remaining_points = get_user_points(customer_user_id)
 
         # get cafe info
         cafe_response = (
@@ -201,7 +207,7 @@ def redeem_reward():
         profile_response = (
             supabase.table("profiles")
             .select("full_name")
-            .eq("id", user_id)
+            .eq("id", customer_user_id)
             .maybe_single()
             .execute()
         )
@@ -214,14 +220,14 @@ def redeem_reward():
 
         # customer notification
         create_notification(
-            user_id=user_id,
+            user_id=customer_user_id,
             notif_type="reward_redeemed",
             title="Reward redeemed 🎉",
             message=f"You redeemed {points_needed} points at {cafe_name}",
         )
 
         # cafe owner notification
-        if cafe_owner_id and cafe_owner_id != user_id:
+        if cafe_owner_id and cafe_owner_id != customer_user_id:
 
             create_notification(
                 user_id=cafe_owner_id,
@@ -237,8 +243,8 @@ def redeem_reward():
         }), 200
 
     except Exception as e:
-        print("Redeem error:", e)
-        return jsonify({"error": "Internal error"}), 500
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
     
 def get_points_activity(user_id: str):
     res = supabase.table("point_transactions") \

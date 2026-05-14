@@ -63,22 +63,24 @@ def add_points_to_user(user_id: str, points_to_add: int) -> int:
     return new_total
 
 def get_user_points(user_id: str):
-    res = supabase.table("user_points") \
-        .select("total_points") \
-        .eq("user_id", user_id) \
-        .maybe_single() \
+    res = (
+        supabase.table("user_points")
+        .select("total_points")
+        .eq("user_id", user_id)
+        .limit(1)
         .execute()
+    )
 
     if not res.data:
-        # create row
         supabase.table("user_points").insert({
             "user_id": user_id,
             "total_points": 0,
             "tier": "bronze"
         }).execute()
+
         return 0
 
-    return res.data["total_points"]
+    return res.data[0]["total_points"] or 0
 
 def get_user_points_history(user_id: str):
     res = (

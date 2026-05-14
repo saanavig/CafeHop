@@ -14,26 +14,32 @@ export default function CafeQRScannerScreen({ navigation }: any) {
 
   const handleScanned = async ({ data }: { data: string }) => {
     if (scanned) return;
-    setScanned(true);
+    console.log("RAW QR DATA:", data);
 
     try {
       const qrData = JSON.parse(data);
 
       if (
+        !qrData.user_id ||
         !qrData.reward_id ||
         !qrData.cafe_id ||
         !qrData.submission_token ||
         !qrData.timestamp
       ) {
-        throw new Error("Invalid reward QR code");
+        return;
       }
+
+      setScanned(true);
 
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
       const token = session?.access_token;
-      if (!token) throw new Error("You are not logged in");
+
+      if (!token) {
+        throw new Error("You are not logged in");
+      }
 
       const res = await fetch(`${API_URL}/api/redeem`, {
         method: "POST",
@@ -42,6 +48,7 @@ export default function CafeQRScannerScreen({ navigation }: any) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          user_id: qrData.user_id,
           reward_id: qrData.reward_id,
           cafe_id: qrData.cafe_id,
           submission_token: qrData.submission_token,
@@ -50,9 +57,14 @@ export default function CafeQRScannerScreen({ navigation }: any) {
       });
 
       const result = await res.json();
+      console.log("REDEEM RESPONSE:", result);
 
       if (!res.ok) {
-        Alert.alert("Redemption failed", result.error || "Could not redeem");
+        Alert.alert(
+          "Redemption failed",
+          result.error || "Could not redeem"
+        );
+
         setScanned(false);
         return;
       }
@@ -62,9 +74,7 @@ export default function CafeQRScannerScreen({ navigation }: any) {
         `Points spent: ${result.points_spent}\nRemaining points: ${result.remaining_points}`,
         [{ text: "Scan another", onPress: () => setScanned(false) }]
       );
-    } catch (err: any) {
-      Alert.alert("Invalid QR", err.message || "Could not scan QR");
-      setScanned(false);
+    } catch (err) {
     }
   };
 
@@ -191,6 +201,7 @@ const styles = StyleSheet.create({
     top: 100,
     left: 24,
     right: 24,
+    pointerEvents: "none",
     backgroundColor: "rgba(0,0,0,0.6)",
     padding: 16,
     borderRadius: 14,
