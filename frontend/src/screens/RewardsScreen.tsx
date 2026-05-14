@@ -1035,7 +1035,7 @@ if (role === "cafe") {
 
             return (
               <RewardsCard
-                points={points - tierData.current}
+                points={points}
                 status={tierStyle.label}
                 nextReward={tierData.next - tierData.current}
                 themeColor={tierStyle.themeColor}
