@@ -120,6 +120,7 @@ const ForYouCard = ({
 
     try {
       const comments = await onFetchComments(post.id);
+      console.log("FETCHED COMMENTS:", comments);
       setCommentsState(Array.isArray(comments) ? comments : []);
     } catch (err) {
       console.error("Fetch comments error:", err);
