@@ -20,10 +20,10 @@ import Button from "../components/ui/Button";
 import QRCode from "react-native-qrcode-svg";
 // import { TextInput as RNTextInput } from "react-native";
 import RewardsCard from "../components/ui/RewardsCard";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../api/supabaseClient";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRole } from "../context/RoleContext";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 
 interface Reward {
@@ -1035,7 +1035,7 @@ if (role === "cafe") {
 
             return (
               <RewardsCard
-                points={points - tierData.current}
+                points={points}
                 status={tierStyle.label}
                 nextReward={tierData.next - tierData.current}
                 themeColor={tierStyle.themeColor}
@@ -1197,20 +1197,29 @@ if (role === "cafe") {
                     <QRCode value={generateQRValue()} size={180} />
                   </View>
 
-                  <Button title="Reward Redeemed" onPress={redeemReward} />
+                  <Button
+                    title="Reward Redeemed"
+                    onPress={async () => {
+                      setSelectedReward(null);
+                      setShowQR(false);
+
+                      await fetchPoints();
+                      await fetchUserRedemptions();
+                    }}
+                  />
                 </>
               )}
               </>
             )}
 
             {/* ─── BUTTONS ─── */}
-            <Button
+            {/* <Button
               title="Done"
               onPress={() => {
                 setSelectedReward(null);
                 setShowQR(false);
               }}
-            />
+            /> */}
 
             <Pressable
               style={styles.closeBtn}

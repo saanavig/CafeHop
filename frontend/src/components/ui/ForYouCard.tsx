@@ -247,12 +247,12 @@ const ForYouCard = ({
             style={styles.image}
             keyExtractor={(_, i) => i.toString()}
             onMomentumScrollEnd={(e) => {
-              const idx = Math.round(e.nativeEvent.contentOffset.x / CARD_WIDTH);
-              setCarouselIndex(idx);
-            }}
-            onScrollEndDrag={(e) => {
-              const idx = Math.round(e.nativeEvent.contentOffset.x / CARD_WIDTH);
-              setCarouselIndex(idx);
+              const screenWidth = e.nativeEvent.layoutMeasurement.width;
+              const index = Math.round(
+                e.nativeEvent.contentOffset.x / screenWidth
+              );
+
+              setCarouselIndex(index);
             }}
             renderItem={({ item }) => (
               <Image

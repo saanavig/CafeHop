@@ -526,11 +526,23 @@ const Index = () => {
     const postId = String(post?.id || post?.post_id || "");
     const cafeName = cafe?.name || post?.cafes?.name || "Cafe";
 
-    const media = getPostMediaFromPost(post);
-    const mediaUrl = media?.file_url;
-    const mediaType = media?.file_type;
+    const mediaList: PostMedia[] = (
+      post?.post_media ||
+      post?.media ||
+      []
+    ).filter(
+      (m: any) =>
+        isValidMediaUrl(m?.file_url) &&
+        typeof m?.file_type === "string"
+    );
 
-    if (!postId || !cafeId || !mediaUrl) return null;
+    if (!postId || !cafeId || mediaList.length === 0) return null;
+
+    const mediaUrls = mediaList.map((m) => m.file_url);
+
+    const firstMedia = mediaList[0];
+    const mediaUrl = firstMedia.file_url;
+    const mediaType = firstMedia.file_type;
 
     const distanceMiles = calculateDistanceMiles(
       coords.lat,
@@ -550,6 +562,7 @@ const Index = () => {
       isRecommended,
       cafeName,
       image: { uri: mediaUrl },
+      images: mediaUrls,
       mediaType,
 
       caption: isRecommended
