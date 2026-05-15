@@ -292,22 +292,95 @@ def is_cafe_open(hours):
 
     return False
 
-# comments 
+# comments for cafe
 @cafe_bp.route("/cafes/<cafe_id>/comments", methods=["GET"])
 def get_comments(cafe_id):
     try:
         response = supabase.table("comments") \
-            .select("id, content, created_at, user_id") \
+            .select("id, content, created_at, user_id, profiles(first_name, full_name)") \
             .eq("cafe_id", cafe_id) \
             .order("created_at", desc=True) \
             .execute()
 
-        return jsonify(response.data), 200
+        comments = []
+        for c in response.data or []:
+            profile = c.get("profiles") or {}
+
+            comments.append({
+                "id": c.get("id"),
+                "content": c.get("content"),
+                "text": c.get("content"),
+                "created_at": c.get("created_at"),
+                "user_id": c.get("user_id"),
+                "username": (
+                    profile.get("first_name")
+                    or profile.get("full_name")
+                    or "User"
+                ),
+            })
+
+        return jsonify(comments), 200
 
     except Exception as e:
         print("Error fetching comments:", str(e))
         return jsonify({"error": "Failed to fetch comments"}), 500
 
+
+# comments for post
+@cafe_bp.route("/posts/<post_id>/comments", methods=["GET"])
+def get_comments_by_post(post_id):
+    try:
+        response = (
+            supabase.table("comments")
+            .select("id, content, created_at, user_id")
+            .eq("post_id", post_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+
+        raw_comments = response.data or []
+
+        comments = []
+
+        for c in raw_comments:
+            user_id = c.get("user_id")
+
+            username = "User"
+
+            try:
+                profile_res = (
+                    supabase.table("profiles")
+                    .select("id, first_name, last_name, full_name")
+                    .eq("id", user_id)
+                    .maybe_single()
+                    .execute()
+                )
+
+                profile = profile_res.data or {}
+
+                username = (
+                    profile.get("full_name")
+                    or profile.get("first_name")
+                    or "User"
+                )
+
+            except Exception as profile_error:
+                print("PROFILE FETCH ERROR:", profile_error)
+
+            comments.append({
+                "id": c.get("id"),
+                "content": c.get("content"),
+                "text": c.get("content"),
+                "created_at": c.get("created_at"),
+                "user_id": user_id,
+                "username": username,
+            })
+
+        return jsonify(comments), 200
+
+    except Exception as e:
+        print("Error fetching post comments:", str(e))
+        return jsonify({"error": "Failed to fetch comments"}), 500
 
 @cafe_bp.route("/cafes/<cafe_id>/comments", methods=["POST"])
 @require_auth
@@ -433,21 +506,7 @@ def delete_comment(comment_id):
         print("Error deleting comment:", str(e))
         return jsonify({"error": "Failed to delete comment"}), 500
 
-#post ids for the comments
-@cafe_bp.route("/posts/<post_id>/comments", methods=["GET"])
-def get_comments_by_post(post_id):
-    try:
-        response = supabase.table("comments") \
-            .select("id, content, created_at, user_id") \
-            .eq("post_id", post_id) \
-            .order("created_at", desc=True) \
-            .execute()
 
-        return jsonify(response.data), 200
-
-    except Exception as e:
-        print("Error fetching post comments:", str(e))
-        return jsonify({"error": "Failed to fetch comments"}), 500
 
 @cafe_bp.route("/posts/<post_id>/comments", methods=["POST"])
 @require_auth
@@ -457,7 +516,6 @@ def add_post_comment(post_id):
 
         user_id = g.user["id"]
         data = request.get_json(silent=True) or {}
-
         content = (data.get("content") or "").strip()
 
         if not content:
@@ -489,14 +547,52 @@ def add_post_comment(post_id):
 
         print("COMMENTS COUNT UPDATE:", update_res.data)
 
+        profile = {}
+
+        try:
+            profile_res = (
+                supabase.table("profiles")
+                .select("first_name, last_name, full_name")
+                .eq("id", user_id)
+                .maybe_single()
+                .execute()
+            )
+
+            if profile_res and profile_res.data:
+                profile = profile_res.data
+
+        except Exception as profile_error:
+            print("PROFILE FETCH ERROR:", profile_error)
+
+        comment = response.data[0]
+
+        full_from_parts = (
+            f"{profile.get('first_name') or ''} "
+            f"{profile.get('last_name') or ''}"
+        ).strip()
+
+        formatted_comment = {
+            "id": comment.get("id"),
+            "content": comment.get("content"),
+            "text": comment.get("content"),
+            "created_at": comment.get("created_at"),
+            "user_id": comment.get("user_id"),
+            "username": (
+                profile.get("full_name")
+                or full_from_parts
+                or profile.get("first_name")
+                or "User"
+            ),
+        }
+
         return jsonify({
-            "comment": response.data[0],
+            "comment": formatted_comment,
             "comments_count": new_count,
         }), 201
 
     except Exception as e:
-        print("COMMENT POST ERROR:", e)
-        return jsonify({"error": str(e)}), 500
+        print("COMMENT POST ERROR:", str(e))
+        return jsonify({"error": "Failed to create comment"}), 500
 
 # google address for autocomplete
 @cafe_bp.route("/places/autocomplete", methods=["GET"])
