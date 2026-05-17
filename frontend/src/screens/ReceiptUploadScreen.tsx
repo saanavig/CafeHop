@@ -160,6 +160,12 @@ export default function ReceiptUploadScreen({
       console.log("WEB BLOB TYPE:", blob.type);
       console.log("WEB BLOB SIZE:", blob.size);
 
+      if (blob.size > 1_500_000) {
+        throw new Error(
+          "Image is still too large. Please crop/screenshot the receipt first."
+        );
+      }
+
       const file = new File([blob], "receipt.jpg", {
         type: "image/jpeg",
       });
