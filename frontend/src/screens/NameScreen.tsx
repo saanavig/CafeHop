@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ArrowLeft } from "lucide-react-native";
 
 import Button from "../components/ui/Button";
 import { supabase } from "../api/supabaseClient";
@@ -72,7 +73,7 @@ export default function NameScreen() {
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={styles.backPressable}
         >
-            <Text style={styles.backText}>← Back</Text>
+            <ArrowLeft size={22} color="#555" />
         </Pressable>
         <Text style={styles.title}>What’s your name?</Text>
 

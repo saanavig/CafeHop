@@ -13,7 +13,7 @@ import React, { useEffect, useState } from "react";
 import { moderateScale, scale, verticalScale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
-import { Coffee } from "lucide-react-native";
+import { ArrowLeft, Coffee } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../api/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
@@ -172,7 +172,7 @@ export default function CustomerOnboardingScreen() {
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={styles.backPressable}
           >
-            <Text style={styles.backText}>← Back</Text>
+            <ArrowLeft size={22} color="#555" />
           </Pressable>
 
           {/* Step 0 — Name */}

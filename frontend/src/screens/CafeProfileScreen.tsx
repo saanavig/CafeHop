@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Bookmark, BookOpen, Globe, Grid3X3, Heart, MapPin, Pencil, Plus, Star, Store, X } from "lucide-react-native";
+import { Bookmark, BookOpen, Globe, Grid3X3, Heart, MapPin, Pencil, Plus, Star, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { ResizeMode, Video } from "expo-av";
 import {
@@ -950,9 +950,16 @@ export default function CafeProfileScreen() {
               </View>
             )}
             <View style={styles.heroOverlay}>
+              <TouchableOpacity
+                style={[styles.statusBadge, { borderColor: status.color }]}
+                onPress={() => setShowHoursModal(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.statusBadgeText, { color: status.color }]}>{status.label}</Text>
+              </TouchableOpacity>
               <Text style={styles.heroTitle}>{cafe.name || "Cafe"}</Text>
               <Text style={styles.heroSubtitle}>
-                ⭐ {averageRating ?? "New"} • {cafe.address || "No address"}
+                ⭐ {averageRating ?? "New"} · {cafe.address || "No address"}
               </Text>
             </View>
           </View>
@@ -960,21 +967,11 @@ export default function CafeProfileScreen() {
 
         <View style={{ width: contentWidth, alignSelf: "center" }}>
           <View style={styles.header}>
-            <View style={[styles.avatar, { backgroundColor: themeColors.iconBg }]}>
-              <Store size={scale(44)} color={themeColors.textMuted} />
-            </View>
-
-            <Text style={[styles.name, { color: themeColors.text }]}>{cafe.name || "Cafe"}</Text>
-
-            <Text style={[styles.bio, { color: themeColors.textMuted }]}>
-              {cafe.description || "No description yet"} •{" "}
-              <Text
-                style={[styles.statusLink, { color: status.color }]}
-                onPress={() => setShowHoursModal(true)}
-              >
-                {status.label}
+            {cafe.description ? (
+              <Text style={[styles.bio, { color: themeColors.textMuted }]}>
+                {cafe.description}
               </Text>
-            </Text>
+            ) : null}
 
             <View style={styles.statsRow}>
               <View style={styles.stat}>
@@ -1758,10 +1755,19 @@ export default function CafeProfileScreen() {
                             setReviewText("");
                           }
                         }}
-                        style={[styles.editProfileButton, { flex: 0, paddingHorizontal: scale(18), backgroundColor: themeColors.card }]}
+                        style={{
+                          width: scale(42),
+                          height: scale(42),
+                          borderRadius: scale(10),
+                          borderWidth: 1,
+                          borderColor: "#D4A373",
+                          backgroundColor: themeColors.card,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
                         activeOpacity={0.85}
                       >
-                        <Text style={styles.editProfileButtonText}>Cancel</Text>
+                        <X size={scale(18)} color="#D4A373" />
                       </TouchableOpacity>
                       <TouchableOpacity onPress={submitReview} style={[styles.addPostButton, { flex: 1 }]} activeOpacity={0.85}>
                         <Text style={styles.addPostButtonText}>
@@ -2185,7 +2191,7 @@ const styles = StyleSheet.create({
   },
 
   hero: { position: "relative" },
-  heroImage: { width: "100%", height: scale(200) },
+  heroImage: { width: "100%", height: scale(240) },
   heroDots: {
     position: "absolute",
     top: scale(10),
@@ -2209,22 +2215,39 @@ const styles = StyleSheet.create({
   },
   heroOverlay: {
     position: "absolute",
-    bottom: scale(12),
-    left: scale(12),
-    right: scale(12),
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0,0,0,0.52)",
+    paddingHorizontal: scale(14),
+    paddingTop: scale(22),
+    paddingBottom: scale(14),
+  },
+  statusBadge: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: scale(10),
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(3),
+    marginBottom: scale(6),
+    backgroundColor: "rgba(0,0,0,0.3)",
+  },
+  statusBadgeText: {
+    fontSize: moderateScale(11),
+    fontWeight: "600",
   },
   heroTitle: {
     color: "#FFF",
-    fontSize: moderateScale(18),
+    fontSize: moderateScale(20),
     fontWeight: "700",
+    marginBottom: scale(3),
   },
   heroSubtitle: {
-    color: "#FFF",
+    color: "rgba(255,255,255,0.85)",
     fontSize: moderateScale(12),
-    marginTop: verticalScale(4),
   },
 
-  header: { padding: scale(16), alignItems: "center" },
+  header: { paddingHorizontal: scale(16), paddingTop: scale(14), paddingBottom: scale(4) },
   avatar: {
     width: scale(100),
     height: scale(100),
@@ -2243,10 +2266,8 @@ const styles = StyleSheet.create({
   bio: {
     fontSize: moderateScale(13),
     color: "#777",
-    textAlign: "center",
-    marginBottom: verticalScale(12), 
-    marginTop: scale(4),
-    lineHeight: moderateScale(18),
+    marginBottom: verticalScale(10),
+    lineHeight: moderateScale(19),
   },
 
   statsRow: {

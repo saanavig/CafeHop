@@ -437,7 +437,7 @@ const HistoryScreen = () => {
         </View>
 
         {loading ? (
-          <View style={styles.loadingState}>
+          <View style={[styles.loadingState, { width: "100%" }]}>
             <ActivityIndicator color={themeColors.accent} />
           </View>
         ) : (

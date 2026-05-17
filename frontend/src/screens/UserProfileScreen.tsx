@@ -1244,7 +1244,8 @@ const styles = StyleSheet.create({
   header: { padding: scale(16), alignItems: "center" },
   avatar: {
     width: scale(100), height: scale(100), borderRadius: scale(50),
-    backgroundColor: "#E8DFD5", justifyContent: "center", alignItems: "center", marginBottom: scale(12),
+    backgroundColor: "#E8DFD5", justifyContent: "center", alignItems: "center",
+    marginTop: scale(8), marginBottom: scale(12),
   },
   name: { fontSize: moderateScale(18), fontWeight: "700", color: "#1A1A1A", marginTop: scale(4) },
   bio: { fontSize: moderateScale(13), color: "#777", textAlign: "center", marginTop: scale(4), lineHeight: moderateScale(18) },
