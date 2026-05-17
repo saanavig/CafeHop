@@ -262,6 +262,7 @@ export default function ExploreScreen() {
       const res = await fetch(`${API_URL}/api/cafe/all`);
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
+      console.log("CAFE DATA:", data);
 
       const cleaned = data.map((c: any) => {
         let attrs: string[] = [];
