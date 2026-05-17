@@ -9,19 +9,16 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
-  ViewStyle,
-  TextStyle,
 } from "react-native";
-//recueptuploadscreen.tsx
+
 import React, { useState } from "react";
 import { moderateScale, scale } from "../utils/responsive";
 
 import Button from "../components/ui/Button";
-import { supabase } from "../api/supabaseClient";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from "../api/supabaseClient";
 import { useTheme } from "../context/ThemeContext";
 
 type UploadState = "idle" | "uploading" | "success" | "error";
@@ -39,9 +36,223 @@ export default function ReceiptUploadScreen({
   const [successMessage, setSuccessMessage] = useState("");
   const [ocrText, setOcrText] = useState("");
   const [earnedPoints, setEarnedPoints] = useState<number | null>(null);
+
   const { colors: themeColors } = useTheme();
 
   const BACKEND_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/receipt`;
+
+  const compressReceiptImage = async (uri: string) => {
+    const compressed = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 700 } }],
+      {
+        compress: 0.5,
+        format: ImageManipulator.SaveFormat.JPEG,
+      }
+    );
+
+    console.log("ORIGINAL IMAGE URI:", uri);
+    console.log("COMPRESSED IMAGE URI:", compressed.uri);
+    console.log("COMPRESSED WIDTH:", compressed.width);
+    console.log("COMPRESSED HEIGHT:", compressed.height);
+
+    return compressed.uri;
+  };
+
+  const resetUploadState = () => {
+    setUploadState("idle");
+    setErrorMessage("");
+    setSuccessMessage("");
+    setOcrText("");
+    setEarnedPoints(null);
+  };
+
+  const requestCameraPermission = async () => {
+    const result = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!result.granted) {
+      Alert.alert("Permission needed", "Camera permission is required.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const requestMediaPermission = async () => {
+    const result = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!result.granted) {
+      Alert.alert("Permission needed", "Media library permission is required.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const requestLocation = async () => {
+    const result = await Location.requestForegroundPermissionsAsync();
+
+    if (result.status !== "granted") {
+      throw new Error("Location permission denied");
+    }
+
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
+
+    return {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
+  };
+
+  const takePhoto = async () => {
+    const ok = await requestCameraPermission();
+    if (!ok) return;
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"] as any,
+      quality: 0.6,
+      allowsEditing: true,
+      base64: false,
+      exif: false,
+    });
+
+    if (!result.canceled) {
+      const compressedUri = await compressReceiptImage(result.assets[0].uri);
+      setImageUri(compressedUri);
+      resetUploadState();
+    }
+  };
+
+  const pickFromGallery = async () => {
+    const ok = await requestMediaPermission();
+    if (!ok) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"] as any,
+      quality: 0.6,
+      allowsEditing: true,
+      base64: false,
+      exif: false,
+    });
+
+    if (!result.canceled) {
+      const compressedUri = await compressReceiptImage(result.assets[0].uri);
+      setImageUri(compressedUri);
+      resetUploadState();
+    }
+  };
+
+  const buildFormData = async () => {
+    if (!imageUri) {
+      throw new Error("Please select a receipt image first.");
+    }
+
+    const { latitude, longitude } = await requestLocation();
+
+    const formData = new FormData();
+
+    if (Platform.OS === "web") {
+      const imgResponse = await fetch(imageUri);
+      const blob = await imgResponse.blob();
+
+      console.log("WEB BLOB TYPE:", blob.type);
+      console.log("WEB BLOB SIZE:", blob.size);
+
+      const file = new File([blob], "receipt.jpg", {
+        type: "image/jpeg",
+      });
+
+      formData.append("file", file);
+    } else {
+      formData.append("file", {
+        uri: imageUri,
+        name: "receipt.jpg",
+        type: "image/jpeg",
+      } as any);
+    }
+
+    formData.append("latitude", String(latitude));
+    formData.append("longitude", String(longitude));
+
+    return formData;
+  };
+
+  const uploadReceipt = async () => {
+    try {
+      setUploadState("uploading");
+      setErrorMessage("");
+      setSuccessMessage("");
+      setOcrText("");
+      setEarnedPoints(null);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const token = session?.access_token;
+
+      if (!token) {
+        throw new Error("User not authenticated");
+      }
+
+      console.log("BACKEND_URL:", BACKEND_URL);
+      console.log("imageUri:", imageUri);
+      console.log("platform:", Platform.OS);
+
+      const formData = await buildFormData();
+
+      const response = await fetch(BACKEND_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const text = await response.text();
+      console.log("RECEIPT RAW RESPONSE:", text);
+
+      let data: any;
+
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { error: text };
+      }
+
+      console.log("RECEIPT STATUS:", response.status);
+      console.log("RECEIPT DATA:", data);
+
+      if (!response.ok || !data.success) {
+        const backendError =
+          data?.error ||
+          data?.details?.reason ||
+          data?.details ||
+          "Receipt upload failed. Please try again.";
+
+        throw new Error(String(backendError));
+      }
+
+      setUploadState("success");
+      setSuccessMessage("Receipt uploaded successfully.");
+      setOcrText(data?.data?.ocrText || "");
+      setEarnedPoints(data?.data?.points_earned ?? null);
+    } catch (error: any) {
+      setUploadState("error");
+      setErrorMessage(error.message || "Something went wrong.");
+    }
+  };
+
+  const resetForm = () => {
+    setImageUri(null);
+    setUploadState("idle");
+    setErrorMessage("");
+    setSuccessMessage("");
+    setOcrText("");
+    setEarnedPoints(null);
+  };
 
   const styles = {
     container: {
@@ -169,211 +380,11 @@ export default function ReceiptUploadScreen({
     },
   } as any;
 
-  const requestCameraPermission = async () => {
-    const result = await ImagePicker.requestCameraPermissionsAsync();
-    if (!result.granted) {
-      Alert.alert("Permission needed", "Camera permission is required.");
-      return false;
-    }
-    return true;
-  };
-
-  const compressReceiptImage = async (uri: string) => {
-    const compressed = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ resize: { width: 1000 } }],
-      {
-        compress: 0.65,
-        format: ImageManipulator.SaveFormat.JPEG,
-      }
-    );
-
-    return compressed.uri;
-  };
-
-  const requestMediaPermission = async () => {
-    const result = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!result.granted) {
-      Alert.alert(
-        "Permission needed",
-        "Media library permission is required."
-      );
-      return false;
-    }
-    return true;
-  };
-
-  const requestLocation = async () => {
-    const result = await Location.requestForegroundPermissionsAsync();
-    if (result.status !== "granted") {
-      throw new Error("Location permission denied");
-    }
-
-    const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-    });
-
-    return {
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-    };
-  };
-
-  const takePhoto = async () => {
-    const ok = await requestCameraPermission();
-    if (!ok) return;
-
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["images"] as any,
-      quality: 0.8,
-      allowsEditing: true,
-    });
-
-    if (!result.canceled) {
-      const compressedUri = await compressReceiptImage(result.assets[0].uri);
-      setImageUri(compressedUri);
-      setUploadState("idle");
-      setErrorMessage("");
-      setSuccessMessage("");
-      setOcrText("");
-      setEarnedPoints(null);
-    }
-  };
-
-  const pickFromGallery = async () => {
-    const ok = await requestMediaPermission();
-    if (!ok) return;
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"] as any,
-      quality: 0.8,
-      allowsEditing: true,
-    });
-
-    if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
-      setUploadState("idle");
-      setErrorMessage("");
-      setSuccessMessage("");
-      setOcrText("");
-      setEarnedPoints(null);
-    }
-  };
-
-  const buildFormData = async () => {
-    if (!imageUri) {
-      throw new Error("Please select a receipt image first.");
-    }
-
-    const { latitude, longitude } = await requestLocation();
-
-    const filename = imageUri.split("/").pop() || "receipt.jpg";
-    const match = /\.(\w+)$/.exec(filename);
-    const ext = match?.[1]?.toLowerCase();
-
-    let mimeType = "image/jpeg";
-    if (ext === "png") mimeType = "image/png";
-
-    const formData = new FormData();
-
-    if (Platform.OS === "web") {
-      const imgResponse = await fetch(imageUri);
-      const blob = await imgResponse.blob();
-
-      const file = new File([blob], "receipt.jpg", {
-        type: "image/jpeg",
-      });
-
-      formData.append("file", file);
-    } else {
-      formData.append("file", {
-        uri: imageUri,
-        name: "receipt.jpg",
-        type: "image/jpeg",
-      } as any);
-    }
-
-    formData.append("latitude", String(latitude));
-    formData.append("longitude", String(longitude));
-
-    return formData;
-  };
-
-  const uploadReceipt = async () => {
-    try {
-      setUploadState("uploading");
-      setErrorMessage("");
-      setSuccessMessage("");
-      setOcrText("");
-      setEarnedPoints(null);
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      const token = session?.access_token;
-
-      if (!token) {
-        throw new Error("User not authenticated");
-      }
-
-      console.log("imageUri:", imageUri);
-      console.log("platform:", Platform.OS);
-
-      const formData = await buildFormData();
-
-      const response = await fetch(BACKEND_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const text = await response.text();
-      console.log("RECEIPT RAW RESPONSE:", text);
-
-      let data: any;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = { error: text };
-      }
-
-      console.log("RECEIPT STATUS:", response.status);
-      console.log("RECEIPT DATA:", data);
-
-      if (!response.ok || !data.success) {
-        const backendError =
-          data?.error ||
-          data?.details?.reason ||
-          "Receipt upload failed. Please try again.";
-        throw new Error(backendError);
-      }
-
-      setUploadState("success");
-      setSuccessMessage("Receipt uploaded successfully.");
-      setOcrText(data?.data?.ocrText || "");
-      setEarnedPoints(data.data.points_earned);
-    } catch (error: any) {
-      setUploadState("error");
-      setErrorMessage(error.message || "Something went wrong.");
-    }
-  };
-
-  const resetForm = () => {
-    setImageUri(null);
-    setUploadState("idle");
-    setErrorMessage("");
-    setSuccessMessage("");
-    setOcrText("");
-    setEarnedPoints(null);
-  };
-
   return (
     <SafeAreaView edges={["top"]} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Upload Receipt</Text>
+
         <Text style={styles.subtitle}>
           Submit a cafe receipt to earn loyalty points
         </Text>
@@ -389,7 +400,9 @@ export default function ReceiptUploadScreen({
 
           <View style={styles.buttonGroup}>
             <Button title="Take Photo" onPress={takePhoto} />
+
             <View style={{ height: scale(10) }} />
+
             <Button
               title="Choose From Gallery"
               variant="outline"
@@ -410,6 +423,7 @@ export default function ReceiptUploadScreen({
           {uploadState === "uploading" && (
             <View style={styles.statusBox}>
               <ActivityIndicator />
+
               <Text style={styles.statusText}>
                 Processing receipt, getting location, and validating purchase...
               </Text>
@@ -419,7 +433,9 @@ export default function ReceiptUploadScreen({
           {uploadState === "success" && (
             <View style={styles.successBox}>
               <Text style={styles.successTitle}>Success 🎉</Text>
+
               <Text style={styles.successText}>{successMessage}</Text>
+
               {earnedPoints !== null && (
                 <Text style={styles.pointsText}>
                   +{earnedPoints} points earned
