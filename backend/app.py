@@ -122,6 +122,9 @@ def cafe_only():
 @require_auth
 def receipt_upload():
     user_id = flask_g.user["id"]
+    print("RECEIPT ENDPOINT HIT")
+    print("REQUEST FILES:", request.files)
+    print("CONTENT TYPE:", request.content_type)
 
     # 1) Required file
     if "file" not in request.files:
