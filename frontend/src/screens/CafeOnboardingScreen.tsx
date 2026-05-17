@@ -2,7 +2,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 
 import { Alert, Linking } from "react-native";
-import { CheckCircle, Coffee } from "lucide-react-native";
+import { ArrowLeft, CheckCircle, Coffee } from "lucide-react-native";
 import {
   Pressable,
   ScrollView,
@@ -256,7 +256,7 @@ export default function CafeOnboarding({ navigation }: any) {
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={styles.backPressable}
           >
-            <Text style={styles.backText}>← Back</Text>
+            <ArrowLeft size={22} color="#555" />
           </Pressable>
 
           {/* STEP 1 — Cafe Info */}

@@ -155,8 +155,8 @@ const styles = StyleSheet.create({
   toggleLabelActive: { color: "#FFF" },
 
   navWrapper: {
-    width: "90%",
-    maxWidth: 480,
+    width: "100%",
+    maxWidth: 430,
     flexDirection: "row",
     justifyContent: "space-around",
   },

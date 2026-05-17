@@ -171,11 +171,12 @@ const styles = StyleSheet.create({
     paddingTop: scale(8),
     marginBottom: scale(16),
   },
-  backButton: { padding: scale(8), marginRight: scale(4) },
+  backButton: { padding: scale(8), marginRight: scale(12) },
   headerTitle: {
     fontSize: moderateScale(20),
     fontWeight: "600",
     fontFamily: "PlayfairDisplay_700Bold",
+    marginLeft: scale(8),
     color: "#1A1A1A",
   },
   content: { alignSelf: "center", paddingHorizontal: scale(16) },

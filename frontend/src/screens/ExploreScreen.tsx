@@ -1,7 +1,6 @@
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
   FlatList,
   Image,
   Modal,
@@ -14,6 +13,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import {
   Bookmark,
@@ -43,9 +43,6 @@ import { useRole } from "../context/RoleContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 
-const { width: RAW_WIDTH, height: RAW_HEIGHT } = Dimensions.get("window");
-const width  = Math.min(RAW_WIDTH,  430);
-const height = Math.min(RAW_HEIGHT, 932);
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -70,11 +67,6 @@ declare global {
   }
 }
 
-const SHEET_HEIGHT = height * 0.52;
-const SHEET_FULL_HEIGHT = height * 0.84;
-const SNAP_EXPANDED  = 0;
-const SNAP_HALF      = Math.round(SHEET_FULL_HEIGHT - height * 0.48);
-const SNAP_COLLAPSED = Math.round(SHEET_FULL_HEIGHT - 120);
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -82,6 +74,14 @@ export default function ExploreScreen() {
   const { role } = useRole();
   const navigation = useNavigation<any>();
   const { colors: themeColors } = useTheme();
+
+  const { width: RAW_WIDTH, height: RAW_HEIGHT } = useWindowDimensions();
+  const width = Math.min(RAW_WIDTH, 430);
+  const height = Math.min(RAW_HEIGHT, 932);
+  const SHEET_FULL_HEIGHT = height * 0.84;
+  const SNAP_EXPANDED  = 0;
+  const SNAP_HALF      = Math.round(SHEET_FULL_HEIGHT - height * 0.48);
+  const SNAP_COLLAPSED = Math.round(SHEET_FULL_HEIGHT - 120);
 
   const [search, setSearch]               = useState("");
   const [inputText, setInputText]         = useState("");
@@ -164,22 +164,28 @@ export default function ExploreScreen() {
   const sheetAnim = useRef(new Animated.Value(SNAP_HALF)).current;
   const snapRef   = useRef(SNAP_HALF);
 
+  // Always-current snap targets readable inside the static PanResponder closure
+  const snapTargetsRef = useRef({ expanded: SNAP_EXPANDED, half: SNAP_HALF, collapsed: SNAP_COLLAPSED });
+  snapTargetsRef.current = { expanded: SNAP_EXPANDED, half: SNAP_HALF, collapsed: SNAP_COLLAPSED };
+
   const sheetPan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gs) =>
         Math.abs(gs.dy) > 6 && Math.abs(gs.dy) > Math.abs(gs.dx),
       onPanResponderMove: (_, gs) => {
+        const { expanded, collapsed } = snapTargetsRef.current;
         const next = snapRef.current + gs.dy;
-        sheetAnim.setValue(Math.max(SNAP_EXPANDED, Math.min(SNAP_COLLAPSED, next)));
+        sheetAnim.setValue(Math.max(expanded, Math.min(collapsed, next)));
       },
       onPanResponderRelease: (_, gs) => {
-        const snaps = [SNAP_EXPANDED, SNAP_HALF, SNAP_COLLAPSED];
+        const { expanded, half, collapsed } = snapTargetsRef.current;
+        const snaps = [expanded, half, collapsed];
         const pos   = snapRef.current + gs.dy;
         let target: number;
         if (gs.vy > 0.4) {
-          target = snaps.find(s => s > snapRef.current) ?? SNAP_COLLAPSED;
+          target = snaps.find(s => s > snapRef.current) ?? collapsed;
         } else if (gs.vy < -0.4) {
-          target = [...snaps].reverse().find(s => s < snapRef.current) ?? SNAP_EXPANDED;
+          target = [...snaps].reverse().find(s => s < snapRef.current) ?? expanded;
         } else {
           target = snaps.reduce((a, b) => Math.abs(b - pos) < Math.abs(a - pos) ? b : a);
         }
@@ -220,6 +226,12 @@ export default function ExploreScreen() {
   useEffect(() => {
     fetchCafes();
   }, []);
+
+  // Re-snap the sheet whenever screen dimensions change (e.g. DevTools resize)
+  useEffect(() => {
+    snapRef.current = SNAP_HALF;
+    Animated.spring(sheetAnim, { toValue: SNAP_HALF, useNativeDriver: true, friction: 9, tension: 75 }).start();
+  }, [SNAP_HALF]);
 
   useEffect(() => {
     const init = async () => {
@@ -670,7 +682,13 @@ export default function ExploreScreen() {
 
       {/* ── BOTTOM SHEET (list) ─────────────────────────────── */}
       <Animated.View
-        style={[styles.sheet, { backgroundColor: themeColors.card, transform: [{ translateY: sheetAnim }] }]}
+        style={[styles.sheet, {
+          width,
+          left: (RAW_WIDTH - width) / 2,
+          height: SHEET_FULL_HEIGHT,
+          backgroundColor: themeColors.card,
+          transform: [{ translateY: sheetAnim }],
+        }]}
         ref={sheetRef}
       >
         <View style={styles.handleArea} {...sheetPan.panHandlers}>
@@ -701,7 +719,7 @@ export default function ExploreScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: scale(16),
-            paddingBottom: 100
+            paddingBottom: SNAP_HALF + 100
           }}
           refreshControl={
             <RefreshControl
@@ -1007,7 +1025,7 @@ export default function ExploreScreen() {
           </TouchableOpacity>
 
           {selectedCafe && (
-            <Animated.View style={[styles.detailSheet, { backgroundColor: themeColors.card, transform: [{ translateY: detailSlide }] }]}>
+            <Animated.View style={[styles.detailSheet, { backgroundColor: themeColors.card, height: height * 0.92, transform: [{ translateY: detailSlide }] }]}>
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: scale(48) }}>
 
                 {/* ── Photo Carousel ── */}
@@ -1022,7 +1040,7 @@ export default function ExploreScreen() {
                       setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / width));
                     }}
                     renderItem={({ item }) => (
-                      <Image source={item} style={styles.detailHero} resizeMode="cover" />
+                      <Image source={item} style={[styles.detailHero, { width }]} resizeMode="cover" />
                     )}
                   />
 
@@ -1399,8 +1417,6 @@ const styles = StyleSheet.create({
 
   sheet: {
     position: "absolute", bottom: 0,
-    width: width, left: (RAW_WIDTH - width) / 2,
-    height: SHEET_FULL_HEIGHT, backgroundColor: "#FFF",
     borderTopLeftRadius: scale(28), borderTopRightRadius: scale(28),
     shadowColor: "#000", shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.12, shadowRadius: 20, elevation: 20, overflow: "visible",
@@ -1481,14 +1497,13 @@ const styles = StyleSheet.create({
   // ── Detail modal ──
   detailSheet: {
     position: "absolute", bottom: 0, left: 0, right: 0,
-    height: height * 0.92, backgroundColor: "#FFF",
     borderTopLeftRadius: scale(28), borderTopRightRadius: scale(28),
     shadowColor: "#000", shadowOffset: { width: 0, height: -6 },
     shadowOpacity: 0.18, shadowRadius: 24, elevation: 24, overflow: "hidden",
   },
 
   heroWrap: { position: "relative", width: "100%", height: scale(230) },
-  detailHero: { width, height: scale(230) },
+  detailHero: { height: scale(230) },
   heroOverlay: {
     position: "absolute", bottom: scale(12), left: scale(12),
   },
