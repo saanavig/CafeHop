@@ -33,16 +33,23 @@ import os
 app = Flask(__name__)
 CORS(
     app,
-    resources={r"/*": {"origins": "*"}},
+    resources={
+        r"/*": {
+            "origins": [
+                "https://cafe-hop.vercel.app",
+                "http://localhost:8081",
+                "http://localhost:3000",
+            ]
+        }
+    },
     supports_credentials=True,
     allow_headers=["Content-Type", "Authorization"],
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
 )
-
-@app.before_request
-def handle_options():
-    if request.method == "OPTIONS":
-        return "", 200
+# @app.before_request
+# def handle_options():
+#     if request.method == "OPTIONS":
+#         return "", 200
 
 app.register_blueprint(reviews_bp, url_prefix="/api")
 app.register_blueprint(cafe_bp, url_prefix="/api")
