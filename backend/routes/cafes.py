@@ -274,8 +274,9 @@ def get_all_cafes():
 
 def is_cafe_open(hours):
     now = datetime.now()
-    day = (now.weekday() + 1) % 7  # Sunday = 0, Monday = 1
-    current_time = now.strftime("%H:%M:%S")
+
+    day = (now.weekday() + 1) % 7
+    current_time = now.time()
 
     for h in hours:
         if h.get("day_of_week") != day:
@@ -287,7 +288,10 @@ def is_cafe_open(hours):
         if not open_time or not close_time:
             continue
 
-        if open_time <= current_time <= close_time:
+        open_obj = datetime.strptime(open_time, "%H:%M:%S").time()
+        close_obj = datetime.strptime(close_time, "%H:%M:%S").time()
+
+        if open_obj <= current_time <= close_obj:
             return True
 
     return False
