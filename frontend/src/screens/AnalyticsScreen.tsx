@@ -117,7 +117,19 @@ export default function AnalyticsScreen() {
     }
   };
 
-  const peakHours = analytics?.peak_hours || [];
+  const rawPeakHours = analytics?.peak_hours || [];
+
+  const peakHours = Array.from({ length: 13 }, (_, i) => {
+    const hour = i + 9;
+
+    const existing = rawPeakHours.find((h) => h.hour === hour);
+
+    return {
+      hour,
+      count: existing?.count || 0,
+    };
+  });
+
   const maxBar = Math.max(...peakHours.map((h) => h.count), 1);
 
   useEffect(() => {
@@ -273,25 +285,27 @@ export default function AnalyticsScreen() {
               <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Peak Hours</Text>
             </View>
             <View style={[styles.chartContainer, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
-              {peakHours.length === 0 ? (
-                <View style={styles.chartEmpty}>
-                  <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>No data yet</Text>
-                </View>
-              ) : peakHours.map((hour) => (
-                <View key={hour.hour} style={styles.barGroup}>
-                  <View style={styles.barTrack}>
-                    <View
-                      style={[
-                        styles.bar,
-                        { height: (hour.count / maxBar) * 80 },
-                        hour.count === maxBar && styles.barPeak,
-                      ]}
-                    />
+              {peakHours.map((hour) => (
+                  <View key={hour.hour} style={styles.barGroup}>
+                    <View style={styles.barTrack}>
+                      <View
+                        style={[
+                          styles.bar,
+                          // { height: (hour.count / maxBar) * 80 },
+                          hour.count === maxBar && styles.barPeak,{
+                            height:
+                              hour.count === 0
+                                ? 2
+                                : Math.max((hour.count / maxBar) * 80, 10)
+                          }
+                        ]}
+                      />
+                    </View>
+
+                    <Text style={[styles.barLabel, { color: themeColors.textMuted }]}>
+                      {formatHour(hour.hour)}
+                    </Text>
                   </View>
-                  <Text style={[styles.barLabel, { color: themeColors.textMuted }]}>
-                    {formatHour(hour.hour)}
-                  </Text>
-                </View>
               ))}
             </View>
           </View>
@@ -427,25 +441,42 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: moderateScale(16), fontWeight: "600", color: "#1A1A1A" },
 
   chartContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    backgroundColor: "#FFF",
-    borderRadius: scale(16),
-    padding: scale(16),
-    borderWidth: 1,
-    borderColor: "#E8DFD5",
-    gap: scale(4),
-  },
-  barGroup: { flex: 1, alignItems: "center" },
-  barTrack: { height: scale(80), justifyContent: "flex-end" },
-  bar: {
-    width: "100%",
-    minWidth: scale(8),
-    backgroundColor: "#F0E0D0",
-    borderRadius: scale(4),
-  },
-  barPeak: { backgroundColor: "#D4A373" },
-  barLabel: { fontSize: moderateScale(9), color: "#888", marginTop: scale(4) },
+  flexDirection: "row",
+  alignItems: "flex-end",
+  justifyContent: "space-between",
+  backgroundColor: "#FFF",
+  borderRadius: scale(16),
+  paddingHorizontal: scale(12),
+  paddingVertical: scale(18),
+  borderWidth: 1,
+  borderColor: "#E8DFD5",
+},
+
+barGroup: {
+  flex: 1,
+  alignItems: "center",
+},
+
+barTrack: {
+  height: scale(90),
+  justifyContent: "flex-end",
+},
+
+bar: {
+  width: scale(12),
+  backgroundColor: "#F0E0D0",
+  borderRadius: scale(6),
+},
+
+barPeak: {
+  backgroundColor: "#D4A373",
+},
+
+barLabel: {
+  fontSize: moderateScale(9),
+  color: "#888",
+  marginTop: scale(6),
+},
 
   visitorsList: { gap: scale(10) },
   visitorRow: {
