@@ -1,5 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
+import * as ImageManipulator from "expo-image-manipulator";
 
 import {
   ActivityIndicator,
@@ -177,6 +178,19 @@ export default function ReceiptUploadScreen({
     return true;
   };
 
+  const compressReceiptImage = async (uri: string) => {
+    const compressed = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 1000 } }],
+      {
+        compress: 0.65,
+        format: ImageManipulator.SaveFormat.JPEG,
+      }
+    );
+
+    return compressed.uri;
+  };
+
   const requestMediaPermission = async () => {
     const result = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!result.granted) {
@@ -216,7 +230,8 @@ export default function ReceiptUploadScreen({
     });
 
     if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
+      const compressedUri = await compressReceiptImage(result.assets[0].uri);
+      setImageUri(compressedUri);
       setUploadState("idle");
       setErrorMessage("");
       setSuccessMessage("");
@@ -264,12 +279,17 @@ export default function ReceiptUploadScreen({
     if (Platform.OS === "web") {
       const imgResponse = await fetch(imageUri);
       const blob = await imgResponse.blob();
-      formData.append("file", blob, filename);
+
+      const file = new File([blob], "receipt.jpg", {
+        type: "image/jpeg",
+      });
+
+      formData.append("file", file);
     } else {
       formData.append("file", {
         uri: imageUri,
-        name: filename,
-        type: mimeType,
+        name: "receipt.jpg",
+        type: "image/jpeg",
       } as any);
     }
 
