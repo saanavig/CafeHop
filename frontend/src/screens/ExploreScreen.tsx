@@ -296,7 +296,7 @@ export default function ExploreScreen() {
           price_level: c.price_level ? Number(c.price_level) : null,
           latitude: c.latitude ? Number(c.latitude) : null,
           longitude: c.longitude ? Number(c.longitude) : null,
-          isOpen: c.isOpen ?? false,
+          isOpen: c.isOpen ?? c.is_open ?? false,
         };
       });
 
