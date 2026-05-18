@@ -290,7 +290,7 @@ def is_cafe_open(hours):
     now = datetime.now(ZoneInfo("America/New_York"))
     day = (now.weekday() + 1) % 7
     current_time = now.time()
-
+    print("NY TIME NOW:", now, flush=True)
     for h in hours:
         if h.get("day_of_week") != day:
             continue
