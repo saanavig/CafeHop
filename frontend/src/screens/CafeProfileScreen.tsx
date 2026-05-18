@@ -1192,9 +1192,37 @@ export default function CafeProfileScreen() {
 
                 {(hasMenu || isEditing) && (
                   <>
-                    <Text style={styles.sectionTitle}>
-                      {isEditing ? "Editing Menu" : "Menu"}
-                    </Text>
+                    <View style={styles.menuSectionHeader}>
+                      <Text style={styles.sectionTitle}>
+                        {isEditing ? "Editing Menu" : "Menu"}
+                      </Text>
+                      {isOwner && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            if (isEditing) {
+                              setIsEditing(false);
+                              setAddingItemCategory(null);
+                              setEditingItemId(null);
+                              setFormError("");
+                              setNewName("");
+                              setNewPrice("");
+                              setNewCategory("");
+                              setNewDescription("");
+                              setNewImage(null);
+                            } else {
+                              setIsEditing(true);
+                            }
+                          }}
+                          style={styles.menuEditToggle}
+                        >
+                          {isEditing ? (
+                            <Text style={styles.doneText}>Done</Text>
+                          ) : (
+                            <Pencil size={scale(14)} color="#D4A373" />
+                          )}
+                        </TouchableOpacity>
+                      )}
+                    </View>
 
                     {isEditing && isOwner && (
                       <TouchableOpacity
@@ -2303,13 +2331,23 @@ const styles = StyleSheet.create({
   },
 
   section: { padding: scale(16) },
+  menuSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: verticalScale(20),
+    marginBottom: verticalScale(12),
+  },
+  menuEditToggle: {
+    position: "absolute",
+    right: 0,
+    padding: scale(6),
+  },
   sectionTitle: {
     color: "#D4A373",
     fontWeight: "700",
     fontSize: moderateScale(16),
     textAlign: "center",
-    marginTop: verticalScale(20),
-    marginBottom: verticalScale(12),
   },
 
   emptyState: {
