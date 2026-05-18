@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 
 
+
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 # SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
@@ -287,7 +288,6 @@ def get_all_cafes():
 
 def is_cafe_open(hours):
     now = datetime.now(ZoneInfo("America/New_York"))
-
     day = (now.weekday() + 1) % 7
     current_time = now.time()
 
@@ -295,20 +295,20 @@ def is_cafe_open(hours):
         if h.get("day_of_week") != day:
             continue
 
-        open_time = parse_time_value(h.get("open_time"))
-        close_time = parse_time_value(h.get("close_time"))
+        open_time = h.get("open_time")
+        close_time = h.get("close_time")
 
         if not open_time or not close_time:
             continue
 
-        # normal same-day hours
-        if open_time <= close_time:
-            if open_time <= current_time <= close_time:
-                return True
+        open_obj = datetime.strptime(str(open_time).split("+")[0], "%H:%M:%S").time()
+        close_obj = datetime.strptime(str(close_time).split("+")[0], "%H:%M:%S").time()
 
-        # handles places open past midnight
+        if open_obj <= close_obj:
+            if open_obj <= current_time <= close_obj:
+                return True
         else:
-            if current_time >= open_time or current_time <= close_time:
+            if current_time >= open_obj or current_time <= close_obj:
                 return True
 
     return False
