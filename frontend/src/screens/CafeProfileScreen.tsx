@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Bookmark, BookOpen, Globe, Grid3X3, Heart, MapPin, Pencil, Plus, Star, X } from "lucide-react-native";
+import { Bookmark, BookOpen, Globe, Grid3X3, Heart, MapPin, Pencil, Plus, Star, Trash2, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { ResizeMode, Video } from "expo-av";
 import {
@@ -1554,13 +1554,13 @@ export default function CafeProfileScreen() {
                                       }}
                                       style={{ marginRight: scale(10) }}
                                     >
-                                      <Text>✏️</Text>
+                                      <Pencil size={scale(15)} color="#D4A373" />
                                     </TouchableOpacity>
 
                                     <TouchableOpacity
                                       onPress={() => handleDeleteItem(item)}
                                     >
-                                      <Text>🗑</Text>
+                                      <Trash2 size={scale(15)} color="#C62828" />
                                     </TouchableOpacity>
                                   </View>
                                 </>
