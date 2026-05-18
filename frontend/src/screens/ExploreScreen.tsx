@@ -263,6 +263,14 @@ export default function ExploreScreen() {
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
       console.log("CAFE DATA:", data);
+      console.log(
+        "IS OPEN VALUES:",
+        data.map((c: any) => ({
+          name: c.name,
+          isOpen: c.isOpen,
+          is_open: c.is_open,
+        }))
+      );
 
       const cleaned = data.map((c: any) => {
         let attrs: string[] = [];
