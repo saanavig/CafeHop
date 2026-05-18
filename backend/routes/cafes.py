@@ -7,13 +7,26 @@ from dotenv import load_dotenv
 from datetime import datetime
 import requests
 from services.notification_service import create_notification
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
-load_dotenv()
+
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 # SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 # supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+def parse_time_value(value):
+    if not value:
+        return None
+
+    value = str(value).split("+")[0]
+
+    return datetime.strptime(value, "%H:%M:%S").time()
+load_dotenv()
+
+
 
 cafe_bp = Blueprint("cafe_bp", __name__)
 
@@ -273,7 +286,7 @@ def get_all_cafes():
         return jsonify({"error": "Internal server error"}), 500
 
 def is_cafe_open(hours):
-    now = datetime.now()
+    now = datetime.now(ZoneInfo("America/New_York"))
 
     day = (now.weekday() + 1) % 7
     current_time = now.time()
@@ -282,17 +295,21 @@ def is_cafe_open(hours):
         if h.get("day_of_week") != day:
             continue
 
-        open_time = h.get("open_time")
-        close_time = h.get("close_time")
+        open_time = parse_time_value(h.get("open_time"))
+        close_time = parse_time_value(h.get("close_time"))
 
         if not open_time or not close_time:
             continue
 
-        open_obj = datetime.strptime(open_time, "%H:%M:%S").time()
-        close_obj = datetime.strptime(close_time, "%H:%M:%S").time()
+        # normal same-day hours
+        if open_time <= close_time:
+            if open_time <= current_time <= close_time:
+                return True
 
-        if open_obj <= current_time <= close_obj:
-            return True
+        # handles places open past midnight
+        else:
+            if current_time >= open_time or current_time <= close_time:
+                return True
 
     return False
 
