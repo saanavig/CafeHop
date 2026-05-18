@@ -303,7 +303,7 @@ export default function AnalyticsScreen() {
                     </View>
 
                     <Text style={[styles.barLabel, { color: themeColors.textMuted }]}>
-                      {formatHour(hour.hour)}
+                      {(hour.hour - 9) % 2 === 0 ? formatHour(hour.hour) : ""}
                     </Text>
                   </View>
               ))}
