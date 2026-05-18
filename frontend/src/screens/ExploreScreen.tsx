@@ -255,6 +255,10 @@ export default function ExploreScreen() {
     setRefreshing(false);
   };
 
+  const getOpenStatus = (c: any) => {
+    return c.isOpen === true || c.isOpen === "true" || c.is_open === true || c.is_open === "true";
+  };
+
   const fetchCafes = async (silent = false) => {
     setFetchError(false);
     if (!silent) setLoading(true);
@@ -304,7 +308,7 @@ export default function ExploreScreen() {
           price_level: c.price_level ? Number(c.price_level) : null,
           latitude: c.latitude ? Number(c.latitude) : null,
           longitude: c.longitude ? Number(c.longitude) : null,
-          isOpen: c.isOpen ?? c.is_open ?? false,
+          isOpen: getOpenStatus(c),
         };
       });
 
