@@ -155,32 +155,41 @@ export default function RewardsScreen({ navigation }: { navigation: any }) {
 
   const fetchTierAndCatalog = async () => {
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData.session?.user.id;
-      if (!userId) return;
+      const { data: redeemedData } = await supabase
+        .from("reward_redemptions")
+        .select("reward_id")
+        .eq("user_id", userId)
+        .eq("cafe_id", selectedCafe?.id);
+
+      const redeemedRewardIds = new Set(
+        (redeemedData || []).map((r: any) => r.reward_id)
+      );
 
       const { data: catalogData } = selectedCafe
-      ? await supabase
-          .from("rewards")
-          .select("id, points_required, cafe_id, active, title")
-          .eq("active", true)
-          .eq("cafe_id", selectedCafe.id)
-          .order("points_required")
-      : { data: [] };
+        ? await supabase
+            .from("rewards")
+            .select("id, points_required, cafe_id, active, title")
+            .eq("active", true)
+            .eq("cafe_id", selectedCafe.id)
+            .order("points_required")
+        : { data: [] };
+      const availableRewards = (catalogData || []).filter(
+        (reward: any) => !redeemedRewardIds.has(reward.id)
+      );
 
       // if (loyaltyData?.tier) setTier(loyaltyData.tier);
       // if (txData) setTransactions(txData);
 
-      setCatalogRewards(
-        (catalogData || []).map((r: any, i: number) => ({
-          id: r.id,
-          title: r.title,
-          cafe: r.cafes?.name || selectedCafe?.name || "",
-          points: r.points_required,
-          image: require("../assets/latte-art.jpg"),
-          popular: i === 0,
-        }))
-      );
+    setCatalogRewards(
+      availableRewards.map((r: any, i: number) => ({
+        id: r.id,
+        title: r.title,
+        cafe: selectedCafe?.name || "",
+        points: r.points_required,
+        image: require("../assets/latte-art.jpg"),
+        popular: i === 0,
+      }))
+    );
 
       console.log("Selected cafe:", selectedCafe);
       console.log("Catalog raw:", catalogData);
